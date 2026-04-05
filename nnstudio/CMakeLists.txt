@@ -86,10 +86,10 @@ set(CORE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/BackendRegistry.cpp
     ${CMAKE_SOURCE_DIR}/src/core/Layer.cpp
     ${CMAKE_SOURCE_DIR}/src/core/Trainer.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/ComputeGraph.cpp
     # future:
-    # ${CMAKE_SOURCE_DIR}/src/internal/training/Trainer.cpp
-    # ${CMAKE_SOURCE_DIR}/src/internal/graph/ComputeGraph.cpp
-    # ${CMAKE_SOURCE_DIR}/src/internal/formats/FormatIO.cpp
+    # ${CMAKE_SOURCE_DIR}/src/core/formats/OnnxIO.cpp
+    # ${CMAKE_SOURCE_DIR}/src/core/formats/NNSFormat.cpp
 )
 
 if(NN_STATIC_CORE)
@@ -139,6 +139,9 @@ set(BUILTIN_SOURCES
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/ActivationFunctors.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/Dense.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/NormLayers.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/layers/Conv2D.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/layers/Embedding.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/layers/MultiHeadAttention.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/losses/Losses.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/optimizers/Optimizers.cpp
 )
@@ -163,8 +166,8 @@ target_compile_options(nnstudio-builtin PRIVATE
 # ─── nnstudio-backend-cuda (Phase 1, NN_ENABLE_CUDA) ─────────────────────────────
 if(NN_ENABLE_CUDA)
     add_library(nnstudio-backend-cuda SHARED
-        # ${CMAKE_SOURCE_DIR}/src/builtin/backends/CudaBackend.cpp
-        # ${CMAKE_SOURCE_DIR}/src/builtin/backends/CudaBackend.cu
+        ${CMAKE_SOURCE_DIR}/src/builtin/backends/CudaBackend.cpp
+        # ${CMAKE_SOURCE_DIR}/src/builtin/backends/CudaBackend.cu  # Phase 4: CUDA kernels
     )
     set_target_properties(nnstudio-backend-cuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     target_include_directories(nnstudio-backend-cuda

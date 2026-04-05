@@ -94,6 +94,13 @@ public:
     /** Run forward only (eval mode); returns predictions. */
     Result<Tensor> predict(const Tensor& inputs);
 
+    /**
+     * Enable/disable EvalTrace recording in the underlying model.
+     * Has effect only when the model is a ComputeGraph (or any ILayer that
+     * implements the trace hook). All other model types silently ignore it.
+     */
+    void setTraceMode(bool on) noexcept { model_.setTraceMode(on); }
+
     uint64_t globalStep() const noexcept { return globalStep_; }
 
 private:

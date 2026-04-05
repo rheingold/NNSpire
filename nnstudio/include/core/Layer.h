@@ -163,6 +163,14 @@ public:
     void train()  noexcept { setTraining(true);  }
     void eval()   noexcept { setTraining(false); }
 
+    // ── Trace mode (ComputeGraph overrides; default is no-op) ─────────────────
+    /**
+     * Enable/disable per-layer EvalTrace recording.
+     * ComputeGraph overrides this to activate its trace machinery.
+     * All other layers silently ignore this call.
+     */
+    virtual void setTraceMode(bool /*on*/) noexcept {}
+
     // ── Serialization helpers ─────────────────────────────────────────────────
     /** Persist layer config (hyper-params only, no weights) as key→value map. */
     virtual std::unordered_map<std::string, std::string> config() const { return {}; }
