@@ -363,6 +363,91 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ---
 
+## Phase 3.5 — IDE Integration & Developer Experience
+
+> **Trigger:** complete once Phase 3 produces a launchable app shell — even if panels
+> are stubs — so that new contributors can open the repository in their IDE of choice
+> and immediately build, run, and debug.
+>
+> The canonical reference for hands-on configuration is
+> **[`docs/VSCODE-DEV-SETUP.md`](docs/VSCODE-DEV-SETUP.md)** — see that document for
+> step-by-step compiler/linker/debugger setup and the complete set of recommended
+> VS Code run/debug profiles. IDE-specific files referenced below live in the repo
+> and are kept up to date as the build system evolves.
+
+### VS Code — primary IDE (emphasis here first)
+
+**`.vscode/` workspace files**
+- [ ] `extensions.json` — recommended extensions: `ms-vscode.cmake-tools`,
+      `llvm-vs-code-extensions.vscode-clangd` (or `ms-vscode.cpptools`), `ms-vscode.cpptools-themes`,
+      `webfreak.debug` (GDB/LLDB native), `myriad-dreamin.tinymist` (Doxygen), `twxs.cmake`,
+      `josetr.cmake-language-support`; Qt: `qt-official.qt-cpp-extension-pack`
+- [ ] `settings.json` — CMake: `cmake.configureOnOpen=true`, `cmake.buildDirectory=…/build/\${preset}`,
+      `cmake.useCMakePresets="always"`, clangd path (MSYS2 GCC / LLVM), IntelliSense mode
+- [ ] `c_cpp_properties.json` — one configuration per toolchain: `GCC-MinGW-MSYS2`,
+      `Clang-LLVM-MSYS2`, `MSVC-x64`; correct `includePath` (Qt, Eigen, GTest, project includes),
+      `compilerPath`, `cStandard`/`cppStandard`, `intelliSenseMode`
+- [ ] `tasks.json` — already present for build/configure/test; add: `Configure (all presets)`,
+      `Rebuild (clean + build)`, `Run app`, `Generate Doxygen docs`
+- [ ] `launch.json` — run/debug profiles (see detailed list below)
+
+**`launch.json` profiles (one `.vscode/launch.json` entry each)**
+- [ ] `Engine tests (GDB/MinGW)` — launch `build/engine-ninja/tests/test-core.exe` under
+      `gdb` (from MSYS2 MinGW); `cwd` = `nnstudio/`; env: `PATH` includes Qt bin + MSYS2 bin;
+      `stopAtEntry=false`
+- [ ] `Engine tests — filter (GDB/MinGW)` — same as above with `"args": ["--gtest_filter=${input:gtestFilter}"]`
+      and a `${input}` prompt so the user types a filter expression without editing the file
+- [ ] `NNStudio App (GDB/MinGW)` — launch the Qt app executable; pre-launch task = build; working dir = project root
+- [ ] `NNStudio App (no GPU)` — same with `"env": {"NN_BACKEND": "cpu"}` override
+- [ ] `NNStudio App (CUDA backend)` — same with `"env": {"NN_BACKEND": "cuda"}`
+- [ ] `Engine tests (LLDB/Clang)` — alternate clang/LLDB profile using `CodeLLDB` extension
+- [ ] `Engine tests (MSVC / cppvsdbg)` — Windows-only; requires `ms-vscode.cpptools` debugger;
+      preset `engine-vs` (MSVC x64 generator)
+- [ ] `NNStudio App (MSVC / cppvsdbg)` — app launch via MSVC debug adapter
+
+**CMake presets**
+- [ ] `engine-vs` preset — Visual Studio 17 generator, MSVC x64 (mirrors `engine-ninja` logic, different generator)
+- [ ] `engine-clang-ninja` preset — Ninja + clang++ (MSYS2 LLVM package), same flags minus `-fno-exceptions` for
+      libcxx compatibility check
+- [ ] `app-ninja` preset — includes `nnstudio/app/` target; `CMAKE_PREFIX_PATH` pointing to Qt installation
+- [ ] `app-vs` preset — same with Visual Studio generator
+
+**Extensions and toolchain validation guide**
+- [ ] `docs/VSCODE-DEV-SETUP.md` written and kept current — full guided tour:
+  compiler selection, kit switching in CMake Tools, IntelliSense modes,
+  debugging GDB vs LLDB vs cppvsdbg, `.env` file for Qt `PATH`, GTest adapter
+  integration, Doxygen task, remote SSH target for GPU build/test (Phase 5+)
+
+### Visual Studio (Windows, secondary)
+
+- [ ] `engine-vs` CMake preset (above) enables "Open Folder" workflow in VS 2022 — no `.sln` needed
+- [ ] `nnstudio.natvis` — NatVis visualiser file so VS debugger pretty-prints `Tensor`, `Shape`,
+      `Result<T>`, `Parameter` in the Autos/Watch/Locals pane instead of raw byte dumps
+- [ ] `nnstudio.props` — shared property sheet: Qt install path, MSYS2 path, include dirs;
+      developers override via `nnstudio.user.props` (gitignored) for local paths
+- [ ] Verify: right-click `CMakeLists.txt` → "Add to View" → CMake Targets appear; build + test
+      via VS Test Explorer (GTest adapter)
+- [ ] Document the one known friction point: MSYS2 DLLs not in VS `PATH` → workaround in
+      `docs/VSCODE-DEV-SETUP.md` §Visual Studio
+
+### Qt Creator / Qt Design Studio
+
+- [ ] Confirm `CMakeLists.txt` opens cleanly in Qt Creator 13+ via "Open as CMake project"
+- [ ] Kit configuration: MinGW 15.2.0 (MSYS2) + Qt 6.10.1; document kit JSON in `docs/VSCODE-DEV-SETUP.md`
+- [ ] `.qmlproject` stub for `nnstudio/app/ui/` — allows pure QML/UI work in **Qt Design Studio**
+      without building the C++ engine; mock `ModelController` QML singleton provides stub data
+- [ ] Verify QML live-preview works in Qt Design Studio 4+ for all `.qml` files in `ui/`
+- [ ] Document: Qt Creator run configurations for `test-core` and `NNStudio app`
+
+### Phase 3.5 milestone
+- [ ] A contributor on a fresh Windows machine can clone → open in VS Code → press F5 → debugger
+      hits a breakpoint in `Dense::forward()` in under 15 minutes, following `docs/VSCODE-DEV-SETUP.md`
+- [ ] Same contributor can run and filter GTest cases directly from the VS Code Testing sidebar
+- [ ] `nnstudio.natvis` makes `Tensor` readable in the VS 2022 debugger Locals pane
+- [ ] Qt Design Studio opens the `ui/` QML project and live-previews the model editor panel stub
+
+---
+
 ## Phase 4 — Full Pipeline
 
 ### Input adapters (`nnstudio/pipeline/input/`)

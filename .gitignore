@@ -2,6 +2,10 @@
 ai_priv/
 # ─── nnagent — not published yet ──────────────────────────────────────────────
 nnagent/
+# ─── Local developer overrides (never commit) ─────────────────────────────────
+CMakeUserPresets.json
+nnstudio/CMakeUserPresets.json
+.vscode/.env
 # ─── Build artefacts ─────────────────────────────────────────────────────────
 build/
 build-*/
