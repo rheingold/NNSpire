@@ -102,7 +102,28 @@ void AdamW::step(std::vector<Parameter*>& params) {
         }
     }
 }
+// ─── RMSProp ─────────────────────────────────────────────────────────────────
+void RMSProp::step(std::vector<Parameter*>& params) {
+    ++step_;
+    for (auto* p : params) {
+        if (p->frozen || !p->tensor.hasGrad()) continue;
+        const int64_t n   = p->tensor.numel();
+        auto          key = p->tensor.data();
 
+        if (sq_.find(key) == sq_.end())
+            sq_[key].assign(static_cast<size_t>(n), 0.0f);
+
+        auto& sq = sq_[key];
+        for (int64_t i = 0; i < n; ++i) {
+            float g = p->tensor.grad().flat(i);
+            if (weightDecay_ != 0.0f) g += weightDecay_ * p->tensor.flat(i);
+
+            const size_t si = static_cast<size_t>(i);
+            sq[si] = alpha_ * sq[si] + (1.0f - alpha_) * g * g;
+            p->tensor.flat(i) -= lr_ * g / (std::sqrt(sq[si]) + eps_);
+        }
+    }
+}
 // ─── StepDecayScheduler ───────────────────────────────────────────────────────
 void StepDecayScheduler::onStep(IOptimizer& opt, uint64_t globalStep) {
     if (stepSize_ > 0 && globalStep > 0 && (globalStep % stepSize_) == 0)

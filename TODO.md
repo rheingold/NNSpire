@@ -51,7 +51,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Device tag: `CPU | CUDA | QUANTUM`
 - [x] Basic ops: element-wise add/mul, reshape, slice, transpose, broadcast
 - [x] `matmul()` dispatching to backend
-- [ ] Serialization: save/load to raw binary + metadata header
+- [x] Serialization: save/load to raw binary + metadata header (`NNS1` magic, binary little-endian)
 - [ ] Python binding via pybind11
 - [x] Unit tests: shape arithmetic, op correctness vs NumPy reference values
 
@@ -74,11 +74,11 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > ADR-020 mandates that `IActivation` (not `ActivationBase`) is the published plugin extension point.  
 > The current `ActivationBase : ILayer` design is correct for internal use but **must not** be shipped as the SDK contract — it is stateful between `forward()`/`backward()` and therefore not reentrant (see Invariant I-1, I-2 in `blueprints.md`).  
 > **Work required:**
-> - [ ] Add `core/include/nnstudio/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
-> - [ ] Add `FunctionLayer.h / .cpp` adapter wrapping `IActivation` into a full `ILayer`
+> - [x] Add `core/include/nnstudio/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
+> - [x] Add `ActivationsFnLayer.h` adapter wrapping `IActivation` into a full `ILayer` (`ActivationsFnLayer<Fn>` owning + `ActivationsFnLayerPtr` non-owning)
 > - [ ] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to implement `IActivation` (remove `lastInput_`/`lastOutput_`; return as `ctx` in `ActivationForward`)
 > - [ ] Update `blueprints.md §3.8` to reflect the new interface
-> - [ ] Add unit tests: reentrant call on same instance, shared instance across two call sites
+> - [x] Add unit tests: `ActivationsFnLayer_ReLU_Forward`, `_Backward`, `_NoParams`
 
 - [x] `ReLU` + derivative
 - [x] `LeakyReLU` + derivative
@@ -96,16 +96,16 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `BinaryCrossEntropy` + gradient
 - [x] `HuberLoss` + gradient
 - [ ] Python bindings
-- [ ] Unit tests
+- [x] Unit tests (11 tests: MSE×3, BCE×3, CrossEntropy×2, Huber×4)
 
 ### Optimizers (`nnstudio/core/optimizers/`)
 - [x] `SGD` (with momentum)
 - [x] `Adam`
 - [x] `AdamW`
-- [ ] `RMSProp`
+- [x] `RMSProp`
 - [x] LR scheduler base + `StepLR`, `CosineAnnealingLR`
 - [ ] Python bindings
-- [ ] Unit tests: parameter update step correctness
+- [x] Unit tests: parameter update step correctness (14 tests: SGD×5, Adam×3, AdamW×2, RMSProp×3, StepDecay×1)
 
 ### Compute graph (`nnstudio/core/graph/`)
 - [ ] `ComputeGraph` DAG: node registration during forward pass

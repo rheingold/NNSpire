@@ -1,6 +1,7 @@
 # ─── Private / local machine data ────────────────────────────────────────────
 ai_priv/
-
+# ─── nnagent — not published yet ──────────────────────────────────────────────
+nnagent/
 # ─── Build artefacts ─────────────────────────────────────────────────────────
 build/
 build-*/

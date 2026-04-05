@@ -97,3 +97,47 @@ TEST_F(TensorTest, Matmul2D) {
     EXPECT_FLOAT_EQ(c.flat(2), 139.0f);
     EXPECT_FLOAT_EQ(c.flat(3), 154.0f);
 }
+
+// ─── Serialisation ────────────────────────────────────────────────────────────
+
+#include <fstream>
+#include <cstdio>
+
+TEST_F(TensorTest, SaveLoadRoundtrip) {
+    const char* path = "_test_serde_roundtrip.nns1";
+    auto orig = Tensor::fromData({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3});
+
+    auto saveRes = orig.save(path);
+    ASSERT_TRUE(saveRes.ok()) << saveRes.error().message;
+
+    auto loadRes = Tensor::load(path);
+    ASSERT_TRUE(loadRes.ok()) << loadRes.error().message;
+
+    const auto& t = loadRes.value();
+    EXPECT_EQ(t.shape()[0], 2);
+    EXPECT_EQ(t.shape()[1], 3);
+    EXPECT_EQ(t.numel(), 6);
+    for (int64_t i = 0; i < 6; ++i)
+        EXPECT_FLOAT_EQ(t.flat(i), orig.flat(i));
+
+    std::remove(path);
+}
+
+TEST_F(TensorTest, SaveLoadScalar) {
+    const char* path = "_test_serde_scalar.nns1";
+    auto orig = Tensor::full({1}, 3.14159f);
+    ASSERT_TRUE(orig.save(path).ok());
+    auto res = Tensor::load(path);
+    ASSERT_TRUE(res.ok());
+    EXPECT_NEAR(res.value().flat(0), 3.14159f, 1e-6f);
+    std::remove(path);
+}
+
+TEST_F(TensorTest, LoadBadMagicFails) {
+    const char* path = "_test_serde_badmagic.tmp";
+    { std::ofstream f(path, std::ios::binary); f << "BADD"; }
+    auto res = Tensor::load(path);
+    EXPECT_TRUE(res.failed());
+    std::remove(path);
+}
+

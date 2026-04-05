@@ -92,6 +92,24 @@ private:
     float decoupledDecay_;
 };
 
+// ─── RMSProp ──────────────────────────────────────────────────────────────────
+// Maintains a per-parameter exponential moving average of squared gradients.
+// Update: E[g²]_t = α·E[g²]_{t-1} + (1-α)·g²
+//         θ_t    = θ_{t-1} - lr · g / (√E[g²]_t + ε)
+class RMSProp : public IOptimizer {
+public:
+    explicit RMSProp(float lr = 1e-3f, float alpha = 0.99f,
+                     float eps = 1e-8f, float weightDecay = 0.0f)
+        : IOptimizer(lr), alpha_(alpha), eps_(eps), weightDecay_(weightDecay) {}
+
+    std::string_view name() const noexcept override { return "RMSProp"; }
+    void step(std::vector<Parameter*>& params) override;
+
+private:
+    float alpha_, eps_, weightDecay_;
+    std::unordered_map<const float*, std::vector<float>> sq_; // E[g²] buffers
+};
+
 // ─── Step Decay LR Scheduler ─────────────────────────────────────────────────
 class StepDecayScheduler : public ILRScheduler {
 public:

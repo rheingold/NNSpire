@@ -8,9 +8,9 @@ add_executable(test-core
     core/test_tensor.cpp
     core/test_activations.cpp
     core/test_trainer_xor.cpp
+    core/test_losses.cpp
+    core/test_optimizers.cpp
     # core/test_dense_layer.cpp
-    # core/test_losses.cpp
-    # core/test_optimizers.cpp
     # core/test_compute_graph.cpp
     # core/test_onnx_roundtrip.cpp
 )

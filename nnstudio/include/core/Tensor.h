@@ -24,6 +24,7 @@
 #include <numeric>
 #include <functional>
 #include <initializer_list>
+#include <string_view>
 #include <cassert>
 #include <cstring>
 
@@ -277,6 +278,18 @@ public:
     // ------------------------------------------------------------------
     Result<Tensor> reshape(Shape newShape) const;
     Result<Tensor> transpose(int dim0, int dim1) const;  // swaps two dims
+
+    // ------------------------------------------------------------------
+    // Serialisation  (.nns binary sidecar format)
+    // ------------------------------------------------------------------
+    // Binary layout (little-endian):
+    //   [4]  magic  "NNS1"
+    //   [4]  ndim   int32
+    //   [8*ndim] shape  int64[]
+    //   [8]  numel  int64
+    //   [4*numel] data   float32[]
+    Result<void>   save(std::string_view path) const;
+    static Result<Tensor> load(std::string_view path);
 
     // ------------------------------------------------------------------
     // Comparisons (shape only)
