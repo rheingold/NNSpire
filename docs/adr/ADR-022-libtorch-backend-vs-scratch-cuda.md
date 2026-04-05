@@ -1,6 +1,8 @@
 # ADR-022 — LibTorch as Production Backend vs. Scratch CUDA Implementation
 
-**Status:** DRAFT — decision pending  
+> **Foundational note:** This ADR records the most fundamental architectural question of the entire project — arguably it should have been ADR-000. It is placed here because it surfaced organically during Phase 1 implementation rather than at project inception. That is how most real foundational decisions actually happen.
+
+**Status:** ACCEPTED  
 **Date:** 2026-04-06  
 **Author:** NNStudio project  
 
@@ -8,19 +10,54 @@
 
 ## Context / Problem Statement
 
-*(To be filled in from session dialogue — see Conversation Record below.)*
+NNStudio implements its own compute engine (Tensor, Dense, Adam, ComputeGraph, CpuBackend via Eigen) for didactical reasons — to make every internal NN operation visible and inspectable. During Phase 1 implementation it became clear that:
+
+1. The compute engine (Tensor, layers, optimizers) is a reinvented wheel. PyTorch/LibTorch does this better, with 10 years of CUDA optimization and a dedicated team.
+2. Everything *around* the compute engine (plugin trust/PKI, plugin ABI, project format `.nns`, UI, workflow, export pipeline) is genuinely novel — no existing NN framework has it.
+3. The performance concern is **scoped exclusively to Studio-side training** (UI, CLI, embedded server). Exported models run on their own independent runtimes (PyTorch, ONNX Runtime, TensorRT) regardless of which backend NNStudio used during training — so the backend choice has zero effect on the performance of shipped models.
+
+| Runtime context | Backend affects performance? |
+|---|---|
+| NNStudio training (UI / CLI) | ✅ Yes — this is the scope of this ADR |
+| NNStudio embedded server (Ollama-like) | ✅ Yes |
+| Exported model on PyTorch runner | ❌ No — independent runtime |
+| Exported model on ONNX Runtime / TensorRT | ❌ No — independent runtime |
+
+The Linus Torvalds analogy: Torvalds wrote a kernel because MINIX couldn't do what he needed — there was a genuine gap. The gap NNStudio fills is the *studio* (trust, plugin ecosystem, visual workflow, project format), not the compute engine itself.
 
 ---
 
 ## Decision
 
-*(To be filled in.)*
+**Option B accepted: Add `LibTorchBackend : IBackend` as an optional production backend alongside the existing Eigen `CpuBackend`.**
+
+- `CpuBackend` (Eigen) is retained permanently as the **reference and didactical backend**. It makes every operation transparent, is self-contained, requires no external dependencies, and is sufficient for teaching, prototyping, and interactive experimentation on small models.
+- `LibTorchBackend` is added as an **opt-in production backend** (`NN_ENABLE_LIBTORCH=ON` CMake flag). It delegates all compute operations to LibTorch's optimized CUDA/cuDNN kernels via the existing `IBackend` interface (~8 virtual methods to implement).
+- The scratch CUDA backend originally planned for Phase 2 is **cancelled**. Its didactical value is covered by `CpuBackend`; its performance value is covered by `LibTorchBackend`.
+- The `IBackend` interface is **not changed**. `LibTorchBackend` is a pure addition — no existing code is modified.
+
+**Prerequisite:** The Tensor internal buffer must be refactored from `shared_ptr<float[]>` to `shared_ptr<void>` + `DType` dispatch before `LibTorchBackend` can be implemented. This is already recorded as a blocker in the Cross-Framework Compatibility TODO section.
 
 ---
 
 ## Consequences
 
-*(To be filled in.)*
+**Positive:**
+- CUDA, cuDNN, and multi-GPU training become available to NNStudio users at production quality without a multi-year kernel implementation effort.
+- The `torch_compat.h` alignment story becomes trivially true for the production path: "NNStudio literally runs on LibTorch under the hood when you choose it."
+- `CpuBackend` remains available for learning, debugging, and zero-dependency builds.
+- Plugin authors using `IBackend` get LibTorch acceleration transparently with no API changes.
+- Shipped/exported models are completely unaffected — they run on their own runtime.
+
+**Negative / costs:**
+- LibTorch is a large dependency (~500 MB). Must be optional (`NN_ENABLE_LIBTORCH`), not required.
+- Tensor buffer refactor (float[] → void* + dtype) required before implementation.
+- One-time integration work estimated at 2-3 weeks.
+- Tests must cover both backends; CI gains a separate LibTorch-enabled preset.
+
+**Deferred:**
+- Whether `LibTorchBackend` becomes the *default* when available, or always opt-in via CLI/UI — deferred to Phase 3 UI work.
+- Whether the Tensor internal buffer actually *is* a `torch::Tensor` when LibTorch is active (zero-copy path), or whether it copies in/out — deferred to implementation; zero-copy is preferred but not required for correctness.
 
 ---
 
