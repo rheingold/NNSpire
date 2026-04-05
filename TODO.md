@@ -142,11 +142,27 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ### Backend abstraction (`nnstudio/backends/`)
 - [x] `IBackend` interface: `matmul()`, `elementWise()`, `memAlloc()`, `memFree()`, `sync()`
-- [x] `CpuBackend` — Eigen-based matmul reference implementation
-- [ ] `CudaBackend` — cuBLAS/cuDNN conditional compile; disabled if CUDA not found
+- [x] `CpuBackend` — Eigen-based matmul reference implementation (reference + didactical; retained permanently)
+- [ ] `CudaBackend` — our own cuBLAS/cuDNN implementation; didactical, makes every CUDA op visible; conditional compile (`NN_ENABLE_CUDA=ON`); disabled if CUDA toolkit not found
+- [ ] `LibTorchBackend` — **additive production backend** alongside `CudaBackend`; delegates all ops to LibTorch optimised CUDA/cuDNN/TensorRT kernels; opt-in via `NN_ENABLE_LIBTORCH=ON`; gives full cuDNN perf without reimplementing kernels — **blocked by Tensor void* refactor** (see Cross-Framework Compat section)
 - [x] `QuantumBackend` — stub; interface compiles, all methods call `__builtin_trap()`; registered in BackendRegistry
 - [x] `BackendRegistry` — runtime registration and selection by device tag
 - [x] Dynamic loading: each backend is a separate shared library loaded on demand
+
+### Deferred: Training orchestration delegation (ADR pending)
+
+> ⚠️ **When touching `Trainer` for any reason: take a split-second check that the change does not close the door on delegating to Lightning/Accelerate/DeepSpeed when `LibTorchBackend` is active. Specifically: keep `trainStep()`, `trainEpoch()`, `train()` as thin virtual-dispatch-friendly calls; avoid embedding loop logic that would be hard to replace with a delegate.**
+
+- [ ] Evaluate whether `Trainer` should become a facade over **PyTorch Lightning** / **HuggingFace Accelerate** when `LibTorchBackend` is in use:
+  - Our `TrainCallbacks` translate to Lightning `Callback` hooks
+  - Our `Dataset` / `DataBatch` translate to Lightning `DataModule`
+  - Benefit: multi-GPU, mixed-precision, gradient accumulation for free
+  - Cost: Lightning as a dependency in the LibTorch-enabled build
+- [ ] Evaluate **DeepSpeed** for ZeRO optimizer / model parallelism (LLM-scale training only)
+- [ ] Evaluate **Ray Train** for multi-node orchestration (post-v1.0)
+- [ ] Decision: does Studio's own `Trainer` always run, or can it be replaced by a backend-specific orchestrator?
+  - Recommendation: `Trainer` stays as the *interface* (callbacks, metrics, stop signal) even when an
+    external orchestrator runs underneath — the Studio remains the controller, not a passenger.
 
 ### Phase 1 milestone verification
 - [x] `cmake --build && ctest` passes all unit tests — **63/63 green** (15 new LayerTest + 48 prior)

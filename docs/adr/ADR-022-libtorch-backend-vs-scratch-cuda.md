@@ -33,7 +33,8 @@ The Linus Torvalds analogy: Torvalds wrote a kernel because MINIX couldn't do wh
 
 - `CpuBackend` (Eigen) is retained permanently as the **reference and didactical backend**. It makes every operation transparent, is self-contained, requires no external dependencies, and is sufficient for teaching, prototyping, and interactive experimentation on small models.
 - `LibTorchBackend` is added as an **opt-in production backend** (`NN_ENABLE_LIBTORCH=ON` CMake flag). It delegates all compute operations to LibTorch's optimized CUDA/cuDNN kernels via the existing `IBackend` interface (~8 virtual methods to implement).
-- The scratch CUDA backend originally planned for Phase 2 is **cancelled**. Its didactical value is covered by `CpuBackend`; its performance value is covered by `LibTorchBackend`.
+- The scratch `CudaBackend` (cuBLAS/cuDNN, our own implementation) is **retained** for didactical purposes — it makes every CUDA kernel decision visible and teachable. It is not a performance target.
+- `LibTorchBackend` is added **alongside** `CudaBackend`, not as a replacement. The two serve different purposes: `CudaBackend` = transparency; `LibTorchBackend` = production performance.
 - The `IBackend` interface is **not changed**. `LibTorchBackend` is a pure addition — no existing code is modified.
 
 **Prerequisite:** The Tensor internal buffer must be refactored from `shared_ptr<float[]>` to `shared_ptr<void>` + `DType` dispatch before `LibTorchBackend` can be implemented. This is already recorded as a blocker in the Cross-Framework Compatibility TODO section.
@@ -169,19 +170,20 @@ That is a well-bounded, testable piece of work. It does not touch the plugin sys
 
 ### Option A — Keep only our Eigen CpuBackend + scratch CUDA (original plan)
 - Didactically complete; students see every computation
-- CUDA performance gap of 10-100x vs LibTorch on real models
-- CUDA implementation is a multi-year effort to match cuDNN quality
+- CUDA performance gap of 10-100x vs LibTorch on real models for serious training workloads
+- CUDA implementation requires significant effort to match cuDNN quality
 
-### Option B — Add `LibTorchBackend : IBackend` as production backend (proposed)
-- CpuBackend stays for didactical use and testing
-- LibTorch backend delegates compute to optimized NVIDIA kernels
-- CUDA, cuDNN, TensorRT acceleration are free
-- `torch_compat` alignment becomes trivially true for the production path
+### Option B — Add `LibTorchBackend : IBackend` as additional production backend (ACCEPTED)
+- `CpuBackend` (Eigen) stays permanently — reference + didactical
+- `CudaBackend` (our own cuBLAS/cuDNN) stays — didactical CUDA visibility, transparent kernel decisions
+- `LibTorchBackend` added **alongside** both, as a third opt-in backend for production performance
+- All three serve distinct purposes: `CpuBackend` = full transparency; `CudaBackend` = CUDA transparency; `LibTorchBackend` = production throughput
+- CUDA, cuDNN, TensorRT acceleration available via LibTorch without reimplementing optimised kernels
 - Cost: ~2-3 weeks implementation + Tensor buffer refactor (already planned)
 
 ### Option C — Abandon our compute engine, wrap LibTorch entirely
 - Lowest implementation cost
-- Loses the didactical CpuBackend and its pedagogical value
+- Loses both `CpuBackend` and `CudaBackend` and their pedagogical value
 - Not proposed — the whole-engine replacement is unnecessary given Option B
 
 ---

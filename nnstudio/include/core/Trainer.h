@@ -9,6 +9,21 @@
  * an optimizer (IOptimizer&).  Any of those three can be swapped without
  * touching the others.
  *
+ * ── DESIGN GUARD (ADR-022 / deferred ADR) ────────────────────────────────────
+ * Before modifying this class, spend a moment checking that the change does
+ * NOT close the following future path:
+ *
+ *   When LibTorchBackend is active, the training loop body (trainStep /
+ *   trainEpoch / train) may be delegated to PyTorch Lightning, HuggingFace
+ *   Accelerate, or DeepSpeed instead of our own implementation, while Trainer
+ *   remains the *interface* (TrainCallbacks, globalStep, shouldStop signal).
+ *
+ * Concretely: keep trainStep() / trainEpoch() / train() as thin, replaceable
+ * units. Avoid embedding multi-GPU assumptions, device-placement logic, or
+ * gradient-accumulation state that would be hard to excise later.
+ * The decision whether to delegate is deferred — see TODO.md §Backend / Trainer.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
  * The single atomic unit of learning is trainStep(), which executes the
  * six-step gradient descent cycle in strict order:
  *   1. zeroGrad    — clear accumulated gradients from the previous step
