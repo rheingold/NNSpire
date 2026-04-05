@@ -243,6 +243,42 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ## Phase 3 — Qt 6 QML Studio UI
 
+> ⚠️ **DESIGN PRINCIPLE — resolve this before writing a single line of UI code**
+>
+> ### UI Reentrant Idempotency
+>
+> The NNStudio UI state machine must be designed around a dominant **`ReadyToEdit`**
+> state. This principle governs every panel, dialog, wizard, and control added in
+> Phase 3 and beyond.
+>
+> **What this means:**
+>
+> - **Maximise time in `ReadyToEdit`** — the user should nearly always be directly
+>   editing the neural network (adding/removing/reordering layers, tuning
+>   hyperparameters, inspecting weights) without having had to complete prior wizard
+>   steps to get there.
+>
+> - **Minimise step-dependent contingency.** The following patterns are UX debt and
+>   require explicit justification before use:
+>   - `Step1 → Step2 → … → Stepx → ReadyToEdit` (linear wizard-gate before editing)
+>   - `ReadyToEdit → SubStep1 → SubStep2 → SubStep3 → … → ReadyToEdit`
+>     (multi-step sub-wizard inside the main flow)
+>
+> - **Target state diagram for every feature:**
+>   `ReadyToEdit → SingleCommand / SingleEdit → ReadyToEdit`
+>   After any operation — combobox selection, dialog confirm, export, compile, training
+>   run — the UI must return to `ReadyToEdit` as quickly as possible (dialog closes,
+>   progress bar finishes, selection confirms).
+>
+> - **"Idempotency" is used in the UI sense**, not the mathematical sense.  The system
+>   as a whole is *not* idempotent — the NN data is permanently altered by training,
+>   export, weight import, etc.  But the *UI* must recover to its primary editing state
+>   immediately after each action, with no follow-up navigation required of the user.
+>
+> - **Practical gate before implementing any UI flow:** *Could a motivated expert user
+>   accomplish this in a single gesture (click / dropdown / drag / keyboard shortcut)
+>   once they know the tool?*  If not, redesign it.
+
 ### App shell (`nnstudio/app/`)
 - [ ] `main.cpp` — Qt app init, backend detection, plugin loader, dependency check, QML engine setup
 - [ ] `controllers/` — `ModelController`, `TrainingController`, `BackendController`, `PluginController`, `HelpController`
