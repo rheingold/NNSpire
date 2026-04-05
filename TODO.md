@@ -155,6 +155,121 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ---
 
+## ⚡ Cross-Framework Compatibility Layer (PyTorch / Keras drop-in)
+
+> **Priority: UTMOST — must be designed before Phase 2 ABI freeze and before any pybind11 bindings are written.**
+>
+> ### Goal
+> A user who writes code using only the *standard* PyTorch or Keras API signatures and names
+> must be able to swap the include/import between NNStudio and the real framework with no code changes:
+>
+> ```cpp
+> // C++ — swap this include to switch underlying framework
+> #include <nnstudio/torch_compat.h>   // uses NNStudio engine
+> // #include <torch/torch.h>          // uses LibTorch
+>
+> auto model = torch::nn::Sequential(torch::nn::Linear(4, 8), torch::nn::ReLU());
+> ```
+>
+> ```python
+> # Python — swap this import to switch underlying framework
+> import nnstudio.torch_compat as torch   # uses NNStudio engine
+> # import torch                           # uses real PyTorch
+>
+> layer = torch.nn.Linear(4, 8)
+> x = layer(torch.zeros(2, 4))
+> ```
+>
+> Any use of an **NNStudio extension** (beyond the torch/keras standard surface) triggers
+> a UI/CLI warning: *"This project uses NNStudio-only features: [list]. Export to PyTorch
+> will require adapters."*
+>
+> ### Framework evaluation
+> | Framework | C++ drop-in | Python drop-in | Decision |
+> |---|---|---|---|
+> | PyTorch / LibTorch | ✅ via `torch_compat.h` alias shim | ✅ pybind11 naming by design | **Implement** |
+> | Keras | N/A (Python only) | ✅ `model.compile/fit/predict` aliases | **Implement** |
+> | JAX | N/A | ❌ pure-functional, incompatible paradigm | **Skip** |
+> | TensorFlow C++ | ❌ Google deprecated it | ❌ not worth the cost | **Skip** |
+> | MLX (Apple) | N/A | 🟡 growing — revisit post-v1.0 | **Defer** |
+
+### Prerequisite: Tensor dtype-generic buffer `[! BLOCKS ALL BELOW]`
+
+- [ ] Change `Tensor` internal buffer from `shared_ptr<float[]>` to `shared_ptr<void>` + `itemsize_` derived from `DType`
+  - `DType` enum already exists; `dtypeBytes()` already exists
+  - All existing tests continue to pass (Float32 is still the default)
+  - Backend `matmul()/elementWise()` gain dtype dispatch (`switch(dtype_)`) — Float16/Int8 paths stub with `Result::error()` until CUDA backend
+  - This is a self-contained change: only `Tensor.cpp` + `CpuBackend.cpp` change; public API surface unchanged
+- [ ] Add `Tensor::item<T>()` accessor (type-safe scalar extraction) replacing raw `data()[i]`
+- [ ] Unit tests: dtype-round-trip save/load, dtype mismatch returns `Result::error()`
+
+### C++ PyTorch-compatible shim (`include/nnstudio/torch_compat.h`)
+
+- [ ] `namespace torch` → alias block mapping to `nnstudio::*`:
+  - `torch::Tensor` → `nnstudio::core::Tensor`
+  - `torch::zeros / torch::ones / torch::rand` → our factory functions
+  - `torch::nn::Module` → `nnstudio::core::Layer`
+  - `torch::nn::Linear` → `nnstudio::builtin::layers::Dense`
+  - `torch::nn::Conv2d` → `nnstudio::builtin::layers::Conv2D`
+  - `torch::nn::Embedding` → `nnstudio::builtin::layers::Embedding`
+  - `torch::nn::MultiheadAttention` → `nnstudio::builtin::layers::MultiHeadAttention`
+  - `torch::nn::BatchNorm1d / LayerNorm / Dropout` → our NormLayers
+  - `torch::nn::ReLU / Sigmoid / Tanh / GELU / Softmax` → our activations (wrapped in `ActivationsFnLayer`)
+  - `torch::nn::MSELoss / CrossEntropyLoss / BCELoss` → our losses
+  - `torch::optim::SGD / Adam / AdamW / RMSProp` → our optimizers
+  - `torch::nn::functional::relu / sigmoid / softmax / ...` → our standalone activation callables
+- [ ] `torch::nn::Sequential` — thin wrapper building `ComputeGraph` from initializer list
+- [ ] The shim is **header-only** — zero link-time cost; only aliases, no new compiled symbols
+- [ ] Unit test: compile a simple 3-layer MLP using only `torch::` names against NNStudio
+
+### Python pybind11 bindings — torch-compatible naming (design constraint, not retrofit)
+
+> ⚠️ These bindings do not exist yet — but they **must be designed with torch naming** from day one.
+> Do not expose `nnstudio.core.Dense`; expose `nnstudio.nn.Linear` with `Dense` as an alias.
+
+- [ ] Top-level module: `import nnstudio` → available sub-namespaces: `nnstudio.nn`, `nnstudio.optim`, `nnstudio.nn.functional`
+- [ ] `nnstudio.Tensor` matches `torch.Tensor` public surface: `.shape`, `.dtype`, `.device`, `.item()`, `.numpy()` (CPU copy), `__add__/__mul__/...`
+- [ ] `nnstudio.nn.Linear(in, out)` — default torch constructor signature
+- [ ] `nnstudio.nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding)` — torch signature
+- [ ] `nnstudio.nn.Embedding(num_embeddings, embedding_dim)` — torch signature
+- [ ] `nnstudio.nn.MultiheadAttention(embed_dim, num_heads)` — torch signature
+- [ ] `nnstudio.nn.Sequential(*layers)` — torch constructor
+- [ ] `nnstudio.nn.ReLU / Sigmoid / Tanh / GELU / Softmax / Dropout / BatchNorm1d / LayerNorm` — torch naming
+- [ ] `nnstudio.nn.MSELoss / CrossEntropyLoss / BCEWithLogitsLoss` — torch naming
+- [ ] `nnstudio.optim.SGD / Adam / AdamW / RMSProp` — torch constructor signatures (params, lr, weight_decay, ...)
+- [ ] `nnstudio.nn.functional.relu / sigmoid / softmax / gelu / dropout` — functional API
+- [ ] `nnstudio.torch_compat` re-export: `import nnstudio.torch_compat as torch` works as drop-in
+
+### Python Keras-compatible aliases (additive, thin wrapper)
+
+- [ ] `nnstudio.keras.layers.Dense / Conv2D / Embedding / LSTM / MultiHeadAttention / BatchNormalization / Dropout / LayerNormalization`
+- [ ] `nnstudio.keras.losses.MeanSquaredError / CategoricalCrossentropy / BinaryCrossentropy`
+- [ ] `nnstudio.keras.optimizers.SGD / Adam / AdamW / RMSprop`
+- [ ] `nnstudio.keras.Model.compile(optimizer, loss, metrics)` — wraps `Trainer`
+- [ ] `nnstudio.keras.Model.fit(x, y, epochs, batch_size, validation_data, callbacks)` — wraps training loop
+- [ ] `nnstudio.keras.Model.predict(x)` — single forward pass, no grad
+- [ ] `nnstudio.keras.callbacks.EarlyStopping / ModelCheckpoint` — map to our callback system
+
+### Compatibility warning system
+
+- [ ] `CompatibilityChecker` — static analysis pass over `ComputeGraph` nodes:
+  - Classifies each node as: `standard_torch | standard_keras | nnstudio_extension`
+  - Reports list of non-standard ops used in the project
+- [ ] CLI: `nnstudio-sign verify --compat=torch` — exits non-zero if any extension ops present
+- [ ] UI: yellow warning banner in Layer Inspector when an NNStudio-extension layer is used
+- [ ] `.nns` project file: `"compat_level": "torch_standard" | "keras_standard" | "nnstudio_extended"` field
+- [ ] Export dialog: blocks ONNX-standard export if extension ops present; offers "export with custom ops sidecar" alternative
+
+### ONNX export alignment
+
+- [ ] Map every torch-compatible layer to a standard ONNX op (no custom domain required):
+  - `Linear` → `Gemm`, `Conv2d` → `Conv`, `Embedding` → `Gather`, `LayerNorm` → `LayerNormalization`,
+    `BatchNorm1d` → `BatchNormalization`, `ReLU/Sigmoid/Tanh/GELU/Softmax` → standard ONNX ops
+- [ ] NNStudio extension layers: register under `com.nnstudio.*` custom op domain; export with sidecar `.onnx_ops.dll`
+- [ ] Plugin ONNX adapter contract: each plugin optionally provides `onnx_export()` → custom op node + sidecar impl
+
+---
+
 ## Architectural Debt — Namespace Migration (before Phase 2 ABI freeze)
 
 > ⚠️ **ABI freeze is soft until v1.0 ships.**  
