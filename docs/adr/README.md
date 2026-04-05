@@ -37,3 +37,4 @@ Each ADR follows the [Michael Nygard template](https://cognitect.com/blog/2011/1
 | [ADR-018](ADR-018-qml-not-qt-widgets.md) | QML (Qt Quick) for the UI, not Qt Widgets | Accepted |
 | [ADR-019](ADR-019-inside-out-phase-order.md) | Inside-out phase ordering: core → plugin → UI → pipeline → deploy → quantum | Accepted |
 | [ADR-020](ADR-020-iactivation-functional-contract.md) | `IActivation` functional contract: stateless activation with caller-owned context | Accepted |
+| [ADR-021](ADR-021-path-equals-namespace-layout.md) | Path = namespace layout rule and three-tier namespace design | Accepted |
