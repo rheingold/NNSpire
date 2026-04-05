@@ -1,0 +1,99 @@
+/* ============================================================================
+ * test_tensor.cpp — Tensor construction, ops, reshape
+ * Phase 1 unit tests
+ * ============================================================================ */
+
+#include <gtest/gtest.h>
+#include <core/Tensor.h>
+#include <core/BackendRegistry.h>
+#include <builtin/backends/CpuBackend.h>
+
+using namespace nnstudio::core;
+using namespace nnstudio::builtin::backends;
+
+// Fixture: ensure CPU backend registered once
+class TensorTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        if (!BackendRegistry::instance().has("cpu"))
+            CpuBackend::init();
+    }
+};
+
+TEST_F(TensorTest, ZerosShape) {
+    auto t = Tensor::zeros({2, 3});
+    EXPECT_EQ(t.shape()[0], 2);
+    EXPECT_EQ(t.shape()[1], 3);
+    EXPECT_EQ(t.numel(), 6);
+    for (int64_t i = 0; i < t.numel(); ++i)
+        EXPECT_FLOAT_EQ(t.flat(i), 0.0f);
+}
+
+TEST_F(TensorTest, OnesShape) {
+    auto t = Tensor::ones({4});
+    EXPECT_EQ(t.numel(), 4);
+    for (int64_t i = 0; i < t.numel(); ++i)
+        EXPECT_FLOAT_EQ(t.flat(i), 1.0f);
+}
+
+TEST_F(TensorTest, FullValue) {
+    auto t = Tensor::full({3, 3}, 7.0f);
+    for (int64_t i = 0; i < t.numel(); ++i)
+        EXPECT_FLOAT_EQ(t.flat(i), 7.0f);
+}
+
+TEST_F(TensorTest, CloneDeep) {
+    auto a = Tensor::full({2, 2}, 1.0f);
+    auto b = a.clone();
+    b.flat(0) = 99.0f;
+    EXPECT_FLOAT_EQ(a.flat(0), 1.0f);   // original unchanged
+    EXPECT_FLOAT_EQ(b.flat(0), 99.0f);
+}
+
+TEST_F(TensorTest, ReshapeValid) {
+    auto t = Tensor::zeros({2, 6});
+    auto r = t.reshape({3, 4});
+    ASSERT_TRUE(r.ok());
+    EXPECT_EQ(r.value().numel(), 12);
+    EXPECT_EQ(r.value().shape()[0], 3);
+    EXPECT_EQ(r.value().shape()[1], 4);
+}
+
+TEST_F(TensorTest, ReshapeInfer) {
+    auto t = Tensor::zeros({2, 6});
+    auto r = t.reshape({-1, 4});
+    ASSERT_TRUE(r.ok());
+    EXPECT_EQ(r.value().shape()[0], 3);
+}
+
+TEST_F(TensorTest, Add) {
+    auto a = Tensor::full({3}, 2.0f);
+    auto b = Tensor::full({3}, 3.0f);
+    auto c = a + b;
+    for (int64_t i = 0; i < c.numel(); ++i)
+        EXPECT_FLOAT_EQ(c.flat(i), 5.0f);
+}
+
+TEST_F(TensorTest, Mul) {
+    auto a = Tensor::full({4}, 3.0f);
+    auto b = Tensor::full({4}, 4.0f);
+    auto c = a * b;
+    for (int64_t i = 0; i < c.numel(); ++i)
+        EXPECT_FLOAT_EQ(c.flat(i), 12.0f);
+}
+
+TEST_F(TensorTest, Matmul2D) {
+    // [2,3] @ [3,2] = [2,2]
+    // A = [[1,2,3],[4,5,6]]
+    // B = [[7,8],[9,10],[11,12]]
+    // C = [[58,64],[139,154]]
+    auto a = Tensor::fromData({1,2,3,4,5,6}, {2,3});
+    auto b = Tensor::fromData({7,8,9,10,11,12}, {3,2});
+    auto c = backend().matmul(a, b);
+    EXPECT_EQ(c.shape()[0], 2);
+    EXPECT_EQ(c.shape()[1], 2);
+    EXPECT_FLOAT_EQ(c.flat(0), 58.0f);
+    EXPECT_FLOAT_EQ(c.flat(1), 64.0f);
+    EXPECT_FLOAT_EQ(c.flat(2), 139.0f);
+    EXPECT_FLOAT_EQ(c.flat(3), 154.0f);
+}

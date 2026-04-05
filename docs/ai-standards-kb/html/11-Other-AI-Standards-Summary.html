@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>11-Other-AI-Standards-Summary</title>
+  <style>
+html {
+color: #1a1a1a;
+background-color: #fdfdfd;
+}
+body {
+margin: 0 auto;
+max-width: 36em;
+padding-left: 50px;
+padding-right: 50px;
+padding-top: 50px;
+padding-bottom: 50px;
+hyphens: auto;
+overflow-wrap: break-word;
+text-rendering: optimizeLegibility;
+font-kerning: normal;
+}
+@media (max-width: 600px) {
+body {
+font-size: 0.9em;
+padding: 12px;
+}
+h1 {
+font-size: 1.8em;
+}
+}
+@media print {
+html {
+background-color: white;
+}
+body {
+background-color: transparent;
+color: black;
+font-size: 12pt;
+}
+p, h2, h3 {
+orphans: 3;
+widows: 3;
+}
+h2, h3, h4 {
+page-break-after: avoid;
+}
+}
+p {
+margin: 1em 0;
+}
+a {
+color: #1a1a1a;
+}
+a:visited {
+color: #1a1a1a;
+}
+img {
+max-width: 100%;
+}
+svg {
+height: auto;
+max-width: 100%;
+}
+h1, h2, h3, h4, h5, h6 {
+margin-top: 1.4em;
+}
+h5, h6 {
+font-size: 1em;
+font-style: italic;
+}
+h6 {
+font-weight: normal;
+}
+ol, ul {
+padding-left: 1.7em;
+margin-top: 1em;
+}
+li > ol, li > ul {
+margin-top: 0;
+}
+blockquote {
+margin: 1em 0 1em 1.7em;
+padding-left: 1em;
+border-left: 2px solid #e6e6e6;
+color: #606060;
+}
+code {
+font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+font-size: 85%;
+margin: 0;
+hyphens: manual;
+}
+pre {
+margin: 1em 0;
+overflow: auto;
+}
+pre code {
+padding: 0;
+overflow: visible;
+overflow-wrap: normal;
+}
+.sourceCode {
+background-color: transparent;
+overflow: visible;
+}
+hr {
+background-color: #1a1a1a;
+border: none;
+height: 1px;
+margin: 1em 0;
+}
+table {
+margin: 1em 0;
+border-collapse: collapse;
+width: 100%;
+overflow-x: auto;
+display: block;
+font-variant-numeric: lining-nums tabular-nums;
+}
+table caption {
+margin-bottom: 0.75em;
+}
+tbody {
+margin-top: 0.5em;
+border-top: 1px solid #1a1a1a;
+border-bottom: 1px solid #1a1a1a;
+}
+th {
+border-top: 1px solid #1a1a1a;
+padding: 0.25em 0.5em 0.25em 0.5em;
+}
+td {
+padding: 0.125em 0.5em 0.25em 0.5em;
+}
+header {
+margin-bottom: 4em;
+text-align: center;
+}
+#TOC li {
+list-style: none;
+}
+#TOC ul {
+padding-left: 1.3em;
+}
+#TOC > ul {
+padding-left: 0;
+}
+#TOC a:not(:hover) {
+text-decoration: none;
+}
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">11-Other-AI-Standards-Summary</h1>
+</header>
+<h1 id="other-ai-standards-summary">Other AI Standards Summary</h1>
+<p><strong>Document Version:</strong> 1.0<br />
+<strong>Generated:</strong> December 4, 2025<br />
+<strong>Status:</strong> Reference Summary</p>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>This document provides concise summaries of additional AI/ML
+standards and formats beyond the core standards documented in detail
+elsewhere in this knowledge base. Each entry includes the standard’s
+purpose, authoritative references, key tools, and pointers for further
+exploration.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol type="1">
+<li><a href="#model-interchange-formats">Model Interchange
+Formats</a></li>
+<li><a href="#ml-lifecycle--versioning">ML Lifecycle &amp;
+Versioning</a></li>
+<li><a href="#model-serving--deployment">Model Serving &amp;
+Deployment</a></li>
+<li><a href="#training--optimization">Training &amp;
+Optimization</a></li>
+<li><a href="#data-management">Data Management</a></li>
+</ol>
+<hr />
+<h2 id="model-interchange-formats">Model Interchange Formats</h2>
+<h3 id="pmml-predictive-model-markup-language">PMML (Predictive Model
+Markup Language)</h3>
+<p><strong>Purpose</strong>: XML-based standard for representing
+statistical and data mining models.</p>
+<p><strong>Description</strong>: PMML enables sharing of predictive
+models between compliant applications. It supports classical ML
+algorithms (decision trees, regression, clustering, neural networks) and
+provides a vendor-neutral format primarily for traditional ML rather
+than deep learning.</p>
+<p><strong>Key Features</strong>: - XML-based format - Supports 20+
+model types - Widely adopted in enterprise analytics - Strong support
+for classical ML algorithms - Limited deep learning support</p>
+<p><strong>Authoritative Reference</strong>:
+https://dmg.org/pmml/v4-4-1/GeneralStructure.html</p>
+<p><strong>Tools</strong>: - <strong>KNIME</strong>: Visual workflow
+tool with PMML export (https://www.knime.com/) - <strong>R (pmml
+package)</strong>: Export R models to PMML
+(https://cran.r-project.org/web/packages/pmml/) - <strong>SAS</strong>:
+Native PMML support - <strong>IBM SPSS</strong>: PMML import/export -
+<strong>jpmml-evaluator</strong>: Java runtime
+(https://github.com/jpmml/jpmml-evaluator)</p>
+<p><strong>Example Structure</strong>:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">&lt;?xml</span><span class="ot"> version=</span><span class="st">&quot;1.0&quot;</span><span class="fu">?&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">PMML</span><span class="ot"> version=</span><span class="st">&quot;4.4&quot;</span><span class="ot"> xmlns=</span><span class="st">&quot;http://www.dmg.org/PMML-4_4&quot;</span>&gt;</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">Header</span><span class="ot"> copyright=</span><span class="st">&quot;Example Corp&quot;</span><span class="ot"> description=</span><span class="st">&quot;Iris Classification Model&quot;</span>/&gt;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">DataDictionary</span><span class="ot"> numberOfFields=</span><span class="st">&quot;5&quot;</span>&gt;</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">DataField</span><span class="ot"> name=</span><span class="st">&quot;sepal_length&quot;</span><span class="ot"> optype=</span><span class="st">&quot;continuous&quot;</span><span class="ot"> dataType=</span><span class="st">&quot;double&quot;</span>/&gt;</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">DataField</span><span class="ot"> name=</span><span class="st">&quot;species&quot;</span><span class="ot"> optype=</span><span class="st">&quot;categorical&quot;</span><span class="ot"> dataType=</span><span class="st">&quot;string&quot;</span>&gt;</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">Value</span><span class="ot"> value=</span><span class="st">&quot;setosa&quot;</span>/&gt;</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">Value</span><span class="ot"> value=</span><span class="st">&quot;versicolor&quot;</span>/&gt;</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">Value</span><span class="ot"> value=</span><span class="st">&quot;virginica&quot;</span>/&gt;</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">DataField</span>&gt;</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  &lt;/<span class="kw">DataDictionary</span>&gt;</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">TreeModel</span><span class="ot"> modelName=</span><span class="st">&quot;IrisTree&quot;</span><span class="ot"> functionName=</span><span class="st">&quot;classification&quot;</span>&gt;</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">MiningSchema</span>&gt;</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">MiningField</span><span class="ot"> name=</span><span class="st">&quot;sepal_length&quot;</span>/&gt;</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">MiningField</span><span class="ot"> name=</span><span class="st">&quot;species&quot;</span><span class="ot"> usageType=</span><span class="st">&quot;target&quot;</span>/&gt;</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">MiningSchema</span>&gt;</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">Node</span><span class="ot"> score=</span><span class="st">&quot;setosa&quot;</span>&gt;</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">True</span>/&gt;</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      &lt;<span class="kw">Node</span><span class="ot"> score=</span><span class="st">&quot;versicolor&quot;</span>&gt;</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">SimplePredicate</span><span class="ot"> field=</span><span class="st">&quot;sepal_length&quot;</span><span class="ot"> operator=</span><span class="st">&quot;greaterThan&quot;</span><span class="ot"> value=</span><span class="st">&quot;5.5&quot;</span>/&gt;</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      &lt;/<span class="kw">Node</span>&gt;</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">Node</span>&gt;</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  &lt;/<span class="kw">TreeModel</span>&gt;</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">PMML</span>&gt;</span></code></pre></div>
+<hr />
+<h3 id="coreml">CoreML</h3>
+<p><strong>Purpose</strong>: Apple’s format for deploying ML models on
+iOS, macOS, watchOS, and tvOS devices.</p>
+<p><strong>Description</strong>: CoreML enables on-device machine
+learning inference with optimizations for Apple hardware (Neural Engine,
+GPU, CPU). Supports computer vision, natural language processing, and
+general-purpose models.</p>
+<p><strong>Key Features</strong>: - Optimized for Apple Silicon -
+On-device inference (privacy-friendly) - Supports quantization and
+optimization - Integration with iOS/macOS apps - Protobuf-based binary
+format</p>
+<p><strong>Authoritative Reference</strong>:
+https://apple.github.io/coremltools/</p>
+<p><strong>Tools</strong>: - <strong>coremltools</strong>: Python
+package for conversion (https://github.com/apple/coremltools) -
+<strong>Xcode</strong>: Native CoreML model integration - <strong>Create
+ML</strong>: Apple’s model training tool - <strong>TensorFlow →
+CoreML</strong>: Official converter - <strong>PyTorch → CoreML</strong>:
+Via coremltools</p>
+<p><strong>Conversion Example</strong>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> coremltools <span class="im">as</span> ct</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert PyTorch model</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>pytorch_model <span class="op">=</span> torch.load(<span class="st">&quot;model.pth&quot;</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>pytorch_model.<span class="bu">eval</span>()</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Trace model</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>example_input <span class="op">=</span> torch.rand(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">224</span>, <span class="dv">224</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>traced_model <span class="op">=</span> torch.jit.trace(pytorch_model, example_input)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert to CoreML</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>coreml_model <span class="op">=</span> ct.convert(</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    traced_model,</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    inputs<span class="op">=</span>[ct.TensorType(shape<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">224</span>, <span class="dv">224</span>))],</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    outputs<span class="op">=</span>[ct.TensorType(name<span class="op">=</span><span class="st">&quot;output&quot;</span>)],</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    minimum_deployment_target<span class="op">=</span>ct.target.iOS15</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Save</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>coreml_model.save(<span class="st">&quot;ImageClassifier.mlmodel&quot;</span>)</span></code></pre></div>
+<hr />
+<h3 id="pfa-portable-format-for-analytics">PFA (Portable Format for
+Analytics)</h3>
+<p><strong>Purpose</strong>: JSON-based scoring engine for statistical
+models and data transformations.</p>
+<p><strong>Description</strong>: PFA provides a complete specification
+for analytic workflows including data preprocessing, model scoring, and
+postprocessing. Designed as a successor/alternative to PMML with better
+support for complex pipelines.</p>
+<p><strong>Key Features</strong>: - JSON-based (human-readable) -
+Turing-complete expression language - Supports model ensembles - Strong
+typing system - Production-ready scoring engine</p>
+<p><strong>Authoritative Reference</strong>: http://dmg.org/pfa/</p>
+<p><strong>Tools</strong>: - <strong>Hadrian</strong>: JVM-based PFA
+engine (https://github.com/opendatagroup/hadrian) -
+<strong>Titus</strong>: Python PFA engine
+(https://github.com/opendatagroup/titus2) - <strong>Aurelius</strong>:
+Python PFA producer (https://github.com/opendatagroup/hadrian)</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;SimpleLinearRegression&quot;</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;method&quot;</span><span class="fu">:</span> <span class="st">&quot;map&quot;</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;input&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;record&quot;</span><span class="fu">,</span> <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;Input&quot;</span><span class="fu">,</span> <span class="dt">&quot;fields&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span><span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;x&quot;</span><span class="fu">,</span> <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;double&quot;</span><span class="fu">}</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;output&quot;</span><span class="fu">:</span> <span class="st">&quot;double&quot;</span><span class="fu">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;action&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span><span class="dt">&quot;let&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;prediction&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;+&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span><span class="dt">&quot;*&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">2.5</span><span class="ot">,</span> <span class="st">&quot;input.x&quot;</span><span class="ot">]</span><span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      <span class="fl">1.3</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">}}}</span><span class="ot">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;prediction&quot;</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h3 id="nnef-neural-network-exchange-format">NNEF (Neural Network
+Exchange Format)</h3>
+<p><strong>Purpose</strong>: Khronos Group standard for exchanging
+neural network models.</p>
+<p><strong>Description</strong>: NNEF provides a simple, extensible
+format for representing trained neural networks. Focuses on inference
+deployment with hardware-agnostic representation.</p>
+<p><strong>Key Features</strong>: - Text-based graph representation -
+Binary tensor format - Extensible operator set - Hardware-neutral -
+Supports custom layers</p>
+<p><strong>Authoritative Reference</strong>:
+https://www.khronos.org/nnef</p>
+<p><strong>Tools</strong>: - <strong>NNEF Tools</strong>: Official
+parser and converter (https://github.com/KhronosGroup/NNEF-Tools) -
+<strong>TensorFlow → NNEF</strong>: Converter available - <strong>ONNX →
+NNEF</strong>: Conversion path</p>
+<p><strong>Example</strong>:</p>
+<pre><code>version 1.0;
+graph G( input ) -&gt; ( output ) {
+    input = external(shape = [1, 3, 224, 224]);
+    filter = variable(shape = [64, 3, 7, 7], label = &#39;conv1/weights&#39;);
+    bias = variable(shape = [1, 64], label = &#39;conv1/bias&#39;);
+    conv = conv(input, filter, bias, stride = [2, 2], padding = [(3,3), (3,3)]);
+    relu = relu(conv);
+    output = relu;
+}</code></pre>
+<hr />
+<h3 id="torchscript">TorchScript</h3>
+<p><strong>Purpose</strong>: PyTorch’s model serialization format for
+production deployment.</p>
+<p><strong>Description</strong>: TorchScript creates serializable and
+optimizable models from PyTorch code. Enables deployment in non-Python
+environments and optimization for production.</p>
+<p><strong>Key Features</strong>: - Two modes: tracing and scripting -
+Optimized runtime - C++ deployment - Mobile support - Preserves model
+logic</p>
+<p><strong>Authoritative Reference</strong>:
+https://pytorch.org/docs/stable/jit.html</p>
+<p><strong>Tools</strong>: - <strong>PyTorch</strong>: Native support
+(https://pytorch.org/) - <strong>TorchServe</strong>: Serving with
+TorchScript (https://pytorch.org/serve/) - <strong>LibTorch</strong>:
+C++ inference library - <strong>PyTorch Mobile</strong>: iOS/Android
+deployment</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MyModule(torch.nn.Module):</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>):</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.linear <span class="op">=</span> torch.nn.Linear(<span class="dv">10</span>, <span class="dv">5</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, x):</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.linear(x)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Tracing</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> MyModule()</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>example_input <span class="op">=</span> torch.rand(<span class="dv">1</span>, <span class="dv">10</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>traced_model <span class="op">=</span> torch.jit.trace(model, example_input)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>traced_model.save(<span class="st">&quot;model_traced.pt&quot;</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Scripting (preserves control flow)</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>scripted_model <span class="op">=</span> torch.jit.script(model)</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>scripted_model.save(<span class="st">&quot;model_scripted.pt&quot;</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Load and use</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>loaded <span class="op">=</span> torch.jit.load(<span class="st">&quot;model_traced.pt&quot;</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>output <span class="op">=</span> loaded(torch.rand(<span class="dv">1</span>, <span class="dv">10</span>))</span></code></pre></div>
+<hr />
+<h2 id="ml-lifecycle-versioning">ML Lifecycle &amp; Versioning</h2>
+<h3 id="dvc-data-version-control">DVC (Data Version Control)</h3>
+<p><strong>Purpose</strong>: Git-like version control for ML models and
+datasets.</p>
+<p><strong>Description</strong>: DVC tracks large files, ML models, and
+datasets while keeping lightweight metafiles in Git. Enables
+reproducible ML pipelines and collaboration on ML projects.</p>
+<p><strong>Key Features</strong>: - Git-compatible workflow - Large file
+storage (S3, Azure, GCS, etc.) - Pipeline orchestration - Experiment
+tracking - Metrics versioning</p>
+<p><strong>Authoritative Reference</strong>: https://dvc.org/doc</p>
+<p><strong>Tools</strong>: - <strong>DVC</strong>: CLI tool
+(https://dvc.org/) - <strong>DVC Studio</strong>: Web UI for experiments
+(https://studio.iterative.ai/) - <strong>CML</strong>: CI/CD for ML
+(https://cml.dev/)</p>
+<p><strong>Example Workflow</strong>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Initialize DVC</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">dvc</span> init</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Track data</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="ex">dvc</span> add data/training_set.csv</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add data/training_set.csv.dvc .gitignore</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;Add training data&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Define pipeline</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="ex">dvc</span> run <span class="at">-n</span> preprocess <span class="dt">\</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">-d</span> data/raw.csv <span class="dt">\</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">-o</span> data/processed.csv <span class="dt">\</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    python preprocess.py</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="ex">dvc</span> run <span class="at">-n</span> train <span class="dt">\</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">-d</span> data/processed.csv <span class="dt">\</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">-d</span> train.py <span class="dt">\</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">-o</span> model.pkl <span class="dt">\</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">-M</span> metrics.json <span class="dt">\</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    python train.py</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Push data to remote storage</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a><span class="ex">dvc</span> push</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Reproduce pipeline</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a><span class="ex">dvc</span> repro</span></code></pre></div>
+<hr />
+<h3 id="kubeflow-pipelines">Kubeflow Pipelines</h3>
+<p><strong>Purpose</strong>: Platform for building and deploying
+portable ML workflows on Kubernetes.</p>
+<p><strong>Description</strong>: Kubeflow Pipelines enables composition
+of ML workflows using Docker containers. Provides pipeline
+orchestration, experiment tracking, and execution history.</p>
+<p><strong>Key Features</strong>: - Kubernetes-native - Python SDK -
+Component reusability - Visualization - Experiment management</p>
+<p><strong>Authoritative Reference</strong>:
+https://www.kubeflow.org/docs/components/pipelines/</p>
+<p><strong>Tools</strong>: - <strong>Kubeflow</strong>: Full ML platform
+(https://www.kubeflow.org/) - <strong>KFP SDK</strong>: Python pipeline
+SDK (https://kubeflow-pipelines.readthedocs.io/) - <strong>Argo
+Workflows</strong>: Underlying orchestrator
+(https://argoproj.github.io/workflows/)</p>
+<p><strong>Example Pipeline</strong>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> kfp <span class="im">import</span> dsl, components</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Define component</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">@components.create_component_from_func</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> train_model(data_path: <span class="bu">str</span>, model_path: components.OutputPath(<span class="bu">str</span>)):</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> joblib</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> sklearn.ensemble <span class="im">import</span> RandomForestClassifier</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Load data, train model</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> RandomForestClassifier()</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ... training code ...</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    joblib.dump(model, model_path)</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Define pipeline</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="at">@dsl.pipeline</span>(</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    name<span class="op">=</span><span class="st">&#39;Training Pipeline&#39;</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    description<span class="op">=</span><span class="st">&#39;Train and deploy model&#39;</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> training_pipeline(data_path: <span class="bu">str</span>):</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    train_task <span class="op">=</span> train_model(data_path)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>    deploy_task <span class="op">=</span> deploy_model(train_task.outputs[<span class="st">&#39;model_path&#39;</span>])</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Compile</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> kfp <span class="im">import</span> compiler</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>compiler.Compiler().<span class="bu">compile</span>(training_pipeline, <span class="st">&#39;pipeline.yaml&#39;</span>)</span></code></pre></div>
+<hr />
+<p>##Model Serving &amp; Deployment</p>
+<h3 id="seldon-core">Seldon Core</h3>
+<p><strong>Purpose</strong>: ML deployment platform for Kubernetes with
+advanced inference capabilities.</p>
+<p><strong>Description</strong>: Seldon Core provides production-grade
+ML model serving with support for A/B testing, canary deployments,
+explainability, and drift detection.</p>
+<p><strong>Key Features</strong>: - Kubernetes-native - Multi-framework
+support - Advanced deployment strategies - Explainability integration -
+Metrics and monitoring</p>
+<p><strong>Authoritative Reference</strong>:
+https://docs.seldon.io/projects/seldon-core/</p>
+<p><strong>Tools</strong>: - <strong>Seldon Core</strong>: OSS platform
+(https://github.com/SeldonIO/seldon-core) - <strong>Seldon
+Deploy</strong>: Enterprise platform
+(https://www.seldon.io/products/deploy) - <strong>Alibi</strong>:
+Explainability library (https://github.com/SeldonIO/alibi)</p>
+<p><strong>Example Deployment</strong>:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">apiVersion</span><span class="kw">:</span><span class="at"> machinelearning.seldon.io/v1</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">kind</span><span class="kw">:</span><span class="at"> SeldonDeployment</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">metadata</span><span class="kw">:</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">name</span><span class="kw">:</span><span class="at"> iris-model</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">spec</span><span class="kw">:</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">predictors</span><span class="kw">:</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> default</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">graph</span><span class="kw">:</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">name</span><span class="kw">:</span><span class="at"> classifier</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">implementation</span><span class="kw">:</span><span class="at"> SKLEARN_SERVER</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">modelUri</span><span class="kw">:</span><span class="at"> s3://models/iris</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">replicas</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">traffic</span><span class="kw">:</span><span class="at"> </span><span class="dv">100</span></span></code></pre></div>
+<hr />
+<h3 id="bentoml">BentoML</h3>
+<p><strong>Purpose</strong>: Unified framework for building, shipping,
+and scaling ML services.</p>
+<p><strong>Description</strong>: BentoML simplifies ML model deployment
+by providing a standard format for packaging models with dependencies,
+API definitions, and serving infrastructure.</p>
+<p><strong>Key Features</strong>: - Framework-agnostic - Docker
+containerization - API server generation - Performance optimization -
+Cloud deployment</p>
+<p><strong>Authoritative Reference</strong>:
+https://docs.bentoml.org/</p>
+<p><strong>Tools</strong>: - <strong>BentoML</strong>: OSS framework
+(https://github.com/bentoml/BentoML) - <strong>Yatai</strong>:
+Deployment platform (https://github.com/bentoml/Yatai)</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> bentoml</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> bentoml.io <span class="im">import</span> JSON, NumpyNdarray</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Save model</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>bentoml.sklearn.save_model(<span class="st">&quot;iris_classifier&quot;</span>, model)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Create service</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="at">@bentoml.service</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> IrisClassifier:</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> bentoml.sklearn.get(<span class="st">&quot;iris_classifier:latest&quot;</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">@bentoml.api</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> predict(<span class="va">self</span>, <span class="bu">input</span>: NumpyNdarray) <span class="op">-&gt;</span> JSON:</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.model.predict(<span class="bu">input</span>)</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Build bento</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>bentoml.build()</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Containerize</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>bentoml.containerize(<span class="st">&quot;iris_classifier:latest&quot;</span>)</span></code></pre></div>
+<hr />
+<h3 id="ray-serve">Ray Serve</h3>
+<p><strong>Purpose</strong>: Scalable model serving library built on
+Ray.</p>
+<p><strong>Description</strong>: Ray Serve enables scalable deployment
+of ML models with dynamic request batching, model composition, and
+multi-model serving on a distributed Ray cluster.</p>
+<p><strong>Key Features</strong>: - Built on Ray (distributed computing)
+- Framework-agnostic - Dynamic batching - Model composition -
+Autoscaling</p>
+<p><strong>Authoritative Reference</strong>:
+https://docs.ray.io/en/latest/serve/</p>
+<p><strong>Tools</strong>: - <strong>Ray</strong>: Distributed computing
+framework (https://www.ray.io/) - <strong>Ray Serve</strong>: Serving
+library (https://docs.ray.io/en/latest/serve/) -
+<strong>Anyscale</strong>: Managed Ray platform
+(https://www.anyscale.com/)</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ray <span class="im">import</span> serve</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="at">@serve.deployment</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ImageClassifier:</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>):</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.model <span class="op">=</span> torch.load(<span class="st">&quot;model.pt&quot;</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> <span class="fu">__call__</span>(<span class="va">self</span>, request):</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        image <span class="op">=</span> <span class="cf">await</span> request.json()</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>        prediction <span class="op">=</span> <span class="va">self</span>.model(image)</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> {<span class="st">&quot;class&quot;</span>: prediction.argmax().item()}</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Deploy</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>serve.run(ImageClassifier.bind())</span></code></pre></div>
+<hr />
+<h2 id="training-optimization">Training &amp; Optimization</h2>
+<h3 id="tensorrt">TensorRT</h3>
+<p><strong>Purpose</strong>: NVIDIA’s SDK for high-performance deep
+learning inference.</p>
+<p><strong>Description</strong>: TensorRT optimizes trained models for
+NVIDIA GPUs by applying graph optimizations, layer fusion, precision
+calibration (FP16, INT8), and kernel auto-tuning.</p>
+<p><strong>Key Features</strong>: - GPU-optimized inference - Multiple
+precision support (FP32, FP16, INT8) - Dynamic shapes - Plugin support
+for custom layers - C++ and Python APIs</p>
+<p><strong>Authoritative Reference</strong>:
+https://developer.nvidia.com/tensorrt</p>
+<p><strong>Tools</strong>: - <strong>TensorRT</strong>: Core SDK
+(https://developer.nvidia.com/tensorrt) - <strong>TensorRT OSS</strong>:
+Open-source components (https://github.com/NVIDIA/TensorRT) -
+<strong>Triton Inference Server</strong>: Uses TensorRT backend -
+<strong>trt-exec</strong>: Conversion utilities</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> tensorrt <span class="im">as</span> trt</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Export to ONNX first</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>torch.onnx.export(model, dummy_input, <span class="st">&quot;model.onnx&quot;</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert ONNX to TensorRT</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>logger <span class="op">=</span> trt.Logger(trt.Logger.WARNING)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>builder <span class="op">=</span> trt.Builder(logger)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>network <span class="op">=</span> builder.create_network(<span class="dv">1</span> <span class="op">&lt;&lt;</span> <span class="bu">int</span>(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>parser <span class="op">=</span> trt.OnnxParser(network, logger)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">&quot;model.onnx&quot;</span>, <span class="st">&#39;rb&#39;</span>) <span class="im">as</span> f:</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    parser.parse(f.read())</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>config <span class="op">=</span> builder.create_builder_config()</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, <span class="dv">1</span> <span class="op">&lt;&lt;</span> <span class="dv">30</span>)  <span class="co"># 1GB</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>config.set_flag(trt.BuilderFlag.FP16)  <span class="co"># Enable FP16</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>engine <span class="op">=</span> builder.build_serialized_network(network, config)</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Save engine</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">&quot;model.engine&quot;</span>, <span class="st">&#39;wb&#39;</span>) <span class="im">as</span> f:</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>    f.write(engine)</span></code></pre></div>
+<hr />
+<h3 id="openvino">OpenVINO</h3>
+<p><strong>Purpose</strong>: Intel’s toolkit for optimizing and
+deploying deep learning models.</p>
+<p><strong>Description</strong>: OpenVINO enables deployment of models
+across Intel hardware (CPUs, integrated GPUs, VPUs, FPGAs) with
+optimizations for edge and cloud deployments.</p>
+<p><strong>Key Features</strong>: - Intel hardware optimization - Model
+Optimizer for conversion - Inference Engine runtime - Pre-optimized
+model zoo - Edge deployment focus</p>
+<p><strong>Authoritative Reference</strong>:
+https://docs.openvino.ai/</p>
+<p><strong>Tools</strong>: - <strong>OpenVINO</strong>: Toolkit
+(https://github.com/openvinotoolkit/openvino) - <strong>Model
+Optimizer</strong>: Conversion tool - <strong>Inference Engine</strong>:
+Runtime - <strong>Open Model Zoo</strong>: Pre-trained models
+(https://github.com/openvinotoolkit/open_model_zoo)</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert TensorFlow model</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="ex">mo</span> <span class="at">--input_model</span> model.pb <span class="dt">\</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">--output_dir</span> openvino_model <span class="dt">\</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>   <span class="at">--data_type</span> FP16</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Run inference (Python)</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="ex">from</span> openvino.runtime import Core</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="ex">ie</span> = Core<span class="er">(</span><span class="kw">)</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="ex">model</span> = ie.read_model<span class="er">(</span><span class="st">&quot;model.xml&quot;</span><span class="kw">)</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="ex">compiled_model</span> = ie.compile_model<span class="er">(</span><span class="ex">model,</span> <span class="st">&quot;CPU&quot;</span><span class="kw">)</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="ex">output</span> = compiled_model<span class="er">(</span><span class="ex">[input_data]</span><span class="kw">)</span></span></code></pre></div>
+<hr />
+<h2 id="data-management">Data Management</h2>
+<h3 id="datasheets-for-datasets">Datasheets for Datasets</h3>
+<p><strong>Purpose</strong>: Documentation framework for datasets
+(companion to Model Cards).</p>
+<p><strong>Description</strong>: Datasheets provide standardized
+documentation for datasets including motivation, composition, collection
+process, preprocessing, uses, distribution, and maintenance.</p>
+<p><strong>Key Sections</strong>: - Motivation - Composition -
+Collection Process - Preprocessing/Cleaning - Uses - Distribution -
+Maintenance</p>
+<p><strong>Authoritative Reference</strong>:
+https://arxiv.org/abs/1803.09010</p>
+<p><strong>Tools</strong>: - <strong>Croissant</strong>: Dataset
+metadata format (https://github.com/mlcommons/croissant) -
+<strong>Hugging Face Datasets</strong>: Integrated datasheets
+(https://huggingface.co/docs/datasets/)</p>
+<p><strong>Example Questions</strong>: - Why was the dataset created? -
+What do the instances represent? - How many instances are there? - Is
+there any missing information? - Does the dataset contain sensitive
+information? - Was any preprocessing performed?</p>
+<hr />
+<h3 id="apache-arrow">Apache Arrow</h3>
+<p><strong>Purpose</strong>: Cross-language development platform for
+in-memory data.</p>
+<p><strong>Description</strong>: Arrow provides a standardized columnar
+memory format for flat and hierarchical data, enabling zero-copy reads
+and efficient inter-process communication.</p>
+<p><strong>Key Features</strong>: - Language-agnostic format - Zero-copy
+reads - SIMD optimizations - Interprocess communication - Efficient
+serialization (Arrow IPC, Parquet)</p>
+<p><strong>Authoritative Reference</strong>:
+https://arrow.apache.org/docs/</p>
+<p><strong>Tools</strong>: - <strong>PyArrow</strong>: Python
+implementation (https://arrow.apache.org/docs/python/) -
+<strong>Parquet</strong>: Columnar storage format
+(https://parquet.apache.org/) - <strong>Arrow Flight</strong>: RPC
+framework (https://arrow.apache.org/docs/format/Flight.html)</p>
+<p><strong>Example</strong>:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pyarrow <span class="im">as</span> pa</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pyarrow.parquet <span class="im">as</span> pq</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Create Arrow table</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> {</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;feature1&#39;</span>: [<span class="fl">1.0</span>, <span class="fl">2.0</span>, <span class="fl">3.0</span>],</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;feature2&#39;</span>: [<span class="fl">4.0</span>, <span class="fl">5.0</span>, <span class="fl">6.0</span>],</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;label&#39;</span>: [<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>]</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>table <span class="op">=</span> pa.table(data)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Write to Parquet</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>pq.write_table(table, <span class="st">&#39;data.parquet&#39;</span>)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Read from Parquet</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>table <span class="op">=</span> pq.read_table(<span class="st">&#39;data.parquet&#39;</span>)</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert to pandas (zero-copy)</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> table.to_pandas()</span></code></pre></div>
+<hr />
+<h2 id="summary-table">Summary Table</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Standard</th>
+<th>Category</th>
+<th>Format</th>
+<th>Primary Use</th>
+<th>Maturity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>PMML</strong></td>
+<td>Interchange</td>
+<td>XML</td>
+<td>Classical ML</td>
+<td>Mature</td>
+</tr>
+<tr class="even">
+<td><strong>CoreML</strong></td>
+<td>Interchange</td>
+<td>Protobuf</td>
+<td>Apple devices</td>
+<td>Mature</td>
+</tr>
+<tr class="odd">
+<td><strong>PFA</strong></td>
+<td>Interchange</td>
+<td>JSON</td>
+<td>Scoring pipelines</td>
+<td>Stable</td>
+</tr>
+<tr class="even">
+<td><strong>NNEF</strong></td>
+<td>Interchange</td>
+<td>Text</td>
+<td>NN exchange</td>
+<td>Emerging</td>
+</tr>
+<tr class="odd">
+<td><strong>TorchScript</strong></td>
+<td>Interchange</td>
+<td>Binary</td>
+<td>PyTorch deployment</td>
+<td>Mature</td>
+</tr>
+<tr class="even">
+<td><strong>DVC</strong></td>
+<td>Lifecycle</td>
+<td>Git-based</td>
+<td>Data/model versioning</td>
+<td>Mature</td>
+</tr>
+<tr class="odd">
+<td><strong>Kubeflow</strong></td>
+<td>Lifecycle</td>
+<td>YAML</td>
+<td>ML pipelines</td>
+<td>Mature</td>
+</tr>
+<tr class="even">
+<td><strong>Seldon Core</strong></td>
+<td>Serving</td>
+<td>Kubernetes</td>
+<td>Advanced serving</td>
+<td>Mature</td>
+</tr>
+<tr class="odd">
+<td><strong>BentoML</strong></td>
+<td>Serving</td>
+<td>Docker</td>
+<td>Model packaging</td>
+<td>Mature</td>
+</tr>
+<tr class="even">
+<td><strong>Ray Serve</strong></td>
+<td>Serving</td>
+<td>Python</td>
+<td>Scalable serving</td>
+<td>Emerging</td>
+</tr>
+<tr class="odd">
+<td><strong>TensorRT</strong></td>
+<td>Optimization</td>
+<td>Binary</td>
+<td>NVIDIA GPU</td>
+<td>Mature</td>
+</tr>
+<tr class="even">
+<td><strong>OpenVINO</strong></td>
+<td>Optimization</td>
+<td>IR</td>
+<td>Intel hardware</td>
+<td>Mature</td>
+</tr>
+<tr class="odd">
+<td><strong>Datasheets</strong></td>
+<td>Governance</td>
+<td>Markdown</td>
+<td>Dataset docs</td>
+<td>Emerging</td>
+</tr>
+<tr class="even">
+<td><strong>Apache Arrow</strong></td>
+<td>Data</td>
+<td>Binary</td>
+<td>Data interchange</td>
+<td>Mature</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Navigation</strong>: <a href="../INDEX.md">Back to Index</a>
+| <a href="./10-Triton-Inference-Server.md">Previous: Triton Inference
+Server</a> | <a href="../annexes/A01-Vector-Embeddings-Standards.md">Next: Vector
+Embeddings</a></p>
+</body>
+</html>

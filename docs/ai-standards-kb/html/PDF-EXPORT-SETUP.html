@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>PDF-EXPORT-SETUP</title>
+  <style>
+html {
+color: #1a1a1a;
+background-color: #fdfdfd;
+}
+body {
+margin: 0 auto;
+max-width: 36em;
+padding-left: 50px;
+padding-right: 50px;
+padding-top: 50px;
+padding-bottom: 50px;
+hyphens: auto;
+overflow-wrap: break-word;
+text-rendering: optimizeLegibility;
+font-kerning: normal;
+}
+@media (max-width: 600px) {
+body {
+font-size: 0.9em;
+padding: 12px;
+}
+h1 {
+font-size: 1.8em;
+}
+}
+@media print {
+html {
+background-color: white;
+}
+body {
+background-color: transparent;
+color: black;
+font-size: 12pt;
+}
+p, h2, h3 {
+orphans: 3;
+widows: 3;
+}
+h2, h3, h4 {
+page-break-after: avoid;
+}
+}
+p {
+margin: 1em 0;
+}
+a {
+color: #1a1a1a;
+}
+a:visited {
+color: #1a1a1a;
+}
+img {
+max-width: 100%;
+}
+svg {
+height: auto;
+max-width: 100%;
+}
+h1, h2, h3, h4, h5, h6 {
+margin-top: 1.4em;
+}
+h5, h6 {
+font-size: 1em;
+font-style: italic;
+}
+h6 {
+font-weight: normal;
+}
+ol, ul {
+padding-left: 1.7em;
+margin-top: 1em;
+}
+li > ol, li > ul {
+margin-top: 0;
+}
+blockquote {
+margin: 1em 0 1em 1.7em;
+padding-left: 1em;
+border-left: 2px solid #e6e6e6;
+color: #606060;
+}
+code {
+font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+font-size: 85%;
+margin: 0;
+hyphens: manual;
+}
+pre {
+margin: 1em 0;
+overflow: auto;
+}
+pre code {
+padding: 0;
+overflow: visible;
+overflow-wrap: normal;
+}
+.sourceCode {
+background-color: transparent;
+overflow: visible;
+}
+hr {
+background-color: #1a1a1a;
+border: none;
+height: 1px;
+margin: 1em 0;
+}
+table {
+margin: 1em 0;
+border-collapse: collapse;
+width: 100%;
+overflow-x: auto;
+display: block;
+font-variant-numeric: lining-nums tabular-nums;
+}
+table caption {
+margin-bottom: 0.75em;
+}
+tbody {
+margin-top: 0.5em;
+border-top: 1px solid #1a1a1a;
+border-bottom: 1px solid #1a1a1a;
+}
+th {
+border-top: 1px solid #1a1a1a;
+padding: 0.25em 0.5em 0.25em 0.5em;
+}
+td {
+padding: 0.125em 0.5em 0.25em 0.5em;
+}
+header {
+margin-bottom: 4em;
+text-align: center;
+}
+#TOC li {
+list-style: none;
+}
+#TOC ul {
+padding-left: 1.3em;
+}
+#TOC > ul {
+padding-left: 0;
+}
+#TOC a:not(:hover) {
+text-decoration: none;
+}
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">PDF-EXPORT-SETUP</h1>
+</header>
+<h1 id="pdf-export-scripts---complete-setup">PDF Export Scripts -
+Complete Setup</h1>
+<h2 id="whats-new">📦 What’s New</h2>
+<p>I’ve created <strong>3 comprehensive PowerShell scripts</strong> +
+<strong>2 detailed guides</strong> to help you export all markdown files
+to PDF using the yzane markdown exporter.</p>
+<h2 id="quick-start-tldr">🎯 Quick Start (TL;DR)</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Install the extension (one time only)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>install-extension yzane<span class="op">.</span><span class="fu">markdown</span><span class="op">-</span>pdf</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Run the batch export</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> <span class="st">&quot;c:\Users\plachy\Documents\Dev\AI\_KB\ai-standards-kb&quot;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Check pdf/ folder for results ✓</span></span></code></pre></div>
+<hr />
+<h2 id="available-scripts">📜 Available Scripts</h2>
+<h3 id="export-batch-yzane.ps1-recommended">1.
+<strong>export-batch-yzane.ps1</strong> ⭐ (RECOMMENDED)</h3>
+<p><strong>Best for</strong>: Automated batch export with progress
+tracking</p>
+<p><strong>Features</strong>: - ✓ Discovers all markdown files
+automatically - ✓ Shows real-time progress for each file - ✓ Handles
+errors gracefully - ✓ Creates detailed log file - ✓ Verifies VS Code
+&amp; extension installation - ✓ Organized output with color-coded
+status</p>
+<p><strong>Usage</strong>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span> <span class="op">-</span>OpenVSCode  <span class="co"># Opens VS Code after export</span></span></code></pre></div>
+<p><strong>Output</strong>: Creates <code>export.log</code> with full
+details</p>
+<hr />
+<h3 id="export-to-pdf-yzane.ps1">2.
+<strong>export-to-pdf-yzane.ps1</strong></h3>
+<p><strong>Best for</strong>: Fallback with multiple export methods</p>
+<p><strong>Features</strong>: - ✓ Tries VS Code + yzane first - ✓ Falls
+back to Pandoc if installed - ✓ Falls back to Node.js markdown-pdf if
+installed - ✓ Beautiful formatted output - ✓ Installation help for
+missing tools</p>
+<p><strong>Usage</strong>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-to-pdf-yzane<span class="op">.</span><span class="fu">ps1</span></span></code></pre></div>
+<hr />
+<h3 id="export-yzane-quick.ps1">3.
+<strong>export-yzane-quick.ps1</strong></h3>
+<p><strong>Best for</strong>: Quick export with VS Code GUI
+automation</p>
+<p><strong>Features</strong>: - ✓ Fast startup - ✓ Minimal dependencies
+- ✓ Clear manual instructions - ✓ Works with VS Code workspace</p>
+<p><strong>Usage</strong>:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-yzane-quick<span class="op">.</span><span class="fu">ps1</span></span></code></pre></div>
+<hr />
+<h2 id="documentation-files">📚 Documentation Files</h2>
+<h3 id="yzane-pdf-export-guide.md"><strong>YZANE-PDF-EXPORT-GUIDE.md</strong></h3>
+<p>Complete 200+ line guide including: - Installation instructions -
+Configuration options - Troubleshooting - Advanced usage - Feature
+comparison - Fallback tools (Pandoc, Node.js)</p>
+<h3 id="export-quick-reference.md"><strong>EXPORT-QUICK-REFERENCE.md</strong></h3>
+<p>Quick reference card with: - TL;DR commands - Prerequisites checklist
+- File locations - Troubleshooting quick fixes</p>
+<hr />
+<h2 id="installation-setup">🔧 Installation &amp; Setup</h2>
+<h3 id="step-1-install-yzane-extension">Step 1: Install yzane
+Extension</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>install-extension yzane<span class="op">.</span><span class="fu">markdown</span><span class="op">-</span>pdf</span></code></pre></div>
+<h3 id="step-2-verify-installation">Step 2: Verify Installation</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>list-extensions <span class="op">|</span> <span class="fu">Select-String</span> <span class="st">&quot;yzane&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Output should show: yzane.markdown-pdf</span></span></code></pre></div>
+<h3 id="step-3-configure-optional">Step 3: Configure (Optional)</h3>
+<p>Create <code>.vscode/settings.json</code> in project root:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.displayHeaderFooter&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.margin.top&quot;</span><span class="fu">:</span> <span class="st">&quot;1cm&quot;</span><span class="fu">,</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.margin.bottom&quot;</span><span class="fu">:</span> <span class="st">&quot;1cm&quot;</span><span class="fu">,</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.codeBlockTheme&quot;</span><span class="fu">:</span> <span class="st">&quot;github&quot;</span><span class="fu">,</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.theme&quot;</span><span class="fu">:</span> <span class="st">&quot;default&quot;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h2 id="usage-examples">🚀 Usage Examples</h2>
+<h3 id="batch-export-all-files">Batch Export All Files</h3>
+<div class="sourceCode" id="cb8"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> <span class="st">&quot;c:\Users\plachy\Documents\Dev\AI\_KB\ai-standards-kb&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Wait for completion → Check pdf/ folder</span></span></code></pre></div>
+<h3 id="export-with-vs-code-open">Export with VS Code Open</h3>
+<div class="sourceCode" id="cb9"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span> <span class="op">-</span>OpenVSCode</span></code></pre></div>
+<h3 id="export-with-fallback-tools">Export with Fallback Tools</h3>
+<div class="sourceCode" id="cb10"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-to-pdf-yzane<span class="op">.</span><span class="fu">ps1</span></span></code></pre></div>
+<h3 id="manual-export-via-vs-code-gui">Manual Export via VS Code
+GUI</h3>
+<div class="sourceCode" id="cb11"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Open VS Code</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>code <span class="st">&quot;c:\Users\plachy\Documents\Dev\AI\_KB\ai-standards-kb&quot;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Select file or use Explorer</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Press Ctrl+Shift+P and type:</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>markdown-pdf<span class="op">:</span> Export <span class="op">(</span>document<span class="op">)</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co"># or</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>markdown-pdf<span class="op">:</span> Export <span class="op">(</span>all files <span class="kw">in</span> workspace<span class="op">)</span></span></code></pre></div>
+<hr />
+<h2 id="file-organization">📊 File Organization</h2>
+<h3 id="input-files">Input Files</h3>
+<pre><code>ai-standards-kb/
+├── standards/          # 11 core standards
+│   ├── 01-*.md
+│   ├── 02-*.md
+│   └── ...
+├── annexes/           # 5 annex files
+│   ├── A01-*.md
+│   └── ...
+├── INDEX.md
+├── README.md
+└── *.md              # Other docs</code></pre>
+<h3 id="output-files">Output Files</h3>
+<pre><code>pdf/
+├── 01-Neural-Networks-Fundamentals.pdf
+├── 02-ONNX.pdf
+├── 03-OpenAPI-AI-Services.pdf
+├── ...               # All other PDFs
+└── INDEX.pdf</code></pre>
+<hr />
+<h2 id="configuration">⚙️ Configuration</h2>
+<h3 id="common-settings">Common Settings</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Setting</th>
+<th>Value</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Theme</td>
+<td><code>default</code></td>
+<td>Light background</td>
+</tr>
+<tr class="even">
+<td>Theme</td>
+<td><code>dark</code></td>
+<td>Dark background</td>
+</tr>
+<tr class="odd">
+<td>Code Theme</td>
+<td><code>github</code></td>
+<td>Nice syntax highlighting</td>
+</tr>
+<tr class="even">
+<td>Display Header/Footer</td>
+<td><code>true</code></td>
+<td>Add page numbers</td>
+</tr>
+<tr class="odd">
+<td>Scale</td>
+<td><code>1</code></td>
+<td>100% zoom (use <code>0.8</code> for 80%)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="edit-settings">Edit Settings</h3>
+<p>Create <code>.vscode/settings.json</code>:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.type&quot;</span><span class="fu">:</span> <span class="st">&quot;pdf&quot;</span><span class="fu">,</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.displayHeaderFooter&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.headerTemplate&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;div style=&#39;width: 100%; text-align: center;&#39;&gt;&lt;/div&gt;&quot;</span><span class="fu">,</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.footerTemplate&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;div style=&#39;width: 100%; text-align: center; font-size: 10px;&#39;&gt;Page &lt;span class=&#39;pageNumber&#39;&gt;&lt;/span&gt;/&lt;span class=&#39;totalPages&#39;&gt;&lt;/span&gt;&lt;/div&gt;&quot;</span><span class="fu">,</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.theme&quot;</span><span class="fu">:</span> <span class="st">&quot;default&quot;</span><span class="fu">,</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.codeBlockTheme&quot;</span><span class="fu">:</span> <span class="st">&quot;github&quot;</span><span class="fu">,</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.scale&quot;</span><span class="fu">:</span> <span class="dv">1</span><span class="fu">,</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;markdown-pdf.margin&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;top&quot;</span><span class="fu">:</span> <span class="st">&quot;1cm&quot;</span><span class="fu">,</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;right&quot;</span><span class="fu">:</span> <span class="st">&quot;1cm&quot;</span><span class="fu">,</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;bottom&quot;</span><span class="fu">:</span> <span class="st">&quot;1cm&quot;</span><span class="fu">,</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;left&quot;</span><span class="fu">:</span> <span class="st">&quot;1cm&quot;</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h2 id="troubleshooting">🐛 Troubleshooting</h2>
+<h3 id="problem-command-not-found">Problem: “Command not found”</h3>
+<div class="sourceCode" id="cb15"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Make sure you&#39;re in the correct directory</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> <span class="st">&quot;c:\Users\plachy\Documents\Dev\AI\_KB\ai-standards-kb&quot;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Check if script exists</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> export<span class="op">*.</span><span class="fu">ps1</span></span></code></pre></div>
+<h3 id="problem-extension-not-found">Problem: “Extension not found”</h3>
+<div class="sourceCode" id="cb16"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install it</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>install-extension yzane<span class="op">.</span><span class="fu">markdown</span><span class="op">-</span>pdf</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Verify installation</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>list-extensions <span class="op">|</span> <span class="fu">Select-String</span> <span class="st">&quot;yzane&quot;</span></span></code></pre></div>
+<h3 id="problem-no-pdfs-created">Problem: “No PDFs created”</h3>
+<div class="sourceCode" id="cb17"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Try with logs</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Check export.log for details</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Or use manual method:</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. code .</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Ctrl+Shift+P → markdown-pdf: Export (all files in workspace)</span></span></code></pre></div>
+<h3 id="problem-math-formulas-not-rendering">Problem: “Math formulas not
+rendering”</h3>
+<p>Use <strong>Pandoc</strong> instead (better math support):</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>choco install pandoc</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Then run fallback script</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-to-pdf-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="co"># It will detect Pandoc and use it</span></span></code></pre></div>
+<hr />
+<h2 id="performance-tips">📈 Performance Tips</h2>
+<ol type="1">
+<li><strong>Batch Processing</strong>: Export all files at once (faster
+than individual exports)</li>
+<li><strong>Close Unnecessary Files</strong>: Reduces VS Code memory
+usage</li>
+<li><strong>Disable Extensions</strong>: Temporarily disable other
+extensions if export is slow</li>
+<li><strong>Check Disk Space</strong>: Ensure ~200MB free space for all
+PDFs</li>
+</ol>
+<hr />
+<h2 id="support-resources">📞 Support Resources</h2>
+<ul>
+<li><strong>yzane Markdown-PDF</strong>:
+https://github.com/yzane/vscode-markdown-pdf</li>
+<li><strong>Pandoc</strong>: https://pandoc.org/installing.html</li>
+<li><strong>VS Code Markdown</strong>:
+https://code.visualstudio.com/Docs/languages/markdown</li>
+</ul>
+<hr />
+<h2 id="testing-your-setup">✅ Testing Your Setup</h2>
+<p>Run this to verify everything works:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Check VS Code</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>version</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Check extension</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>code <span class="op">--</span>list-extensions <span class="op">|</span> <span class="fu">Select-String</span> <span class="st">&quot;yzane&quot;</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Check script</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> export-batch-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Run test export</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\export-batch-yzane<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Verify output</span></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> pdf<span class="op">/</span> <span class="op">|</span> <span class="fu">Measure-Object</span></span></code></pre></div>
+<hr />
+<h2 id="next-steps">🎓 Next Steps</h2>
+<ol type="1">
+<li><strong>Install</strong>:
+<code>code --install-extension yzane.markdown-pdf</code></li>
+<li><strong>Configure</strong>: Create
+<code>.vscode/settings.json</code> (optional)</li>
+<li><strong>Export</strong>: <code>.\export-batch-yzane.ps1</code></li>
+<li><strong>Review</strong>: Check <code>pdf/</code> folder</li>
+<li><strong>Share</strong>: Distribute PDFs as needed</li>
+</ol>
+<hr />
+<p><strong>Created</strong>: December 4, 2025<br />
+<strong>Version</strong>: 1.0<br />
+<strong>Status</strong>: Ready for production use ✅</p>
+</body>
+</html>

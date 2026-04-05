@@ -1,0 +1,68 @@
+# Doxyfile — NNStudio API Documentation
+# Run: doxygen docs/Doxyfile  (from project root)
+# Output: docs/generated/html/index.html
+
+PROJECT_NAME           = "NNStudio"
+PROJECT_NUMBER         = 0.1.0
+PROJECT_BRIEF          = "Neural Network design, training, deployment and learning workbench"
+
+OUTPUT_DIRECTORY       = docs/generated
+CREATE_SUBDIRS         = YES
+OUTPUT_LANGUAGE        = English
+
+# Input
+INPUT                  = nnstudio/core/include \
+                         nnstudio/plugin-api/include \
+                         nnstudio/backends \
+                         nnstudio/pipeline/include \
+                         nnstudio/deployment/include \
+                         nnstudio/python-bridge
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.hpp *.cpp *.md
+EXTENSION_MAPPING      = md=Markdown
+USE_MDFILE_AS_MAINPAGE = README.md
+
+# Extract everything
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_ANON_NSPACES   = NO
+
+# Source browser
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# Diagrams (requires Graphviz)
+HAVE_DOT               = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+CLASS_DIAGRAMS         = YES
+COLLABORATION_GRAPH    = YES
+UML_LOOK               = YES
+DOT_GRAPH_MAX_NODES    = 100
+
+# HTML output
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_TIMESTAMP         = YES
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+
+# No LaTeX by default (uncomment to enable PDF generation)
+GENERATE_LATEX         = NO
+# LATEX_OUTPUT         = latex
+
+# Preprocessing
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+PREDEFINED             = DOXYGEN_RUNNING
+
+# Warnings
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_LOGFILE           = docs/generated/doxygen_warnings.log
+
+# KB references: treat @kb: tags as custom Doxygen aliases
+ALIASES                = "kb{1}=\par Knowledge Base Reference:\n<a href='../../../\1'>\1</a>"

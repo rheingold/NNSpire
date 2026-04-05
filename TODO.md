@@ -1,0 +1,590 @@
+# NNStudio — Master Project Checklist
+
+Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/decision needed
+
+---
+
+## Phase 0 — Project Scaffolding
+
+### Root layout and documentation
+- [x] Establish `Studio/` as project root (singular workspace folder)
+- [x] Create `.gitignore` (build artefacts, `ai_priv/`, Python caches, Qt artefacts)
+- [x] Create `README.md` — master signpost to all documents
+- [x] Create `ai.md` — AI assistant conventions, decisions, key paths
+- [x] Create `ai_priv/ai_priv.md` — local private config template (gitignored)
+- [x] Create `TODO.md` — this file
+- [x] Create `ARCHITECTURE.md` — system component whitepaper
+- [x] Create `PIPELINE.md` — full chain design
+- [x] Create `PLUGIN-SDK.md` — plugin architecture specification
+- [x] Create `DEPLOYMENT.md` — runner/deployment strategy
+- [x] Create `TRUST-ARCHITECTURE.md` — PKI trust chain design
+- [x] Create `LICENSING.md` — license split and plugin charter
+- [ ] Verify no non-.md files exist at project root (except .gitignore)
+
+### Source tree skeleton (empty dirs + placeholder CMakeLists)
+- [x] Create `nnstudio/` top-level `CMakeLists.txt`
+- [x] Create `nnstudio/core/` directory structure
+- [x] Create `nnstudio/backends/` directory structure
+- [x] Create `nnstudio/plugin-api/` directory structure
+- [x] Create `nnstudio/plugins/` directory structure
+- [x] Create `nnstudio/pipeline/` directory structure
+- [x] Create `nnstudio/deployment/` directory structure
+- [x] Create `nnstudio/python-bridge/` directory structure
+- [x] Create `nnstudio/app/` directory structure
+- [x] Create `nnstudio/tests/` directory structure
+- [x] Create `docs/` directory with Doxygen `Doxyfile` stub
+
+### Third-party / dependency setup
+- [ ] Copy/fetch Eigen headers into `nnstudio/third-party/eigen/`
+- [ ] Copy/fetch pybind11 into `nnstudio/third-party/pybind11/`
+- [ ] Copy/fetch GoogleTest into `nnstudio/third-party/googletest/`
+- [ ] Copy/fetch ONNX protobuf into `nnstudio/third-party/onnx/`
+- [ ] Confirm OpenSSL 3.x available (system or bundled)
+- [ ] Verify Qt 6.5+ installation and record path in `ai_priv/ai_priv.md`
+
+---
+
+## Phase 1 — NN Engine Core (C++ library `nnstudio-core`)
+
+### Tensor subsystem (`nnstudio/core/tensor/`)
+- [x] `Tensor<T>` class: shape, strides, dtype enum (float32/float16/int8/int32)
+- [x] Device tag: `CPU | CUDA | QUANTUM`
+- [x] Basic ops: element-wise add/mul, reshape, slice, transpose, broadcast
+- [x] `matmul()` dispatching to backend
+- [ ] Serialization: save/load to raw binary + metadata header
+- [ ] Python binding via pybind11
+- [x] Unit tests: shape arithmetic, op correctness vs NumPy reference values
+
+### Layer subsystem (`nnstudio/core/layers/`)
+- [x] Abstract `Layer` base: `forward()`, `backward()`, `parameters()`, `serialize()`, `docRef()`
+- [x] `Dense` (fully connected)
+- [ ] `Conv2D`
+- [ ] `BatchNorm`
+- [ ] `Dropout`
+- [ ] `Embedding`
+- [ ] `MultiHeadAttention`
+- [ ] `LayerNorm`
+- [ ] Python bindings for all layers
+- [ ] C++ export template for each layer type
+- [x] Unit tests: forward pass vs reference, backward pass gradient check
+
+### Activations (`nnstudio/core/activations/`)
+
+> ⚠️ **HIGH PRIORITY — complete before Phase 2 Plugin SDK ABI freeze**  
+> ADR-020 mandates that `IActivation` (not `ActivationBase`) is the published plugin extension point.  
+> The current `ActivationBase : ILayer` design is correct for internal use but **must not** be shipped as the SDK contract — it is stateful between `forward()`/`backward()` and therefore not reentrant (see Invariant I-1, I-2 in `blueprints.md`).  
+> **Work required:**
+> - [ ] Add `core/include/nnstudio/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
+> - [ ] Add `FunctionLayer.h / .cpp` adapter wrapping `IActivation` into a full `ILayer`
+> - [ ] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to implement `IActivation` (remove `lastInput_`/`lastOutput_`; return as `ctx` in `ActivationForward`)
+> - [ ] Update `blueprints.md §3.8` to reflect the new interface
+> - [ ] Add unit tests: reentrant call on same instance, shared instance across two call sites
+
+- [x] `ReLU` + derivative
+- [x] `LeakyReLU` + derivative
+- [x] `Sigmoid` + derivative
+- [x] `Tanh` + derivative
+- [x] `Softmax` + derivative (Jacobian)
+- [x] `GELU` + derivative
+- [x] `@kb:` comments linking to `ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md`
+- [ ] Python bindings
+- [x] Unit tests
+
+### Loss functions (`nnstudio/core/losses/`)
+- [x] `MSE` + gradient
+- [x] `CrossEntropy` + gradient
+- [x] `BinaryCrossEntropy` + gradient
+- [x] `HuberLoss` + gradient
+- [ ] Python bindings
+- [ ] Unit tests
+
+### Optimizers (`nnstudio/core/optimizers/`)
+- [x] `SGD` (with momentum)
+- [x] `Adam`
+- [x] `AdamW`
+- [ ] `RMSProp`
+- [x] LR scheduler base + `StepLR`, `CosineAnnealingLR`
+- [ ] Python bindings
+- [ ] Unit tests: parameter update step correctness
+
+### Compute graph (`nnstudio/core/graph/`)
+- [ ] `ComputeGraph` DAG: node registration during forward pass
+- [ ] Autograd: `backward()` traversal, gradient accumulation
+- [ ] Graph serialization (JSON)
+- [ ] Graph visualization data export (for UI consumption)
+- [ ] `EvalTrace` struct: opt-in per-layer capture of inputs, outputs, and gradients
+- [ ] `ILayer::forward()` optional `EvalTrace*` parameter (`nullptr` = zero-cost no-op in normal training)
+- [ ] `ILayer::backward()` optional `EvalTrace*` parameter — captures `grad_output` and computed `grad_input`
+- [ ] `Trainer::setTraceMode(bool)` — when true, passes a live `EvalTrace` to each layer each step
+- [ ] Python bindings
+
+### Training loop (`nnstudio/core/training/`)
+- [x] `Trainer` class: graph + optimizer + loss + dataset
+- [x] Callback interface: `onEpochStart/End`, `onBatchStart/End`, `onMetric`
+- [ ] Checkpoint save/load to `.nns` format
+  - [ ] Save model weights (W, b) into embedded ONNX blob
+  - [ ] Save **optimizer state** into `.nns` extension: Adam `m`, `v`, step counter `t` per parameter
+        (without this, Adam loses its accumulated momentum on resume and must rebuild from scratch)
+  - [ ] Save epoch + batch-within-epoch counters for exact resume position
+  - [ ] Raw gradients are intentionally NOT saved — they are zeroed at the start of every step
+        and recomputed by one forward+backward pass; losing them costs at most one step
+- [ ] Early stopping callback
+- [ ] Python bindings
+
+### Format I/O (`nnstudio/core/formats/`)
+- [ ] `OnnxIO::import()` — ONNX protobuf → ComputeGraph
+- [ ] `OnnxIO::export()` — ComputeGraph → ONNX protobuf
+- [ ] `NNSFormat` — `.nns` project file (JSON/MessagePack): weights + metadata + plugin refs + UI hints
+- [ ] Python bindings
+
+### Feature flags (`nnstudio/core/features/`)
+- [ ] `FeatureFlags.h` — enum `Tier { FREE, PRO, ENTERPRISE }`
+- [ ] All current flags declared `FREE`
+- [ ] `isEnabled(Feature)` — currently returns `true` for all FREE flags
+
+### Backend abstraction (`nnstudio/backends/`)
+- [x] `IBackend` interface: `matmul()`, `elementWise()`, `memAlloc()`, `memFree()`, `sync()`
+- [x] `CpuBackend` — Eigen-based matmul reference implementation
+- [ ] `CudaBackend` — cuBLAS/cuDNN conditional compile; disabled if CUDA not found
+- [ ] `QuantumBackend` — stub; interface compiles, `execute()` throws `NotImplemented`
+- [x] `BackendRegistry` — runtime registration and selection by device tag
+- [x] Dynamic loading: each backend is a separate shared library loaded on demand
+
+### Phase 1 milestone verification
+- [ ] `cmake --build && ctest` passes all unit tests
+- [x] Can construct 3-layer MLP in C++, run forward pass on XOR dataset, verify output shape ← `test_trainer_xor.cpp`
+- [ ] Same via Python bindings: `import nnstudio; ...` works in embedded Python
+
+---
+
+## Architectural Debt — Namespace Migration (before Phase 2 ABI freeze)
+
+> Do this as **one dedicated commit** before Plugin SDK work begins.  
+> After the Plugin SDK ABI is published, renaming is a breaking change for external plugin authors.
+
+### Source renames
+
+- [x] `nnstudio::layers::Dense` → `nnstudio::builtin::layers::Dense`
+- [x] `nnstudio::activations::*` (ReLU, Sigmoid, Tanh, Softmax, GELU, …) → `nnstudio::builtin::layers::*` *(activations are layers)*
+- [x] `nnstudio::losses::*` (MSE, CrossEntropy, …) → `nnstudio::builtin::losses::*`
+- [x] `nnstudio::optimizers::*` (SGD, Adam, AdamW) → `nnstudio::builtin::optimizers::*`
+- [x] `CpuBackend` in `nnstudio::` → `nnstudio::builtin::backends::CpuBackend`
+- [ ] `Trainer` internals → `nnstudio::internal::training::*`
+
+### Folder renames (to match namespaces)
+
+- [ ] `nnstudio/core/include/nnstudio/core/` → split into `api/` (Tier 1 public) and `internal/` (Tier 2)
+- [x] `nnstudio/core/` layers/activations/losses/optimizers/backends → `nnstudio/builtin/`
+- [x] Update all `#include` paths in source files and tests
+
+### Verification
+
+- [x] `cmake --build && ctest` — all 16 tests still pass after migration
+- [x] No `nnstudio::layers::`, `nnstudio::activations::`, `nnstudio::losses::`, `nnstudio::optimizers::` appear outside of a `using` alias (grep check)
+- [x] Only `nnstudio::` (Tier 1 interfaces + data types) and `nnstudio::builtin::` remain after rename
+
+---
+
+## Phase 2 — Plugin SDK
+
+### C ABI contract (`nnstudio/plugin-api/`)
+- [ ] `nnstudio_plugin.h` — C-linkage structs/function pointers; no C++ in public ABI
+- [ ] `PluginDescriptor` — name, version, type, factory functions, capabilities
+- [ ] Plugin types: `LAYER | TOKENIZER | OPTIMIZER | BACKEND | UI_PANEL | TRUST_UPDATE`
+- [ ] `LayerPlugin` interface — custom `forward()`/`backward()`, operator registration
+- [ ] `TokenizerPlugin` interface — `encode()`, `decode()`, vocab management
+- [ ] `UIPlugin` interface — QML component path, property declarations
+
+### Plugin manifests
+- [ ] `plugin.manifest.json` schema — name, version, author, license, type, capabilities, binary hash, detached signature path
+- [ ] `TUP` (Trust Update Package) manifest schema — type: `TRUST_UPDATE`, timestamp, cert add/revoke lists
+- [ ] Schema validation library (C++ + Python)
+
+### Trust system (`nnstudio/plugin-api/trust/`)
+- [ ] `TrustStore` class — manages `<app_data>/truststore/` (roots/, intermediates/, crls/, history/)
+- [ ] First-run seed from embedded `seed_roots/root_ca.pem`
+- [ ] Append-only `history/` audit log
+- [ ] Atomic TUP application (write temp → verify → rename)
+- [ ] `TrustVerifier` class — X.509 chain verification, CRL/OCSP check, offline CRL cache fallback
+- [ ] `TrustUpdateHandler` — validates and applies TUP; compiled into core, NOT a loadable plugin
+- [ ] `PluginLoader` — wraps `QPluginLoader` + Python importer; runs `TrustVerifier` before any code executes
+- [ ] Root CA public key embedded as `seed_roots/root_ca.pem` (published openly)
+- [ ] TUP validation rules: signature valid, timestamp not replayed, no self-referential removal, user confirmation modal required
+
+### `nnstudio-sign` CLI tool
+- [ ] `keygen` subcommand — generate plugin key pair + CSR
+- [ ] `sign` subcommand — sign plugin binary + manifest using issued cert
+- [ ] `verify` subcommand — verify plugin signature offline
+- [ ] `submit` subcommand — submit CSR to registry for community/commercial cert
+- [ ] `create-tup` subcommand — build and sign a Trust Update Package
+- [ ] `issue-enterprise-ca` subcommand — project owner issues Enterprise Intermediate CA cert (admin only)
+
+### pybind11 bridge (`nnstudio/python-bridge/`)
+- [ ] Python module `nnstudio` exposing: `Tensor`, all `Layer` subclasses, `ComputeGraph`, `Trainer`, `BackendRegistry`
+- [ ] `runners/` sub-package: Python-side runner clients mirroring `nnstudio/deployment/`
+- [ ] `pyproject.toml` for installable Python package
+- [ ] Wheel build in CI
+
+### Plugin scaffolds (`nnstudio/plugin-api/templates/`)
+- [ ] `cpp/` — CMakeLists.txt + `.h`/`.cpp` template for each plugin type
+- [ ] `python/` — `pyproject.toml` + `.py` module template for each plugin type
+- [ ] Both templates include `plugin.manifest.json` generator script
+- [ ] `README.md` per template explaining the plugin type
+
+### Built-in reference plugins (`nnstudio/plugins/`)
+- [ ] BPE tokenizer plugin (C++ + Python, from KB A06)
+- [ ] FAISS vector index plugin (C++ + Python)
+- [ ] Example custom activation plugin (demonstrates both C++ and Python plugin path)
+
+### Phase 2 milestone
+- [ ] `PluginLoader` successfully loads BPE tokenizer plugin at runtime
+- [ ] Unverified plugin triggers modal warning every session
+- [ ] TUP can be applied and is logged as immutable audit entry
+
+---
+
+## Phase 3 — Qt 6 QML Studio UI
+
+### App shell (`nnstudio/app/`)
+- [ ] `main.cpp` — Qt app init, backend detection, plugin loader, dependency check, QML engine setup
+- [ ] `controllers/` — `ModelController`, `TrainingController`, `BackendController`, `PluginController`, `HelpController`
+- [ ] Dockable panel system (QML `SplitView` + `DockManager` or equivalent)
+- [ ] Persistent settings: `<app_folder>/settings/` (portable mode) or OS config dir fallback
+- [ ] Application menu (File/Edit/View/Tools/Help)
+
+### First-run Dependency Manager
+- [ ] Detect: Python runtime, C++ compiler, CUDA, system BLAS on startup
+- [ ] Non-blocking notice for optional missing deps + one-click download button
+- [ ] Blocking error for required missing deps with download link
+- [ ] Accessible post-startup via `Tools → Dependency Manager`
+- [ ] Embeddable Python auto-install to `<install>/runtime/python/`
+- [ ] MinGW-w64 auto-install to `<install>/runtime/mingw64/` (Windows)
+
+### Model editor panel (`ui/ModelEditor.qml`)
+- [ ] Layer stack widget — add/remove/reorder layers via drag-and-drop rows
+- [ ] Per-layer property form — edit all parameters (neuron count, kernel size, activation, etc.)
+- [ ] Auto-generated topology diagram from `ComputeGraph` (not manual drawing)
+- [ ] Import ONNX model → populate layer stack
+- [ ] Export layer stack → ONNX / `.nns`
+- [ ] Layer "?" button opens KB help for that layer type
+- [ ] **Architecture preset gallery** — 🥪 sandwich icon in UI; pre-defined architecture templates the user can load as a starting point:
+  - MLP (classifer, regressor)
+  - Autoencoder
+  - CNN (image classifier)
+  - Transformer encoder block
+  - GPT decoder block
+  - ResNet block (skip connection)
+  - User can ALSO design fully custom stacking from scratch; a visible **warning banner** is shown when the rule "every two consecutive Dense layers must have a non-linear layer between them" is violated (engine still allows it — the warning is educational, not a block)
+  - See `blueprints.md § Annex — Architecture Templates` for the template specs and typical sizes
+
+### Training dashboard panel (`ui/TrainingDashboard.qml`)
+- [ ] Live loss/metric chart (Qt Charts or custom Canvas)
+- [ ] Epoch + batch progress indicators
+- [ ] Start / Pause / Resume / Stop training controls
+- [ ] Early stopping configuration
+- [ ] Checkpoint save/load UI
+- [ ] Backend selector (CPU / CUDA / Quantum)
+
+### Weight/activation viewer (`ui/WeightViewer.qml`)
+- [ ] Heatmap of weight matrices per layer (powered by `EvalTrace` weight snapshots)
+- [ ] Activation distribution histograms (powered by `EvalTrace` output capture)
+- [ ] Gradient magnitude per layer during training (powered by `EvalTrace` gradient capture)
+- [ ] Language toggle: Python | C++ generated code for selected layer
+- [ ] Flash-on-change animation: weight cells that changed most in last step pulse red/blue
+- [ ] Vanishing/exploding gradient warning: gradient magnitude bar turns amber/red automatically
+
+### Neuron viewer — learning/wizard only (`ui/NeuronViewer.qml`)
+- [ ] Auto-layout visualization of neurons and weighted connections
+- [ ] Maximum network size guard (do not render > N neurons)
+- [ ] Animate forward pass propagation (driven by `EvalTrace` per-layer output tensors)
+- [ ] Shown only in Wizard Mode or when user explicitly enables it for small networks
+- [ ] Step-by-step mode: pause after each of the 6 `trainStep` phases; user clicks "Next" to advance
+- [ ] Colour-code neuron nodes by activation value (blue=near-zero, red=saturated)
+- [ ] Arrow thickness = absolute weight magnitude between connected neurons
+- [ ] Arrow colour = gradient direction (positive=green, negative=red, near-zero=grey)
+
+### Tokenizer panel (`ui/TokenizerPanel.qml`)
+- [ ] Select tokenizer plugin
+- [ ] Enter sample text → see token IDs + decoded tokens live
+- [ ] Vocabulary browser
+- [ ] Special token editor
+
+### KB help system (`ui/HelpPanel.qml`)
+- [ ] Render Markdown from `ai-standards-kb/` (QTextBrowser or WebEngineView)
+- [ ] Deep-link anchor navigation (`kb://standards/01#backpropagation`)
+- [ ] Triggered by `?` buttons throughout the UI
+- [ ] Full-text search across KB
+
+### Wizard / learning mode (`ui/WizardMode.qml`)
+- [ ] Step-by-step guided walkthroughs
+- [ ] Each step has `kbRef` property → auto-opens matching KB section
+- [ ] Code snippets show **Python | C++ toggle**
+- [ ] Neuron viewer enabled for small demo networks
+- [ ] Walkthroughs: XOR MLP, MNIST CNN, Transformer block, BPE tokenizer
+
+### Phase 3 milestone
+- [ ] NNStudio launches on Windows/macOS/Linux
+- [ ] Create 3-layer MLP → view topology → run XOR training → watch live loss chart
+- [ ] KB help opens from layer "?" button showing correct KB section
+
+---
+
+## Phase 4 — Full Pipeline
+
+### Input adapters (`nnstudio/pipeline/input/`)
+- [ ] Text (UTF-8 string)
+- [ ] Image (via Qt image loading → tensor)
+- [ ] Audio (WAV/FLAC → waveform tensor via libsndfile or similar)
+- [ ] Structured data (CSV → tensor, Apache Arrow pass-through)
+- [ ] MCP message format adapter
+- [ ] Python + C++ implementation for each
+
+### Tokenization chain (`nnstudio/pipeline/tokenize/`)
+- [ ] `TokenizationChain` — ordered list of `TokenizerPlugin`s
+- [ ] Produces: token-ID tensor, attention mask, position IDs
+- [ ] Cache layer for repeated vocabulary lookups
+- [ ] Python + C++ implementation
+
+### Context / RAG stage (`nnstudio/pipeline/context/`)
+- [ ] `ContextStage` — optional; takes query tensor, returns retrieved chunk tensors
+- [ ] Embedded FAISS connector (no server needed)
+- [ ] Qdrant HTTP connector
+- [ ] Chroma HTTP connector
+- [ ] Reranker interface (cross-encoder plugin slot)
+- [ ] Python + C++ implementation
+
+### Execution stage (`nnstudio/pipeline/execution/`)
+- [ ] `ExecutionStage` — runs one `ComputeGraph` or a chain of chained graphs
+- [ ] Output of graph A → input of graph B wiring
+- [ ] Streaming output support (token-by-token)
+- [ ] Python + C++ implementation
+
+### Output adapters (`nnstudio/pipeline/output/`)
+- [ ] Text decode (de-tokenize)
+- [ ] Image synthesis stub
+- [ ] Audio synthesis stub
+- [ ] Structured JSON serialization
+- [ ] Python + C++ implementation
+
+### Pipeline Studio panel (`ui/PipelinePanel.qml`)
+- [ ] Coarse node graph: drag pipeline stages, wire them
+- [ ] Each stage node opens a configuration panel
+- [ ] Execute pipeline end-to-end from within the UI
+- [ ] Display intermediate tensor shapes and sample values at each stage
+
+### Phase 4 milestone
+- [ ] Text input → BPE tokenizer → 2-layer transformer → decoded text output, visible in UI end-to-end
+
+---
+
+## Phase 5 — Deployment & Runners
+
+### Export wizards (`nnstudio/deployment/export/`)
+- [ ] ONNX export wizard (uses `OnnxIO::export()`)
+- [ ] TorchScript export (via Python bridge + `torch.jit.script`)
+- [ ] TFLite export stub
+- [ ] `.nnsr` runner bundle builder: zip of weights + `manifest.json` + `runner.py` + `runner.cpp` + precompiled `.so`/`.dll`
+
+### Runner connectors (`nnstudio/deployment/runners/`) — C++ + Python each
+- [ ] Triton gRPC client (HTTP/2 gRPC, model load/infer/health — KB doc 10 + 08)
+- [ ] TF Serving REST client (KB doc 05)
+- [ ] KServe V2 client (KB doc 09)
+- [ ] ONNX Runtime embedded client
+- [ ] Generic OpenAI-compatible REST client (KB annex A05)
+
+### Deployment panel (`ui/DeploymentPanel.qml`)
+- [ ] Export format selector + wizard launcher
+- [ ] Runner endpoint configuration (URL, auth, TLS cert)
+- [ ] Model push to runner
+- [ ] Health / latency / throughput monitor (Prometheus scrape)
+- [ ] Optional: launch local Triton Docker container helper
+
+### Plugin Registry server spec (`nnstudio/deployment/registry/`)
+- [ ] REST API spec (OpenAPI 3.1): `POST /plugin/register`, `GET /plugin/{id}`, `POST /enterprise/ca/request`, `GET /crl`
+- [ ] Reference server implementation (Python FastAPI)
+- [ ] `nnstudio-sign submit` integration
+
+### `.nnsp` project file spec (finalise)
+- [ ] Adopt ZIP container format (ECMA OPC principle — like .docx/.xlsx)
+- [ ] `project.json`: project metadata, NNStudio version, author, signature/encryption header
+- [ ] `networks/<variant>/blueprint.json`: layer stack, sizes, activations, loss fn, optimizer config, hyperparameters
+- [ ] `networks/<variant>/manifest.json`: parts references (embedded or sidecar paths)
+- [ ] `networks/<variant>/graph.onnx`: OPTIONAL embedded weights
+- [ ] `networks/<variant>/training/`: OPTIONAL optimizer state + progress
+- [ ] Support multiple network variants in one project (A/B comparison, scale testing)
+- [ ] `pipeline/interconnect.json`: multi-network wiring graph (LLM pipeline, plugin slots, RAG stage)
+- [ ] `plugins/refs.json`: required plugins with name, version, hash, signature
+- [ ] `analysis/loss_curves.bin`: metric histories (OPTIONAL, omit when shipping without weights)
+- [ ] `analysis/cluster_viz.json`: cluster analysis config and display settings (OPTIONAL)
+- [ ] `analysis/weight_clusters.bin`: cluster computation results (large, OPTIONAL)
+- [ ] `ui/layout.json`: panel arrangement, tabs, zoom levels
+- [ ] `model_card.json`: KB doc 04 fields
+- [ ] **"Homebrew shipping mode"**: project with blueprints+signatures but NO weights
+      Studio opens and says "untrained — run training or import weights"
+      Enables designer-to-customer distribution of NN architectures without large data
+- [ ] Sidecar reference scheme: any part can be `embedded:file`, `file:rel/path`, `file:/abs/path`, or `container:../file`
+      - `container:` = up-reference to root of the enclosing ZIP (used when .nnsp is embedded inside .nnsx)
+      - When .nnsp is embedded in .nnsx: .nnsp carries only blueprints/UI/metadata; weights stay in outer .nnsx, never duplicated
+- [ ] Schema validation for all JSON parts
+
+### `.nnsx` model exchange file spec (finalise)
+- [ ] ZIP container: manifest.json + graph.onnx + training/ + tokenizer/ + plugins/ + model_card.json
+- [ ] `graph.onnx` is a valid standalone ONNX blob (extractable: `unzip model.nnsx graph.onnx`)
+- [ ] All large parts (graph.onnx, adam.bin) support sidecar references via manifest
+- [ ] `.nnsx` can be imported into a `.nnsp` project or exported from one
+- [ ] `.nns` extension alias: Studio opens as `.nnsp`; runner treats as `.nnsx`
+
+### Training checkpoint fields (inside `training/`)
+- [ ] `training/adam.bin`: m[], v[], t per named parameter — **required for true resume**
+- [ ] `training/progress.json`: epoch, batch_within_epoch, last_loss, optional rng_state
+- [ ] Raw gradients intentionally NOT stored (recomputed in one step on resume)
+
+### `.nnsr` runner bundle spec (finalise)
+- [ ] Zip structure documented
+- [ ] `manifest.json` schema: model metadata, tokenizer config, required plugins, hardware hints, input/output modality declarations, min Studio version
+- [ ] `runner.py` + `runner.cpp` template generated by export wizard
+
+### Phase 5 milestone
+- [ ] Export XOR MLP trained in Phase 3 to `.onnx` → load in ONNX Runtime embedded → verify matching output
+- [ ] Export same model as `.nnsr` bundle → verify bundle structure and manifest validity
+
+---
+
+## Phase 6 — Quantum Backend
+
+### Quantum backend (`nnstudio/backends/quantum/`)
+- [ ] `QuantumBackend` implementation: `execute()` dispatches to Qiskit Python via bridge
+- [ ] Quantum layer type: `QuantumCircuitLayer` — parameterised quantum gate sequence
+- [ ] Hybrid graph support: classical `ComputeGraph` with embedded `QuantumCircuitLayer` nodes
+- [ ] Qiskit Python plugin bridge: circuit construction from layer parameters
+- [ ] IonQ REST API connector (alternative to local Qiskit simulator)
+- [ ] IBM Quantum REST API connector
+
+### Quantum studio panel (`ui/QuantumPanel.qml`)
+- [ ] Quantum circuit visualizer for `QuantumCircuitLayer`
+- [ ] Simulator vs. real hardware toggle
+- [ ] Job queue monitor for hardware execution
+
+### Phase 6 milestone
+- [ ] Simple 2-qubit parameterised circuit runs via Qiskit simulator, driven from Studio UI
+
+---
+
+## Cross-cutting concerns (all phases)
+
+### Dual-language compliance
+- [ ] Policy in `ai.md` enforced: code review checklist item before merge
+- [ ] All exported code (sandbox) shows Python | C++ toggle
+- [ ] All whitepaper .md docs use dual code blocks
+
+### KB integration
+- [ ] `@kb:` source comments on all mathematical implementations
+- [ ] In-app help deep-links verified for all wizard steps
+- [ ] KB gap documents written as new `.md` files added to `ai-standards-kb/`
+
+### CI / packaging
+- [ ] GitHub Actions (or CI of choice) — build + test on Windows (MSVC + MinGW), macOS, Ubuntu
+- [ ] Qt 5.15 LTS secondary build matrix
+- [ ] AppImage build for Linux
+- [ ] Installer build (optional) for Windows
+- [ ] Doxygen API doc generation
+- [ ] Plugin signing step in release pipeline using `nnstudio-sign`
+
+### Performance & optimization
+- [ ] CUDA backend benchmarks (matmul, conv) vs CPU baseline
+- [ ] Memory layout profiling (cache-friendly tensor strides)
+- [ ] Training throughput: tokens/sec, samples/sec metrics exposed via `Trainer` callbacks
+- [ ] ONNX model profiling panel in UI
+
+### Security
+- [ ] TrustStore permissions hardened on all three platforms
+- [ ] `nnstudio-runner` sidecar sandboxing (process isolation, limited syscalls)
+- [ ] No eval / dynamic code execution in the Qt app process without sandbox
+- [ ] OpenSSL kept up to date; SBOM generated for each release
+
+---
+
+## External Compute Services
+
+NNStudio must support offloading computation to remote GPU services at multiple architectural levels.
+This is critical during development (no local CUDA GPU available) and for production scale-out.
+
+### Integration points in NNStudio architecture
+
+| NNStudio level | What integrates | What it enables |
+|---|---|---|
+| **Backend level** | New `IBackend` implementation (`RemoteBackend`) | Individual tensor ops (`matmul`, etc.) forwarded via gRPC to a remote CUDA worker; training loop runs locally |
+| **Trainer level** | `RemoteTrainer` / job dispatch | Entire training job serialised and sent to a remote service; local machine only submits + receives trained weights |
+| **Inference level** | Existing Triton / KServe / TF Serving connectors | Already in TODO Phase 5; model deployed remotely, NNStudio queries it |
+
+### Services sorted by abstraction level (lowest = most control / cheapest)
+
+#### Level 0 — Raw GPU Marketplace (P2P / bare metal, you manage everything)
+
+Best for: development, experimentation, budget training. SSH + Docker container access.
+
+| Service | API type | Sample prices (per GPU/hr) | Notes |
+|---|---|---|---|
+| **Vast.ai** | REST + Python SDK ([docs.vast.ai](https://docs.vast.ai)) | RTX 4090 from $0.28, A100 from $0.53, H100 from $1.54 | P2P marketplace; prices fluctuate by supply. **Cheapest option. Recommended first pilot.** |
+| **RunPod** | REST + GraphQL ([docs.runpod.io](https://docs.runpod.io)) | RTX 3090 $0.46, RTX 4090 $0.59, A100 $1.39, H100 $2.39 | Community Cloud + Secure Cloud tiers. Serverless (per-second) also available from $0.00019/s |
+| **LambdaLabs** | REST ([docs.lambdalabs.com](https://docs.lambdalabs.com)) | A100 ~$1.10–1.30, H100 ~$2.00–2.50 | Fixed prices, no marketplace. Simple SSH access. Very reliable. |
+
+#### Level 1 — IaaS Cloud GPU (enterprise VMs, SLA, Kubernetes-native)
+
+Best for: larger training runs needing reliability guarantees or Kubernetes orchestration.
+
+| Service | API type | Sample prices (per GPU/hr) | Notes |
+|---|---|---|---|
+| **CoreWeave** | Kubernetes API / REST ([docs.coreweave.com](https://docs.coreweave.com)) | L40S $2.25, H100 $6.16, A100 $2.70 (all single-GPU from 8-GPU nodes) | Kubernetes-native; Slurm-on-Kubernetes (SUNK) available. NVIDIA-focused. No free tier. |
+| **Hyperstack** | REST + Kubernetes ([hyperstack.cloud](https://hyperstack.cloud)) | Contact sales for large; competitive with CoreWeave | UK/EU-based NVIDIA DGX Cloud partner. Good for EU data compliance. |
+| **AWS EC2** (p/g instances) | AWS SDK / boto3 ([aws.amazon.com](https://aws.amazon.com)) | V100 ~$3.06, A100 ~$4.00 (p4d), H100 (p5) ~$12+ | Full IaaS control; integrate with S3, IAM, VPC. Most complex but most flexible. |
+| **Google Cloud** (GPU VMs) | Google Cloud SDK / REST ([cloud.google.com](https://cloud.google.com)) | A100 ~$2.93–3.67, H100 ~$9.98; TPU v4 also available | Strong for large runs; Vertex AI train jobs sit on top |
+| **Azure** (NC/ND series) | Azure SDK / REST ([azure.microsoft.com](https://azure.microsoft.com)) | A100 ~$3.06–6.12 by region | Integrated with Azure ML and DevOps. Good if already in Microsoft ecosystem. |
+
+#### Level 2 — Managed ML Platform (job submission, no VM management)
+
+Best for: submitting training jobs without managing infrastructure. Higher cost per compute hour.
+
+| Service | API type | Sample prices | Notes |
+|---|---|---|---|
+| **Paperspace / DigitalOcean Gradient** | REST ([docs.paperspace.com](https://docs.paperspace.com)) | Free tier (M4000 $0/hr quota); A100 ~$3.09/hr | Notebooks + GPU jobs. **Free tier is a good no-cost pilot.** Gradient Workflows = training job API. |
+| **AWS SageMaker** | boto3 SageMaker client | Training instance overhead + EC2 cost (~15–20% premium) | Submit script + data; SageMaker manages spin-up/down. Integrates with S3 datasets, MLflow, etc. |
+| **Google Vertex AI** | Google Cloud Vertex SDK | Training job overhead + VM cost (~15% premium) | Custom training jobs; good for TPU access. |
+| **Azure ML** | Azure ML SDK v2 | AML compute overhead + VM cost | Jobs API; MLflow integration; best in Azure ecosystem. |
+
+#### Level 3 — Enterprise Reserved / DGX Cloud (highest abstraction, capacity commitment)
+
+Best for: production-scale training with guaranteed capacity. Enterprise contracts only.
+
+| Service | API type | Notes |
+|---|---|---|
+| **NVIDIA DGX Cloud** | Kubernetes / Slurm via cloud partner (Azure, GCP, Oracle) | DGX SuperPOD capacity; ~$30–40k+/month enterprise contract. No public per-hour price. |
+| **CoreWeave Reserved** | Same as CoreWeave on-demand | Up to 60% discount with 1/3/6-month commitment. |
+
+### Recommended pilot sequence (budget-conscious)
+
+1. **Paperspace Free Tier** — zero cost, immediate; verify the Trainer-level job dispatch design.
+2. **Vast.ai RTX 4090** (~$0.30/hr) — cheapest CUDA GPU with 24 GB VRAM; test Backend-level RemoteBackend over SSH tunnel.
+3. **RunPod Serverless** (~$0.00031/s for 4090) — test per-request inference dispatch; useful for the inference-level connector.
+4. **LambdaLabs A100** (~$1.15/hr) — first "real" training run at scale; stable fixed pricing, no surprises.
+5. **CoreWeave / AWS** — only once NNStudio's remote training pipeline is proven at smaller scale.
+
+### TODOs — architecture items to add
+- [ ] Design `RemoteBackend : IBackend` — forwards individual tensor ops to a remote CUDA worker via gRPC (Phase 1 extension)
+- [ ] Design `RemoteTrainer` / job-dispatch adapter — serialises model + dataset, submits to SageMaker/Vertex/RunPod job API, polls for completion, imports weights (Phase 5 extension)
+- [ ] `DEPLOYMENT.md` section: external compute service integration guide (which service maps to which NNStudio integration point)
+- [ ] Add backend selector dropdown in Phase 3 UI to include "Remote (gRPC)" option alongside CPU/CUDA
+- [ ] Credential/secret management for API keys (none stored in `.nnsp`; use OS keychain or env var)
+- [ ] Vast.ai / RunPod CLI wrapper in `deployment/runners/` for spinning up and tearing down training pods from within Studio
+
+---
+
+## Icebox — Deferred Ideas
+
+> Good ideas that are too valuable to discard and too far out to schedule. Revisit before each major phase.
+> *(Original working definition: "follow-up spin-off TODO leftovers" — things that spun off from active discussions, do not belong in any current phase backlog, yet must not be forgotten.)*
+
+- [ ] **Explorer ordering plugin** — a VS Code extension (and ideally a Windows Explorer shell extension) that reads the `## Reading order` numbered list from each folder's `CONTRIBUTING.md` and reorders the file tree accordingly for first-time navigators. The reserved heading name is `## Reading order`; the format is a standard Markdown ordered list. Authors set the intended order; developers can switch back to alphabetical at will.
+- [ ] **Plugin SDK distribution** — once the Plugin SDK ABI is frozen (post-Phase 2), evaluate packaging `core/include/` as a standalone installable SDK (vcpkg port, Conan recipe, or plain zip). Linked to the namespace migration ticket.
+- [ ] **ADR folder (`decisions/`)** — Architecture Decision Records: one short document per major architectural decision (namespace tier design, `backends/`-as-sibling-of-`core/`, Plugin SDK ABI plan, colocated-headers convention, etc.). These decisions are currently scattered in `blueprints.md`; ADRs make each "why" individually discoverable without reading the full document. Also the primary human-continuity mechanism if the AI session that made the decision is no longer available. See `docs/ai-standards-kb/CODE-ONBOARDING-ESSAY.md` for rationale.
+- [ ] **C4 diagram (Level 1 + Level 2)** — one Mermaid diagram in `README.md` showing system context (Level 1) and major components/targets (Level 2). Serves all non-developer stakeholders without requiring code knowledge. Low maintenance: only update on major structural change.

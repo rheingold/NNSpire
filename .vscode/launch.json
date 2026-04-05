@@ -1,0 +1,66 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run test-core (all tests)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/nnstudio/build/engine-ninja/tests/test-core.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/nnstudio/build/engine-ninja/tests",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Debug test-core (all tests)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/nnstudio/build/engine-ninja/tests/test-core.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/nnstudio/build/engine-ninja/tests",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build engine-ninja"
+        },
+        {
+            "name": "Run XOR test only",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/nnstudio/build/engine-ninja/tests/test-core.exe",
+            "args": ["--gtest_filter=XORTest.TrainsToConvergence", "--gtest_also_run_disabled_tests"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/nnstudio/build/engine-ninja/tests",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

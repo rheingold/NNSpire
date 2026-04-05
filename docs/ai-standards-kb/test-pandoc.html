@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>README</title>
+  <style>
+html {
+color: #1a1a1a;
+background-color: #fdfdfd;
+}
+body {
+margin: 0 auto;
+max-width: 36em;
+padding-left: 50px;
+padding-right: 50px;
+padding-top: 50px;
+padding-bottom: 50px;
+hyphens: auto;
+overflow-wrap: break-word;
+text-rendering: optimizeLegibility;
+font-kerning: normal;
+}
+@media (max-width: 600px) {
+body {
+font-size: 0.9em;
+padding: 12px;
+}
+h1 {
+font-size: 1.8em;
+}
+}
+@media print {
+html {
+background-color: white;
+}
+body {
+background-color: transparent;
+color: black;
+font-size: 12pt;
+}
+p, h2, h3 {
+orphans: 3;
+widows: 3;
+}
+h2, h3, h4 {
+page-break-after: avoid;
+}
+}
+p {
+margin: 1em 0;
+}
+a {
+color: #1a1a1a;
+}
+a:visited {
+color: #1a1a1a;
+}
+img {
+max-width: 100%;
+}
+svg {
+height: auto;
+max-width: 100%;
+}
+h1, h2, h3, h4, h5, h6 {
+margin-top: 1.4em;
+}
+h5, h6 {
+font-size: 1em;
+font-style: italic;
+}
+h6 {
+font-weight: normal;
+}
+ol, ul {
+padding-left: 1.7em;
+margin-top: 1em;
+}
+li > ol, li > ul {
+margin-top: 0;
+}
+blockquote {
+margin: 1em 0 1em 1.7em;
+padding-left: 1em;
+border-left: 2px solid #e6e6e6;
+color: #606060;
+}
+code {
+font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+font-size: 85%;
+margin: 0;
+hyphens: manual;
+}
+pre {
+margin: 1em 0;
+overflow: auto;
+}
+pre code {
+padding: 0;
+overflow: visible;
+overflow-wrap: normal;
+}
+.sourceCode {
+background-color: transparent;
+overflow: visible;
+}
+hr {
+background-color: #1a1a1a;
+border: none;
+height: 1px;
+margin: 1em 0;
+}
+table {
+margin: 1em 0;
+border-collapse: collapse;
+width: 100%;
+overflow-x: auto;
+display: block;
+font-variant-numeric: lining-nums tabular-nums;
+}
+table caption {
+margin-bottom: 0.75em;
+}
+tbody {
+margin-top: 0.5em;
+border-top: 1px solid #1a1a1a;
+border-bottom: 1px solid #1a1a1a;
+}
+th {
+border-top: 1px solid #1a1a1a;
+padding: 0.25em 0.5em 0.25em 0.5em;
+}
+td {
+padding: 0.125em 0.5em 0.25em 0.5em;
+}
+header {
+margin-bottom: 4em;
+text-align: center;
+}
+#TOC li {
+list-style: none;
+}
+#TOC ul {
+padding-left: 1.3em;
+}
+#TOC > ul {
+padding-left: 0;
+}
+#TOC a:not(:hover) {
+text-decoration: none;
+}
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">README</h1>
+</header>
+<h1 id="ai-standards-protocols-knowledge-base">AI Standards &amp;
+Protocols Knowledge Base</h1>
+<p><strong>Version:</strong> 1.0<br />
+<strong>Generated:</strong> December 4, 2025<br />
+<strong>Purpose:</strong> Comprehensive reference documentation for
+AI/ML protocols, formats, and integration standards</p>
+<hr />
+<h2 id="overview">📚 Overview</h2>
+<p>This knowledge base provides in-depth documentation of AI-related
+protocols, standards, and formats used across the machine learning and
+artificial intelligence ecosystem. It covers neural network
+fundamentals, model interchange formats, API integration standards,
+serving protocols, ML lifecycle management, and related
+technologies.</p>
+<h2 id="structure">📁 Structure</h2>
+<pre><code>ai-standards-kb/
+├── INDEX.md                          # Main navigation and overview
+├── README.md                         # This file
+├── generate-pdfs.ps1                 # PDF generation script
+├── PDF_CONVERSION_INSTRUCTIONS.txt   # Manual conversion guide
+│
+├── standards/                        # Core AI standards documentation
+│   ├── 01-Neural-Networks-Fundamentals.md
+│   ├── 02-ONNX.md
+│   ├── 03-OpenAPI-AI-Services.md
+│   ├── 04-Model-Cards.md
+│   ├── 05-TensorFlow-Serving.md     # [To be completed]
+│   ├── 06-MLflow.md                 # [To be completed]
+│   ├── 07-Hugging-Face-Hub.md       # [To be completed]
+│   ├── 08-gRPC-ML-Serving.md        # [To be completed]
+│   ├── 09-KServe.md                 # [To be completed]
+│   ├── 10-Triton-Inference-Server.md # [To be completed]
+│   └── 11-Other-AI-Standards-Summary.md
+│
+├── annexes/                          # Related technologies and ecosystems
+│   ├── A01-Vector-Embeddings-Standards.md     # [To be completed]
+│   ├── A02-Vector-Databases.md                # [To be completed]
+│   ├── A03-RAG-Patterns.md                    # [To be completed]
+│   ├── A04-Prompt-Engineering-Standards.md    # [To be completed]
+│   └── A05-LLM-API-Standards.md               # [To be completed]
+│
+└── pdf/                              # Generated PDF documents
+    ├── INDEX.pdf
+    ├── standards/                    # PDF versions of standards
+    └── annexes/                      # PDF versions of annexes</code></pre>
+<h2 id="current-status">✅ Current Status</h2>
+<h3 id="completed-documents-416">Completed Documents (4/16)</h3>
+<ul>
+<li>✅ <strong>INDEX.md</strong> - Complete navigation and overview</li>
+<li>✅ <strong>01-Neural-Networks-Fundamentals.md</strong> - Abstract NN
+design, training, inference (12,000+ words)</li>
+<li>✅ <strong>02-ONNX.md</strong> - ONNX format specification and usage
+(7,500+ words)</li>
+<li>✅ <strong>03-OpenAPI-AI-Services.md</strong> - OpenAPI for AI REST
+APIs (7,000+ words)</li>
+<li>✅ <strong>04-Model-Cards.md</strong> - Model documentation
+framework (6,500+ words)</li>
+<li>✅ <strong>11-Other-AI-Standards-Summary.md</strong> - Summary of 14
+additional standards (6,000+ words)</li>
+</ul>
+<h3 id="in-progress-to-be-completed-1116">In Progress / To Be Completed
+(11/16)</h3>
+<ul>
+<li>⏳ <strong>05-TensorFlow-Serving.md</strong> - TF Serving protocols
+and APIs</li>
+<li>⏳ <strong>06-MLflow.md</strong> - ML lifecycle management
+platform</li>
+<li>⏳ <strong>07-Hugging-Face-Hub.md</strong> - Model sharing and
+deployment</li>
+<li>⏳ <strong>08-gRPC-ML-Serving.md</strong> - gRPC patterns for
+ML</li>
+<li>⏳ <strong>09-KServe.md</strong> - Kubernetes ML serving</li>
+<li>⏳ <strong>10-Triton-Inference-Server.md</strong> - NVIDIA inference
+platform</li>
+<li>⏳ <strong>A01-Vector-Embeddings-Standards.md</strong> - Embedding
+formats and metrics</li>
+<li>⏳ <strong>A02-Vector-Databases.md</strong> - Vector DB
+specifications</li>
+<li>⏳ <strong>A03-RAG-Patterns.md</strong> - RAG architectures</li>
+<li>⏳ <strong>A04-Prompt-Engineering-Standards.md</strong> - Prompt
+templates</li>
+<li>⏳ <strong>A05-LLM-API-Standards.md</strong> - LLM API patterns</li>
+</ul>
+<h2 id="quick-start">🚀 Quick Start</h2>
+<h3 id="reading-the-documentation">Reading the Documentation</h3>
+<ol type="1">
+<li><strong>Start with the INDEX</strong>: Open <code>INDEX.md</code>
+for a complete overview and navigation</li>
+<li><strong>Follow the links</strong>: Documents are cross-linked for
+easy navigation</li>
+<li><strong>Use the PDF versions</strong>: Generate PDFs for offline
+reading (see below)</li>
+</ol>
+<h3 id="generating-pdfs">Generating PDFs</h3>
+<h4 id="option-1-using-the-powershell-script">Option 1: Using the
+PowerShell Script</h4>
+<div class="sourceCode" id="cb2"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> ai-standards-kb</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\generate-pdfs<span class="op">.</span><span class="fu">ps1</span></span></code></pre></div>
+<p>The script will: - Detect all markdown files - Check for Pandoc
+installation - Offer automated conversion if Pandoc is available -
+Generate instructions for manual conversion</p>
+<h4 id="option-2-manual-vs-code-conversion">Option 2: Manual VS Code
+Conversion</h4>
+<ol type="1">
+<li>Install “Markdown PDF” extension (yzane.markdown-pdf) in VS
+Code</li>
+<li>Open each markdown file</li>
+<li>Press <code>Ctrl+Shift+P</code> (Windows/Linux) or
+<code>Cmd+Shift+P</code> (Mac)</li>
+<li>Select “Markdown PDF: Export (pdf)”</li>
+<li>Move generated PDFs to appropriate <code>pdf/</code>
+subdirectories</li>
+</ol>
+<h4 id="option-3-using-pandoc-command-line">Option 3: Using Pandoc
+(Command Line)</h4>
+<div class="sourceCode" id="cb3"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Single file</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>pandoc INPUT<span class="op">.</span><span class="fu">md</span> <span class="op">-</span>o OUTPUT<span class="op">.</span><span class="fu">pdf</span> <span class="op">--</span>pdf-engine<span class="op">=</span>xelatex <span class="op">--</span>toc</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Batch conversion (all standards)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">Get-ChildItem</span> standards<span class="op">/*.</span><span class="fu">md</span> <span class="op">|</span> <span class="fu">ForEach-Object</span> <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    pandoc <span class="va">$_</span><span class="op">.</span><span class="fu">FullName</span> <span class="op">-</span>o <span class="st">&quot;pdf/standards/</span><span class="op">$(</span><span class="va">$_</span><span class="op">.</span><span class="fu">BaseName</span><span class="op">)</span><span class="st">.pdf&quot;</span> <span class="op">--</span>pdf-engine<span class="op">=</span>xelatex <span class="op">--</span>toc</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="document-features">📖 Document Features</h2>
+<p>Each documentation file includes:</p>
+<h3 id="comprehensive-structure">1. Comprehensive Structure</h3>
+<ul>
+<li><strong>Overview</strong>: Purpose and key features</li>
+<li><strong>Authoritative References</strong>: Official specifications
+and standards bodies</li>
+<li><strong>Format Structure</strong>: Detailed entity/attribute
+descriptions</li>
+<li><strong>Procedural Use-Cases</strong>: Step-by-step workflows with
+diagrams</li>
+<li><strong>Examples</strong>: Both pseudo-data and real-world
+implementations</li>
+<li><strong>Tools &amp; Ecosystem</strong>: Software implementing the
+standard</li>
+<li><strong>Best Practices</strong>: Guidelines and recommendations</li>
+</ul>
+<h3 id="code-examples">2. Code Examples</h3>
+<ul>
+<li><strong>Pseudocode</strong>: For algorithmic understanding</li>
+<li><strong>C++</strong>: For performance-critical implementations</li>
+<li><strong>Python</strong>: For practical API usage</li>
+<li><strong>YAML/JSON</strong>: For configuration formats</li>
+</ul>
+<h3 id="visual-diagrams">3. Visual Diagrams</h3>
+<ul>
+<li><strong>Mermaid flowcharts</strong>: Process flows</li>
+<li><strong>Sequence diagrams</strong>: API interactions</li>
+<li><strong>Architecture diagrams</strong>: System components</li>
+</ul>
+<h3 id="cross-references">4. Cross-References</h3>
+<ul>
+<li>Links between related documents</li>
+<li>References to external authoritative sources</li>
+<li>Navigation aids throughout</li>
+</ul>
+<h2 id="use-cases">🎯 Use Cases</h2>
+<h3 id="for-ml-engineers">For ML Engineers</h3>
+<ul>
+<li>Understand model interchange formats (ONNX, CoreML)</li>
+<li>Learn deployment patterns (TensorFlow Serving, Triton)</li>
+<li>Implement production APIs (OpenAPI, gRPC)</li>
+</ul>
+<h3 id="for-data-scientists">For Data Scientists</h3>
+<ul>
+<li>Document models properly (Model Cards)</li>
+<li>Version datasets and experiments (DVC, MLflow)</li>
+<li>Understand embedding standards</li>
+</ul>
+<h3 id="for-ai-architects">For AI Architects</h3>
+<ul>
+<li>Design AI integration patterns</li>
+<li>Evaluate serving platforms</li>
+<li>Plan ML infrastructure</li>
+</ul>
+<h3 id="for-compliance-governance">For Compliance &amp; Governance</h3>
+<ul>
+<li>Understand model documentation requirements</li>
+<li>Implement responsible AI practices</li>
+<li>Meet regulatory standards</li>
+</ul>
+<h2 id="requirements">🔧 Requirements</h2>
+<h3 id="for-reading">For Reading</h3>
+<ul>
+<li>Markdown viewer (VS Code, GitHub, any text editor)</li>
+<li>Web browser for interactive diagrams</li>
+</ul>
+<h3 id="for-pdf-generation">For PDF Generation</h3>
+<ul>
+<li><strong>VS Code</strong> with “Markdown PDF” extension
+(yzane.markdown-pdf), OR</li>
+<li><strong>Pandoc</strong> 2.0+ with xelatex engine</li>
+</ul>
+<h3 id="for-code-examples">For Code Examples</h3>
+<ul>
+<li><strong>Python 3.8+</strong> for Python examples</li>
+<li><strong>C++17</strong> compiler for C++ examples</li>
+<li>Relevant ML frameworks as needed</li>
+</ul>
+<h2 id="contributing">📝 Contributing</h2>
+<p>This documentation represents the state of AI standards as of
+December 4, 2025. To expand or update:</p>
+<ol type="1">
+<li>Follow the existing document structure</li>
+<li>Include all required sections (see template above)</li>
+<li>Provide both abstract and concrete examples</li>
+<li>Add cross-references to related documents</li>
+<li>Update INDEX.md with new entries</li>
+</ol>
+<h2 id="license">📄 License</h2>
+<p>This documentation aggregates information from numerous open
+standards and specifications. Each document contains proper attribution
+and links to original sources. Please refer to individual standard
+licenses for usage terms.</p>
+<h2 id="document-information">📞 Document Information</h2>
+<ul>
+<li><strong>Generated</strong>: December 4, 2025</li>
+<li><strong>Version</strong>: 1.0</li>
+<li><strong>Scope</strong>: AI/ML protocols, formats, and integration
+standards</li>
+<li><strong>Coverage</strong>: ~40,000 words across completed
+documents</li>
+<li><strong>Target Completion</strong>: 60,000+ words across all
+documents</li>
+</ul>
+<h2 id="external-resources">🔗 External Resources</h2>
+<h3 id="standards-bodies">Standards Bodies</h3>
+<ul>
+<li><strong>ONNX</strong>: https://onnx.ai/</li>
+<li><strong>OpenAPI Initiative</strong>: https://www.openapis.org/</li>
+<li><strong>Khronos Group</strong> (NNEF):
+https://www.khronos.org/nnef</li>
+<li><strong>Linux Foundation AI &amp; Data</strong>:
+https://lfaidata.foundation/</li>
+</ul>
+<h3 id="tools-platforms">Tools &amp; Platforms</h3>
+<ul>
+<li><strong>ONNX Runtime</strong>: https://onnxruntime.ai/</li>
+<li><strong>TensorFlow</strong>: https://www.tensorflow.org/</li>
+<li><strong>PyTorch</strong>: https://pytorch.org/</li>
+<li><strong>Hugging Face</strong>: https://huggingface.co/</li>
+<li><strong>MLflow</strong>: https://mlflow.org/</li>
+</ul>
+<h3 id="learning-resources">Learning Resources</h3>
+<ul>
+<li><strong>Deep Learning Book</strong>:
+https://www.deeplearningbook.org/</li>
+<li><strong>Stanford CS231n</strong>: http://cs231n.stanford.edu/</li>
+<li><strong>Fast.ai</strong>: https://www.fast.ai/</li>
+</ul>
+<hr />
+<p><strong>Next Steps</strong>: 1. Review completed documentation in
+INDEX.md 2. Run <code>generate-pdfs.ps1</code> to create PDF versions 3.
+Check STATUS.md for implementation roadmap for remaining documents</p>
+<p>For questions or clarifications, refer to the authoritative
+references linked in each document.</p>
+</body>
+</html>

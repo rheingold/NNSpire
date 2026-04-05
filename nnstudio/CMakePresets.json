@@ -1,0 +1,109 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+
+  "configurePresets": [
+    {
+      "name": "engine-ninja",
+      "displayName": "Engine only — Ninja (GCC/Clang)",
+      "description": "Builds and tests the C++ engine core with no Qt/OpenSSL dependency. Uses Ninja generator.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/engine-ninja",
+      "environment": {
+        "PATH": "C:/Users/plachy/Documents/Dev/Qt/Tools/CMake_64/bin;C:/Users/plachy/Documents/Dev/Qt/Tools/Ninja;C:/msys64/mingw64/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "NN_ENABLE_APP":    "OFF",
+        "NN_ENABLE_TRUST":  "OFF",
+        "NN_ENABLE_PYTHON": "OFF",
+        "NN_ENABLE_CUDA":   "OFF",
+        "NN_ENABLE_TESTS":  "ON",
+        "NN_STATIC_CORE":   "ON",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER":    "C:/msys64/mingw64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER":  "C:/msys64/mingw64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM":  "C:/Users/plachy/Documents/Dev/Qt/Tools/Ninja/ninja.exe"
+      }
+    },
+    {
+      "name": "engine-msvc",
+      "displayName": "Engine only — Visual Studio 2022 x64",
+      "description": "Builds and tests the C++ engine core with MSVC. No Qt/OpenSSL needed.",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/engine-msvc",
+      "cacheVariables": {
+        "NN_ENABLE_APP":    "OFF",
+        "NN_ENABLE_TRUST":  "OFF",
+        "NN_ENABLE_PYTHON": "OFF",
+        "NN_ENABLE_CUDA":   "OFF",
+        "NN_ENABLE_TESTS":  "ON",
+        "NN_STATIC_CORE":   "ON"
+      }
+    },
+    {
+      "name": "engine-debug",
+      "displayName": "Engine only — Debug (Ninja)",
+      "description": "Debug build of the engine for stepping through test failures.",
+      "inherits": "engine-ninja",
+      "binaryDir": "${sourceDir}/build/engine-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "full",
+      "displayName": "Full — App + Trust + Python (requires Qt 6, OpenSSL, pybind11)",
+      "description": "Complete build including the Qt application and trust subsystem.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/full",
+      "environment": {
+        "PATH": "C:/Users/plachy/Documents/Dev/Qt/Tools/CMake_64/bin;C:/Users/plachy/Documents/Dev/Qt/Tools/Ninja;C:/Users/plachy/Documents/Dev/Qt/Tools/mingw1310_64/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "NN_ENABLE_APP":    "ON",
+        "NN_ENABLE_TRUST":  "ON",
+        "NN_ENABLE_PYTHON": "ON",
+        "NN_ENABLE_CUDA":   "OFF",
+        "NN_ENABLE_TESTS":  "ON",
+        "NN_STATIC_CORE":   "ON",
+        "NN_QT_VERSION":    "6",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER":    "C:/Users/plachy/Documents/Dev/Qt/Tools/mingw1310_64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER":  "C:/Users/plachy/Documents/Dev/Qt/Tools/mingw1310_64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM":  "C:/Users/plachy/Documents/Dev/Qt/Tools/Ninja/ninja.exe",
+        "CMAKE_PREFIX_PATH":   "C:/Users/plachy/Documents/Dev/Qt/6.10.1/mingw_64"
+      }
+    }
+  ],
+
+  "buildPresets": [
+    { "name": "engine-ninja", "configurePreset": "engine-ninja" },
+    { "name": "engine-msvc-release", "configurePreset": "engine-msvc",
+      "configuration": "Release" },
+    { "name": "engine-msvc-debug", "configurePreset": "engine-msvc",
+      "configuration": "Debug" },
+    { "name": "engine-debug", "configurePreset": "engine-debug" },
+    { "name": "full", "configurePreset": "full" }
+  ],
+
+  "testPresets": [
+    {
+      "name": "engine-ninja",
+      "configurePreset": "engine-ninja",
+      "output": { "outputOnFailure": true, "verbosity": "default" },
+      "execution": { "stopOnFailure": false }
+    },
+    {
+      "name": "engine-msvc",
+      "configurePreset": "engine-msvc",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "engine-debug",
+      "configurePreset": "engine-debug",
+      "output": { "outputOnFailure": true, "verbosity": "verbose" }
+    }
+  ]
+}

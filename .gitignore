@@ -1,0 +1,79 @@
+# ─── Private / local machine data ────────────────────────────────────────────
+ai_priv/
+
+# ─── Build artefacts ─────────────────────────────────────────────────────────
+build/
+build-*/
+out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.pro.user
+*.pro.user.*
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.autosave
+
+# ─── Compiled output ─────────────────────────────────────────────────────────
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.dylib
+*.so
+*.so.*
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+
+# ─── Qt / IDE ─────────────────────────────────────────────────────────────────
+*.qmlc
+*.jsc
+.qmake.stash
+.qmake.cache
+
+# ─── Visual Studio / VS Code ─────────────────────────────────────────────────
+.vs/
+.vscode/settings.json
+*.suo
+*.user
+*.sln.docstates
+ipch/
+x64/
+x86/
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+*.dSYM/
+
+# ─── Windows ─────────────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+
+# ─── NNStudio runtime data ───────────────────────────────────────────────────
+runtime/python/
+truststore/
+settings/
+logs/
+*.nns.bak
+
+# ─── Generated docs ──────────────────────────────────────────────────────────
+docs/generated/
