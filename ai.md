@@ -17,6 +17,30 @@ or a non-obvious implementation detail is discovered. Do NOT commit secrets here
 
 ---
 
+## Terminology conventions (dialogue + documentation only)
+
+These terms are used in `ai.md`, `README.md`, `ARCHITECTURE.md`, ADRs, chapter titles,
+and verbal descriptions. They have **no effect on namespaces, folder names, CMake targets,
+or any code artefact** — those are governed by the rules in "Standing architectural decisions" below.
+
+| Term | Meaning | Code materialisation |
+|---|---|---|
+| **NNStudio** | The overall product — application + engine + plugins | Repo root, product name |
+| **Engine** (capital E) | Collective shorthand for everything under `nnstudio::{core,builtin}` and their backends, plugins, and related signatures. Used when referring to the compute/runtime layer as a whole in documentation and dialogue. | `nnstudio::core`, `nnstudio::builtin`, `nnstudio-core`, `nnstudio-builtin` CMake targets |
+| **CpuBackend** | Reference / didactical backend (Eigen) | `nnstudio::builtin::backends::CpuBackend` |
+| **CudaBackend** | Our own cuBLAS/cuDNN backend (transparent, didactical) | `nnstudio::builtin::backends::CudaBackend` |
+| **LibTorchBackend** | Production opt-in backend delegating to LibTorch | `nnstudio::builtin::backends::LibTorchBackend` |
+| **Studio** (capital S, no "NN") | Short internal reference to the application / UI layer | `nnstudio/app/`, `NNStudio` Qt executable target |
+| **Plugin** | Any loadable extension (C++ `.dll`/`.so` or Python `.py`) conforming to the NNStudio plugin ABI | `nnstudio::plugins::*`, `nnstudio_plugin.h` |
+| **Engine API** | The public C++ interface surface of the Engine (`nnstudio::core` interfaces + `nnstudio::builtin`) | `include/core/`, `include/builtin/` |
+| **torch-compat surface** | The subset of the Engine API that maps 1:1 to PyTorch/Keras names; usable as a drop-in | `include/nnstudio/torch_compat.h`, `nnstudio.nn.*` Python |
+
+> **No codename** for the Engine beyond "Engine" / "NNStudio Engine". Inventing a separate brand
+> (e.g. "NNCore", "Synapse") would create a two-name problem everywhere and add posh connotations
+> implying competition with mature frameworks. Decision recorded 2026-04-06.
+
+---
+
 ## Standing architectural decisions
 
 ### Language stack
