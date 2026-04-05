@@ -157,8 +157,12 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ## Architectural Debt — Namespace Migration (before Phase 2 ABI freeze)
 
-> Do this as **one dedicated commit** before Plugin SDK work begins.  
-> After the Plugin SDK ABI is published, renaming is a breaking change for external plugin authors.
+> ⚠️ **ABI freeze is soft until v1.0 ships.**  
+> All phases (1 through 5; Phase 6 — Quantum — is post-v1.0) are developed in-house before the first public release. This means any rename or ABI change can always be healed by finding all usages and updating them atomically in one commit. There is no external plugin ecosystem to break yet.  
+> Treat "ABI freeze" as: *fix it now so it doesn't accumulate as debt*, not as: *this is irreversible*. Once v1.0 ships publicly, **that** is the real freeze point for the C plugin ABI. Until then, apply the "broken-window" rule: fix the namespace on sight, but do not block Phase 2 work if doing so perfectly would take more than a day.
+>
+> Do this as **one dedicated commit** before Plugin SDK work begins — or incrementally as each subsystem is touched, whichever keeps the build green.  
+> After v1.0 ships, renaming **will** be a breaking change for external plugin authors.
 
 ### Source renames
 
@@ -317,7 +321,23 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] Start / Pause / Resume / Stop training controls
 - [ ] Early stopping configuration
 - [ ] Checkpoint save/load UI
-- [ ] Backend selector (CPU / CUDA / Quantum)
+- [ ] Backend selector — dropdown covering all registered backends:
+  - `CPU` (always available)
+  - `CUDA` (shown only when CudaBackend loads successfully)
+  - `Quantum` (stub — grayed-out until Phase 6)
+  - `Remote (gRPC)` — forwards tensor ops to a remote CUDA worker via `RemoteBackend`;
+    shows a sub-form for endpoint URL + auth token (see **External Compute Services** annex)
+- [ ] Remote training panel — shown when `RemoteTrainer` mode is active (not `RemoteBackend`):
+  - [ ] Service selector: Vast.ai / RunPod / SageMaker / Vertex AI / custom endpoint
+  - [ ] Pod/instance size selector (GPU type, VRAM, vcpu count) — populated from service API
+  - [ ] Estimated cost calculator (price/hr × estimated epochs × batch time)
+  - [ ] Pod lifecycle controls: Launch → Monitor → Stop / Terminate
+  - [ ] Job status: queued / provisioning / running / done / failed, with elapsed time
+  - [ ] Auto-import weights on job completion (poll → download → load into project)
+  - [ ] API key entry (written to OS keychain; never stored in `.nnsp`)
+  > **Cross-reference:** the backend-level and trainer-level integration points, service
+  > table, pricing, and pilot sequence are documented in the **External Compute Services**
+  > annex below. The UI here surfaces those integration points — it does not re-specify them.
 
 ### Weight/activation viewer (`ui/WeightViewer.qml`)
 - [ ] Heatmap of weight matrices per layer (powered by `EvalTrace` weight snapshots)
@@ -517,6 +537,37 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] Model push to runner
 - [ ] Health / latency / throughput monitor (Prometheus scrape)
 - [ ] Optional: launch local Triton Docker container helper
+- [ ] **Remote pod manager** (for Vast.ai / RunPod / LambdaLabs Level-0 services):
+  - [ ] List active pods (status, GPU type, price/hr, elapsed time, SSH endpoint)
+  - [ ] Launch new pod from template (image, GPU type, disk size, open ports)
+  - [ ] Terminate / interrupt pod
+  - [ ] Port-forward helper: opens a local gRPC tunnel to the pod for `RemoteBackend`
+  - [ ] SSH terminal shortcut: opens VS Code Remote-SSH or system terminal to the pod
+- [ ] **Managed job submitter** (for SageMaker / Vertex AI / Azure ML Level-2 services):
+  - [ ] Choose project variant + dataset → submit training job
+  - [ ] Job list: status, cost so far, ETA, logs tail
+  - [ ] Download + import weights from completed job
+
+### `nnstudio-cli` command-line tool (`nnstudio/app/cli/`)
+
+A headless CLI companion to the Qt app. Same C++ engine, no Qt dependency in
+the CLI binary itself — links only `nnstudio-core` + `nnstudio-builtin`.
+Useful for CI pipelines, scripting, and SSH sessions on remote pods.
+
+- [ ] `nnstudio-cli train <project.nnsp> [--preset <name>] [--epochs N] [--remote <service>]`
+  — run training locally or submit to a remote service; streams loss to stdout
+- [ ] `nnstudio-cli export <project.nnsp> --format <onnx|nns|nnsr> -o <out>`
+  — export model; no UI required
+- [ ] `nnstudio-cli run <model.nnsx> --input <file|stdin> --output <file|stdout>`
+  — single inference pass; reads NMID for I/O format
+- [ ] `nnstudio-cli remote list` — list active pods on configured services
+- [ ] `nnstudio-cli remote launch --service vast.ai --gpu RTX4090`
+- [ ] `nnstudio-cli remote stop <pod-id>`
+- [ ] Common flags: `--backend cpu|cuda|remote`, `--config <settings.json>`,
+      `--api-key <env-var-name>` (never accept key as positional arg — shell history)
+- [ ] Machine-readable output: `--json` flag on all commands for scripting
+- [ ] Built as a separate CMake target `nnstudio-cli`; included in `app-ninja` and
+      `app-vs` presets; single static binary goal on Linux/macOS (musl / libc++)
 
 ### Plugin Registry server spec (`nnstudio/deployment/registry/`)
 - [ ] REST API spec (OpenAPI 3.1): `POST /plugin/register`, `GET /plugin/{id}`, `POST /enterprise/ca/request`, `GET /crl`
@@ -627,6 +678,18 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 NNStudio must support offloading computation to remote GPU services at multiple architectural levels.
 This is critical during development (no local CUDA GPU available) and for production scale-out.
+
+### Where external compute surfaces in the NNStudio UI and CLI
+
+| Integration point | Where it appears | Phase |
+|---|---|---|
+| **Backend selector** (CPU / CUDA / Remote-gRPC) | Training Dashboard panel — backend dropdown | Phase 3 |
+| **Remote training panel** (pod launch, job monitor, cost estimate, weight import) | Training Dashboard panel — shown when Remote mode active | Phase 3 |
+| **Remote pod manager** (Vast.ai / RunPod / LambdaLabs pod lifecycle) | Deployment panel | Phase 5 |
+| **Managed job submitter** (SageMaker / Vertex AI / Azure ML job dispatch) | Deployment panel | Phase 5 |
+| **`nnstudio-cli remote *`** (pod list / launch / stop from terminal) | `nnstudio-cli` command-line tool | Phase 5 |
+| **`nnstudio-cli train --remote`** (headless training submission) | `nnstudio-cli` command-line tool | Phase 5 |
+| **Runner health monitor** (Triton / KServe / TF Serving inference endpoints) | Deployment panel — health/latency/throughput | Phase 5 |
 
 ### Integration points in NNStudio architecture
 
