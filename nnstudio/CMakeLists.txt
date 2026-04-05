@@ -198,7 +198,53 @@ target_compile_options(nnstudio-backend-quantum PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/GR- /EHs->
 )
 
-add_subdirectory(plugin-api)   # always — provides nnstudio-trust INTERFACE stub
+# ─── nnstudio-plugin-api / nnstudio-trust (Phase 2) ─────────────────────────
+# Headers: include/plugin-api/   Sources: src/plugin-api/
+# This block is inlined (no subdirectory) because plugin-api/ owns no files
+# other than CMake logic — headers and sources live under include/ and src/.
+
+add_library(nnstudio-plugin-api INTERFACE)
+target_include_directories(nnstudio-plugin-api INTERFACE
+    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include>"
+)
+
+if(NN_ENABLE_TRUST)
+    add_library(nnstudio-trust STATIC
+        ${CMAKE_SOURCE_DIR}/src/plugin-api/trust/TrustStore.cpp
+        ${CMAKE_SOURCE_DIR}/src/plugin-api/trust/TrustVerifier.cpp
+        ${CMAKE_SOURCE_DIR}/src/plugin-api/trust/TrustUpdateHandler.cpp
+        ${CMAKE_SOURCE_DIR}/src/plugin-api/PluginLoader.cpp
+    )
+    target_include_directories(nnstudio-trust
+        PUBLIC  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
+                "$<INSTALL_INTERFACE:include>"
+    )
+    target_link_libraries(nnstudio-trust
+        PUBLIC  nnstudio-plugin-api nnstudio-core
+        PRIVATE OpenSSL::SSL OpenSSL::Crypto
+    )
+    target_compile_options(nnstudio-trust PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-fno-rtti -fno-exceptions>
+        $<$<CXX_COMPILER_ID:MSVC>:/GR- /EHs->
+    )
+
+    add_executable(nnstudio-sign
+        ${CMAKE_SOURCE_DIR}/src/plugin-api/tools/sign/main.cpp
+    )
+    target_link_libraries(nnstudio-sign PRIVATE nnstudio-trust)
+    target_compile_options(nnstudio-sign PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-fno-rtti>
+        $<$<CXX_COMPILER_ID:MSVC>:/GR->
+    )
+else()
+    # No-op INTERFACE stub so everything that links nnstudio-trust still compiles
+    add_library(nnstudio-trust INTERFACE)
+    target_include_directories(nnstudio-trust INTERFACE
+        "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:include>"
+    )
+endif()
 
 # Built-in plugins: Phase 2 — skip until plugin ABI is stable
 # add_subdirectory(plugins)
