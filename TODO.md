@@ -19,7 +19,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Create `DEPLOYMENT.md` — runner/deployment strategy
 - [x] Create `TRUST-ARCHITECTURE.md` — PKI trust chain design
 - [x] Create `LICENSING.md` — license split and plugin charter
-- [ ] Verify no non-.md files exist at project root (except .gitignore)
+- [x] Verify no non-.md files exist at project root (except .gitignore) — `.gitattributes` is standard git infrastructure
 
 ### Source tree skeleton (empty dirs + placeholder CMakeLists)
 - [x] Create `nnstudio/` top-level `CMakeLists.txt`
@@ -35,12 +35,12 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Create `docs/` directory with Doxygen `Doxyfile` stub
 
 ### Third-party / dependency setup
-- [ ] Copy/fetch Eigen headers into `nnstudio/third-party/eigen/`
-- [ ] Copy/fetch pybind11 into `nnstudio/third-party/pybind11/`
-- [ ] Copy/fetch GoogleTest into `nnstudio/third-party/googletest/`
-- [ ] Copy/fetch ONNX protobuf into `nnstudio/third-party/onnx/`
-- [ ] Confirm OpenSSL 3.x available (system or bundled)
-- [ ] Verify Qt 6.5+ installation and record path in `ai_priv/ai_priv.md`
+- [x] Copy/fetch Eigen headers — resolved via CMake FetchContent (3.4.0); no manual copy needed
+- [x] Copy/fetch GoogleTest — resolved via CMake FetchContent (1.14.0); no manual copy needed
+- [ ] Copy/fetch pybind11 into `nnstudio/third-party/pybind11/` — deferred to Python bridge phase
+- [ ] Copy/fetch ONNX protobuf into `nnstudio/third-party/onnx/` — deferred to Format I/O phase
+- [x] Confirm OpenSSL 3.x available — OpenSSL 3.6.0 at `C:\Program Files\OpenSSL-Win64`; MSYS2 also has 3.1.4
+- [x] Verify Qt 6.5+ installation and record path in `ai_priv/ai_priv.md` — Qt 6.10.1 recorded
 
 ---
 
