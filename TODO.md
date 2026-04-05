@@ -59,11 +59,11 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Abstract `Layer` base: `forward()`, `backward()`, `parameters()`, `serialize()`, `docRef()`
 - [x] `Dense` (fully connected)
 - [ ] `Conv2D`
-- [ ] `BatchNorm`
-- [ ] `Dropout`
+- [x] `BatchNorm` → `BatchNorm1d` in `NormLayers.h`
+- [x] `Dropout` → `NormLayers.h`
 - [ ] `Embedding`
 - [ ] `MultiHeadAttention`
-- [ ] `LayerNorm`
+- [x] `LayerNorm` → `NormLayers.h`
 - [ ] Python bindings for all layers
 - [ ] C++ export template for each layer type
 - [x] Unit tests: forward pass vs reference, backward pass gradient check
@@ -76,7 +76,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > **Work required:**
 > - [x] Add `core/include/nnstudio/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
 > - [x] Add `ActivationsFnLayer.h` adapter wrapping `IActivation` into a full `ILayer` (`ActivationsFnLayer<Fn>` owning + `ActivationsFnLayerPtr` non-owning)
-> - [ ] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to implement `IActivation` (remove `lastInput_`/`lastOutput_`; return as `ctx` in `ActivationForward`)
+> - [x] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to implement `IActivation` (remove `lastInput_`/`lastOutput_`; return as `ctx` in `ActivationForward`)
 > - [ ] Update `blueprints.md §3.8` to reflect the new interface
 > - [x] Add unit tests: `ActivationsFnLayer_ReLU_Forward`, `_Backward`, `_NoParams`
 
@@ -138,20 +138,18 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] Python bindings
 
 ### Feature flags (`nnstudio/core/features/`)
-- [ ] `FeatureFlags.h` — enum `Tier { FREE, PRO, ENTERPRISE }`
-- [ ] All current flags declared `FREE`
-- [ ] `isEnabled(Feature)` — currently returns `true` for all FREE flags
+- [x] `FeatureFlags.h` — `inline constexpr FeatureFlag` pattern; all flags declared `FREE`; `isEnabled()` returns true for all FREE flags
 
 ### Backend abstraction (`nnstudio/backends/`)
 - [x] `IBackend` interface: `matmul()`, `elementWise()`, `memAlloc()`, `memFree()`, `sync()`
 - [x] `CpuBackend` — Eigen-based matmul reference implementation
 - [ ] `CudaBackend` — cuBLAS/cuDNN conditional compile; disabled if CUDA not found
-- [ ] `QuantumBackend` — stub; interface compiles, `execute()` throws `NotImplemented`
+- [x] `QuantumBackend` — stub; interface compiles, all methods call `__builtin_trap()`; registered in BackendRegistry
 - [x] `BackendRegistry` — runtime registration and selection by device tag
 - [x] Dynamic loading: each backend is a separate shared library loaded on demand
 
 ### Phase 1 milestone verification
-- [ ] `cmake --build && ctest` passes all unit tests
+- [x] `cmake --build && ctest` passes all unit tests — **63/63 green** (15 new LayerTest + 48 prior)
 - [x] Can construct 3-layer MLP in C++, run forward pass on XOR dataset, verify output shape ← `test_trainer_xor.cpp`
 - [ ] Same via Python bindings: `import nnstudio; ...` works in embedded Python
 

@@ -178,10 +178,10 @@ protected:
     // Call from build() once weights are allocated
     void markBuilt() noexcept { built_ = true; }
 
-    // Cache last input (needed for backward in many layers)
-    Tensor lastInput_;
-    // Cache last pre-activation output (needed for backward in activation layers)
-    Tensor lastOutput_;
+    // NOTE (ADR-020): lastInput_/lastOutput_ have been removed from ILayer.
+    // Layers that need them declare their own private Tensor members:
+    //   Dense         — lastInput_ in Dense.h
+    //   ActivationBase — ctx_ (ActivationForward) in Activations.h via functors
 };
 
 // ─── LayerPtr convenience alias ───────────────────────────────────────────────

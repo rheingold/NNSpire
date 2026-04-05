@@ -99,8 +99,8 @@ TEST_F(ActivationTest, GELUPositiveApprox) {
 #include <builtin/layers/ActivationsFnLayer.h>
 #include <algorithm>
 
-// Minimal stateless ReLU implementing IActivation
-struct ReLUFn : nnstudio::core::IActivation {
+// Minimal stateless ReLU implementing IActivation (prefixed to avoid clash with nnstudio::builtin::layers::ReLUFn)
+struct LocalReLUFn : nnstudio::core::IActivation {
     std::string_view name() const noexcept override { return "ReLU"; }
 
     nnstudio::core::ActivationForward
@@ -123,7 +123,7 @@ struct ReLUFn : nnstudio::core::IActivation {
     }
 };
 
-using ReLULayer = nnstudio::builtin::layers::ActivationsFnLayer<ReLUFn>;
+using ReLULayer = nnstudio::builtin::layers::ActivationsFnLayer<LocalReLUFn>;
 
 TEST_F(ActivationTest, ActivationsFnLayer_ReLU_Forward) {
     ReLULayer layer;

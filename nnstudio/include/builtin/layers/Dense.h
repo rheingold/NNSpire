@@ -78,6 +78,7 @@ public:
     static void setSeed(uint32_t seed) noexcept;
     static void resetSeed() noexcept;  ///< restore std::random_device seeding
 private:
+    Tensor lastInput_;   ///< saved from forward() for use in backward()
     int64_t    outFeatures_;
     int64_t    inFeatures_{0};
     bool       useBias_;
@@ -85,7 +86,6 @@ private:
 
     Parameter weights_;
     Parameter bias_;
-    Tensor    lastInput_;
 
     void initWeights();
 };

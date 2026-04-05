@@ -136,7 +136,9 @@ target_compile_options(nnstudio-backend-cpu PRIVATE
 # Namespace: nnstudio::builtin::   Headers: include/builtin/   Sources: src/builtin/
 set(BUILTIN_SOURCES
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/Activations.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/layers/ActivationFunctors.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/Dense.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/layers/NormLayers.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/losses/Losses.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/optimizers/Optimizers.cpp
 )
@@ -175,11 +177,23 @@ if(NN_ENABLE_CUDA)
     )
 endif()
 
-# ─── nnstudio-backend-quantum stub (Phase 6) ─────────────────────────────────────
-add_library(nnstudio-backend-quantum INTERFACE)
-target_include_directories(nnstudio-backend-quantum INTERFACE
-    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>")
-target_link_libraries(nnstudio-backend-quantum INTERFACE nnstudio-core)
+# ─── nnstudio-backend-quantum stub (Phase 6) ───────────────────────────────────────────────
+if(NN_STATIC_CORE)
+    add_library(nnstudio-backend-quantum STATIC
+        ${CMAKE_SOURCE_DIR}/src/builtin/backends/QuantumBackend.cpp)
+else()
+    add_library(nnstudio-backend-quantum SHARED
+        ${CMAKE_SOURCE_DIR}/src/builtin/backends/QuantumBackend.cpp)
+endif()
+target_include_directories(nnstudio-backend-quantum
+    PUBLIC  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
+            "$<INSTALL_INTERFACE:include>"
+)
+target_link_libraries(nnstudio-backend-quantum PUBLIC nnstudio-core)
+target_compile_options(nnstudio-backend-quantum PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-fno-rtti -fno-exceptions>
+    $<$<CXX_COMPILER_ID:MSVC>:/GR- /EHs->
+)
 
 add_subdirectory(plugin-api)   # always — provides nnstudio-trust INTERFACE stub
 

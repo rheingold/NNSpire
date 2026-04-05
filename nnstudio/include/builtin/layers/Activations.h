@@ -26,19 +26,20 @@
  * Not elementwise in backward: full Jacobian via dot-product form:
  *   dX_i = s_i · (gradOut_i − dot(gradOut, s))
  *
- * ⚠️  HIGH PRIORITY (ADR-020): ActivationBase stores lastInput_/lastOutput_ making
- * it non-reentrant. Before Phase 2 ABI freeze these must migrate to the functional
- * IActivation pattern (ActivationForward struct + context). See TODO.md.
- *
- * @see docs/blueprints.md — §3.8
- * @kb: docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#activation-functions
+ * ⚠️  ADR-020 MIGRATION COMPLETE (Phase 1):
+ * lastInput_/lastOutput_ have been removed from ILayer and ActivationBase.
+ * Each concrete class now owns a functor (e.g. ReLUFn fn_) and stores context
+ * as ActivationForward ctx_. Functors are also usable standalone via
+ * ActivationsFnLayer<ReLUFn> for reentrant/shared use cases.
  * ============================================================================ */
 
 #pragma once
 
 #include <core/Layer.h>
+#include <core/IActivation.h>
 #include <core/Tensor.h>
 #include <core/Result.h>
+#include <builtin/layers/ActivationFunctors.h>
 
 namespace nnstudio {
 namespace builtin {
@@ -57,6 +58,8 @@ public:
         markBuilt();
         return Result<Shape>(inputShape);
     }
+protected:
+    ActivationForward ctx_;   ///< saved by forward(); consumed by backward()
 };
 
 // ─── ReLU: f(x) = max(0, x) ──────────────────────────────────────────────────
@@ -66,26 +69,26 @@ public:
     std::string_view docRef()   const noexcept override {
         return "docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#relu";
     }
-
-    Result<Tensor> forward (const Tensor& x)        override;
-    Result<Tensor> backward(const Tensor& gradOut)  override;
+    Result<Tensor> forward (const Tensor& x)       override;
+    Result<Tensor> backward(const Tensor& gradOut) override;
+private:
+    ReLUFn fn_;
 };
 
 // ─── LeakyReLU: f(x) = x if x>0 else alpha*x ────────────────────────────────
 class LeakyReLU : public ActivationBase {
 public:
-    explicit LeakyReLU(float alpha = 0.01f) : alpha_(alpha) {}
+    explicit LeakyReLU(float alpha = 0.01f) : fn_(alpha) {}
     std::string_view typeName() const noexcept override { return "LeakyReLU"; }
 
-    Result<Tensor> forward (const Tensor& x)        override;
-    Result<Tensor> backward(const Tensor& gradOut)  override;
+    Result<Tensor> forward (const Tensor& x)       override;
+    Result<Tensor> backward(const Tensor& gradOut) override;
 
     std::unordered_map<std::string,std::string> config() const override {
-        return {{"alpha", std::to_string(alpha_)}};
+        return {{"alpha", std::to_string(fn_.alpha_)}};
     }
-
 private:
-    float alpha_;
+    LeakyReLUFn fn_;
 };
 
 // ─── Sigmoid: f(x) = 1/(1+exp(-x)) ──────────────────────────────────────────
@@ -95,18 +98,20 @@ public:
     std::string_view docRef()   const noexcept override {
         return "docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#sigmoid";
     }
-
-    Result<Tensor> forward (const Tensor& x)        override;
-    Result<Tensor> backward(const Tensor& gradOut)  override;
+    Result<Tensor> forward (const Tensor& x)       override;
+    Result<Tensor> backward(const Tensor& gradOut) override;
+private:
+    SigmoidFn fn_;
 };
 
 // ─── TanhAct: f(x) = tanh(x) ─────────────────────────────────────────────────
 class TanhAct : public ActivationBase {
 public:
     std::string_view typeName() const noexcept override { return "Tanh"; }
-
-    Result<Tensor> forward (const Tensor& x)        override;
-    Result<Tensor> backward(const Tensor& gradOut)  override;
+    Result<Tensor> forward (const Tensor& x)       override;
+    Result<Tensor> backward(const Tensor& gradOut) override;
+private:
+    TanhActFn fn_;
 };
 
 // ─── Softmax: f(x_i) = exp(x_i - max) / sum(exp(x_j - max)) ─────────────────
@@ -117,9 +122,10 @@ public:
     std::string_view docRef()   const noexcept override {
         return "docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#softmax";
     }
-
-    Result<Tensor> forward (const Tensor& x)        override;
-    Result<Tensor> backward(const Tensor& gradOut)  override;
+    Result<Tensor> forward (const Tensor& x)       override;
+    Result<Tensor> backward(const Tensor& gradOut) override;
+private:
+    SoftmaxFn fn_;
 };
 
 // ─── GELU: f(x) = 0.5·x·(1+tanh(√(2/π)·(x+0.044715·x³))) ──────────────────
@@ -127,9 +133,10 @@ public:
 class GELU : public ActivationBase {
 public:
     std::string_view typeName() const noexcept override { return "GELU"; }
-
-    Result<Tensor> forward (const Tensor& x)        override;
-    Result<Tensor> backward(const Tensor& gradOut)  override;
+    Result<Tensor> forward (const Tensor& x)       override;
+    Result<Tensor> backward(const Tensor& gradOut) override;
+private:
+    GELUFn fn_;
 };
 
 } // namespace layers
