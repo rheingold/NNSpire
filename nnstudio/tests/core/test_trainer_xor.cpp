@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include <core/Layer.h>
 #include <builtin/layers/Dense.h>
-#include <builtin/layers/Activations.h>
+#include <builtin/activations/Activations.h>
 #include <builtin/losses/Losses.h>
 #include <builtin/optimizers/Optimizers.h>
 #include <core/Trainer.h>
@@ -27,6 +27,7 @@
 
 using namespace nnstudio::internal::training;
 using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 using namespace nnstudio::builtin::losses;
 using namespace nnstudio::builtin::optimizers;
 using namespace nnstudio::builtin::backends;

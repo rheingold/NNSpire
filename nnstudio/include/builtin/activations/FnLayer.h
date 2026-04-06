@@ -1,5 +1,5 @@
 /* ============================================================================
- * ActivationsFnLayer.h — ILayer adapter for IActivation  [nnstudio::builtin::layers]
+ * FnLayer.h — ILayer adapter for IActivation  [nnstudio::builtin::activations]
  * LGPL v3
  *
  * Bridges the ADR-020 stateless IActivation interface into the ILayer world.
@@ -29,7 +29,7 @@
  * build() passes the input shape through unchanged (like ActivationBase).
  *
  * @see include/core/IActivation.h
- * @see include/builtin/layers/Activations.h  (legacy ActivationBase path)
+ * @see include/builtin/activations/Activations.h  (legacy ActivationBase path)
  * ============================================================================
 */
 #pragma once
@@ -41,7 +41,7 @@
 
 namespace nnstudio {
 namespace builtin {
-namespace layers {
+namespace activations {
 
 using namespace nnstudio::core;
 
@@ -124,6 +124,6 @@ private:
     ActivationForward ctx_;
 };
 
-} // namespace layers
+} // namespace activations
 } // namespace builtin
 } // namespace nnstudio

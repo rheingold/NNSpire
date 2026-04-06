@@ -3,7 +3,7 @@
  * LGPL v3
  * ============================================================================ */
 
-#include <builtin/layers/ActivationFunctors.h>
+#include <builtin/activations/Functors.h>
 #include <core/BackendRegistry.h>
 
 #include <cmath>
@@ -14,7 +14,7 @@ using namespace nnstudio::core;
 
 namespace nnstudio {
 namespace builtin {
-namespace layers {
+namespace activations {
 
 static inline IBackend& B() { return backend(); }
 
@@ -172,6 +172,6 @@ Result<Tensor> GELUFn::backward(const Tensor& gradOut,
     return Result<Tensor>(grad);
 }
 
-} // namespace layers
+} // namespace activations
 } // namespace builtin
 } // namespace nnstudio

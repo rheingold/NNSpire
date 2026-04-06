@@ -167,8 +167,8 @@ target_compile_options(nnstudio-backend-cpu PRIVATE
 # ─── nnstudio-builtin (layers / losses / optimizers) ────────────────────────────
 # Namespace: nnstudio::builtin::   Headers: include/builtin/   Sources: src/builtin/
 set(BUILTIN_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/builtin/layers/Activations.cpp
-    ${CMAKE_SOURCE_DIR}/src/builtin/layers/ActivationFunctors.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/activations/Activations.cpp
+    ${CMAKE_SOURCE_DIR}/src/builtin/activations/Functors.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/Dense.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/NormLayers.cpp
     ${CMAKE_SOURCE_DIR}/src/builtin/layers/Conv2D.cpp

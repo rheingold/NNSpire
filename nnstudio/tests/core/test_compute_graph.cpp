@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 #include <core/ComputeGraph.h>
 #include <builtin/layers/Dense.h>
-#include <builtin/layers/Activations.h>
+#include <builtin/activations/Activations.h>
 #include <builtin/backends/CpuBackend.h>
 #include <memory>
 #include <core/BackendRegistry.h>
@@ -14,6 +14,7 @@
 
 using namespace nnstudio::core;
 using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 using namespace nnstudio::builtin::backends;
 
 // ─── Fixture ──────────────────────────────────────────────────────────────────
@@ -196,6 +197,7 @@ static void ensureFactories() {
     factoriesRegistered = true;
 
     using namespace nnstudio::builtin::layers;
+    using namespace nnstudio::builtin::activations;
     using CfgMap = std::unordered_map<std::string, std::string>;
 
     ComputeGraph::registerLayerFactory("Dense",

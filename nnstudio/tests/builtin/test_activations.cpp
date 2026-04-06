@@ -4,13 +4,13 @@
  * ============================================================================ */
 
 #include <gtest/gtest.h>
-#include <builtin/layers/Activations.h>
+#include <builtin/activations/Activations.h>
 #include <builtin/backends/CpuBackend.h>
 #include <core/BackendRegistry.h>
 #include <cmath>
 
 using namespace nnstudio::core;
-using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 using namespace nnstudio::builtin::backends;
 
 class ActivationTest : public ::testing::Test {
@@ -96,10 +96,10 @@ TEST_F(ActivationTest, GELUPositiveApprox) {
 
 // --- ActivationsFnLayer + IActivation (ADR-020) ---
 #include <core/IActivation.h>
-#include <builtin/layers/ActivationsFnLayer.h>
+#include <builtin/activations/FnLayer.h>
 #include <algorithm>
 
-// Minimal stateless ReLU implementing IActivation (prefixed to avoid clash with nnstudio::builtin::layers::ReLUFn)
+// Minimal stateless ReLU implementing IActivation (prefixed to avoid clash with nnstudio::builtin::activations::ReLUFn)
 struct LocalReLUFn : nnstudio::core::IActivation {
     std::string_view name() const noexcept override { return "ReLU"; }
 
@@ -123,7 +123,7 @@ struct LocalReLUFn : nnstudio::core::IActivation {
     }
 };
 
-using ReLULayer = nnstudio::builtin::layers::ActivationsFnLayer<LocalReLUFn>;
+using ReLULayer = nnstudio::builtin::activations::ActivationsFnLayer<LocalReLUFn>;
 
 TEST_F(ActivationTest, ActivationsFnLayer_ReLU_Forward) {
     ReLULayer layer;

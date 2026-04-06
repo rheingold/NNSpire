@@ -7,13 +7,13 @@
  * forward() and backward() calls.
  * ============================================================================ */
 
-#include <builtin/layers/Activations.h>
+#include <builtin/activations/Activations.h>
 
 using namespace nnstudio::core;
 
 namespace nnstudio {
 namespace builtin {
-namespace layers {
+namespace activations {
 
 // ─── ReLU ────────────────────────────────────────────────────────────────────
 
@@ -75,6 +75,6 @@ Result<Tensor> GELU::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     return fn_.backward(gradOut, ctx_);
 }
 
-} // namespace layers
+} // namespace activations
 } // namespace builtin
 } // namespace nnstudio

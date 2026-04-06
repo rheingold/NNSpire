@@ -17,13 +17,14 @@
 #include <gtest/gtest.h>
 
 #include <builtin/layers/Dense.h>
-#include <builtin/layers/Activations.h>
-#include <builtin/layers/ActivationsFnLayer.h>
+#include <builtin/activations/Activations.h>
+#include <builtin/activations/FnLayer.h>
 #include <core/CompatibilityChecker.h>
 #include <core/ComputeGraph.h>
 
 using namespace nnstudio::core;
 using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 
 // ─── 1. classify — BothStandard layers ───────────────────────────────────────
 

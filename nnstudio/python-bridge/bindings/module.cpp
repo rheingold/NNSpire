@@ -30,9 +30,9 @@
 #include <builtin/layers/Embedding.h>
 #include <builtin/layers/MultiHeadAttention.h>
 #include <builtin/layers/NormLayers.h>
-#include <builtin/layers/Activations.h>
-#include <builtin/layers/ActivationFunctors.h>
-#include <builtin/layers/ActivationsFnLayer.h>
+#include <builtin/activations/Activations.h>
+#include <builtin/activations/Functors.h>
+#include <builtin/activations/FnLayer.h>
 #include <builtin/losses/Losses.h>
 #include <builtin/optimizers/Optimizers.h>
 #include <core/ComputeGraph.h>
@@ -49,6 +49,7 @@ using ILayer    = nnstudio::core::ILayer;
 using Parameter = nnstudio::core::Parameter;
 
 namespace nsl = nnstudio::builtin::layers;
+namespace nsa = nnstudio::builtin::activations;
 namespace nso = nnstudio::builtin::optimizers;
 namespace nsloss = nnstudio::builtin::losses;
 
@@ -239,22 +240,22 @@ Matches torch.nn.Linear(in_features, out_features, bias=True).)doc");
         .def(py::init<float>(), "p"_a = 0.5f);
 
     // ── Activations ───────────────────────────────────────────────────────────
-    py::class_<nsl::ReLU, ILayer>(nn, "ReLU")
+    py::class_<nsa::ReLU, ILayer>(nn, "ReLU")
         .def(py::init<>());
 
-    py::class_<nsl::Sigmoid, ILayer>(nn, "Sigmoid")
+    py::class_<nsa::Sigmoid, ILayer>(nn, "Sigmoid")
         .def(py::init<>());
 
-    py::class_<nsl::TanhAct, ILayer>(nn, "Tanh")
+    py::class_<nsa::TanhAct, ILayer>(nn, "Tanh")
         .def(py::init<>());
 
-    py::class_<nsl::GELU, ILayer>(nn, "GELU")
+    py::class_<nsa::GELU, ILayer>(nn, "GELU")
         .def(py::init<>());
 
-    py::class_<nsl::Softmax, ILayer>(nn, "Softmax")
+    py::class_<nsa::Softmax, ILayer>(nn, "Softmax")
         .def(py::init<>());                      // dim handled inside forward
 
-    py::class_<nsl::LeakyReLU, ILayer>(nn, "LeakyReLU")
+    py::class_<nsa::LeakyReLU, ILayer>(nn, "LeakyReLU")
         .def(py::init<float>(), "negative_slope"_a = 0.01f);
 
     // ── Sequential ────────────────────────────────────────────────────────────
@@ -343,27 +344,27 @@ Matches torch.nn.Linear(in_features, out_features, bias=True).)doc");
                                "nnstudio.nn.functional — stateless activation ops");
 
     fn.def("relu", [](const Tensor& x) {
-        return nsl::ReLUFn{}.forward(x).output;
+        return nsa::ReLUFn{}.forward(x).output;
     }, "input"_a);
 
     fn.def("sigmoid", [](const Tensor& x) {
-        return nsl::SigmoidFn{}.forward(x).output;
+        return nsa::SigmoidFn{}.forward(x).output;
     }, "input"_a);
 
     fn.def("tanh", [](const Tensor& x) {
-        return nsl::TanhActFn{}.forward(x).output;
+        return nsa::TanhActFn{}.forward(x).output;
     }, "input"_a);
 
     fn.def("gelu", [](const Tensor& x) {
-        return nsl::GELUFn{}.forward(x).output;
+        return nsa::GELUFn{}.forward(x).output;
     }, "input"_a);
 
     fn.def("softmax", [](const Tensor& x, int64_t /*dim*/) {
-        return nsl::SoftmaxFn{}.forward(x).output;
+        return nsa::SoftmaxFn{}.forward(x).output;
     }, "input"_a, "dim"_a = -1);
 
     fn.def("leaky_relu", [](const Tensor& x, float negative_slope) {
-        return nsl::LeakyReLUFn{negative_slope}.forward(x).output;
+        return nsa::LeakyReLUFn{negative_slope}.forward(x).output;
     }, "input"_a, "negative_slope"_a = 0.01f);
 
     fn.def("dropout", [](const Tensor& x, float p, bool training) {

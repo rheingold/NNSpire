@@ -1,5 +1,5 @@
 /* ============================================================================
- * Activations.h — element-wise activation functions  [nnstudio::builtin::layers]
+ * Activations.h — element-wise activation functions  [nnstudio::builtin::activations]
  * LGPL v3
  *
  * INHERITANCE CHAIN
@@ -39,11 +39,11 @@
 #include <core/IActivation.h>
 #include <core/Tensor.h>
 #include <core/Result.h>
-#include <builtin/layers/ActivationFunctors.h>
+#include <builtin/activations/Functors.h>
 
 namespace nnstudio {
 namespace builtin {
-namespace layers {
+namespace activations {
 using namespace nnstudio::core;
 
 // ─── Shared base that handles the boilerplate ─────────────────────────────────
@@ -139,6 +139,6 @@ private:
     GELUFn fn_;
 };
 
-} // namespace layers
+} // namespace activations
 } // namespace builtin
 } // namespace nnstudio

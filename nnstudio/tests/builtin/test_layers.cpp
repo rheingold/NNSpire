@@ -6,8 +6,8 @@
 */
 #include <gtest/gtest.h>
 #include <builtin/layers/NormLayers.h>
-#include <builtin/layers/ActivationsFnLayer.h>
-#include <builtin/layers/ActivationFunctors.h>
+#include <builtin/activations/FnLayer.h>
+#include <builtin/activations/Functors.h>
 #include <builtin/layers/Dense.h>
 #include <builtin/backends/CpuBackend.h>
 #include <core/BackendRegistry.h>
@@ -17,6 +17,7 @@
 
 using namespace nnstudio::core;
 using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 using namespace nnstudio::builtin::backends;
 
 class LayerTest : public ::testing::Test {

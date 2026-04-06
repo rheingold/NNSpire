@@ -1,5 +1,5 @@
 /* ============================================================================
- * ActivationFunctors.h — stateless IActivation functors  [nnstudio::builtin::layers]
+ * Functors.h — stateless IActivation functors  [nnstudio::builtin::activations]
  * LGPL v3
  *
  * Each struct is a zero-mutable-state IActivation implementor.  A single
@@ -18,8 +18,8 @@
  *   false — ctx holds the output y  (Sigmoid, TanhAct, Softmax)
  *
  * @see include/core/IActivation.h
- * @see include/builtin/layers/ActivationsFnLayer.h
- * @see include/builtin/layers/Activations.h  (ILayer wrappers)
+ * @see include/builtin/activations/FnLayer.h
+ * @see include/builtin/activations/Activations.h  (ILayer wrappers)
  * ============================================================================
 */
 #pragma once
@@ -28,7 +28,7 @@
 
 namespace nnstudio {
 namespace builtin {
-namespace layers {
+namespace activations {
 
 using namespace nnstudio::core;
 
@@ -82,6 +82,6 @@ struct GELUFn : IActivation {
     Result<Tensor>    backward(const Tensor& gradOut, const ActivationForward& fwd) const override;
 };
 
-} // namespace layers
+} // namespace activations
 } // namespace builtin
 } // namespace nnstudio

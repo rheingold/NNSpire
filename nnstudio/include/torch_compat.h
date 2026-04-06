@@ -53,9 +53,9 @@
 #include <builtin/layers/Embedding.h>
 #include <builtin/layers/MultiHeadAttention.h>
 #include <builtin/layers/NormLayers.h>
-#include <builtin/layers/Activations.h>
-#include <builtin/layers/ActivationFunctors.h>
-#include <builtin/layers/ActivationsFnLayer.h>
+#include <builtin/activations/Activations.h>
+#include <builtin/activations/Functors.h>
+#include <builtin/activations/FnLayer.h>
 #include <builtin/losses/Losses.h>
 #include <builtin/optimizers/Optimizers.h>
 
@@ -106,6 +106,7 @@ inline Tensor rand(Shape shape, DType dtype = DType::Float32, Device dev = Devic
 namespace nn {
 
 using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 using namespace nnstudio::builtin::losses;
 
 // ── Module base ──────────────────────────────────────────────────────────────
@@ -158,12 +159,12 @@ using LayerNorm = nnstudio::builtin::layers::LayerNorm;
 using Dropout = nnstudio::builtin::layers::Dropout;
 
 // ── Activations ──────────────────────────────────────────────────────────────
-using ReLU    = nnstudio::builtin::layers::ReLU;
-using Sigmoid = nnstudio::builtin::layers::Sigmoid;
-using Tanh    = nnstudio::builtin::layers::TanhAct;   ///< TanhAct avoids std::tanh clash
-using GELU    = nnstudio::builtin::layers::GELU;
-using Softmax = nnstudio::builtin::layers::Softmax;
-using LeakyReLU = nnstudio::builtin::layers::LeakyReLU;
+using ReLU    = nnstudio::builtin::activations::ReLU;
+using Sigmoid = nnstudio::builtin::activations::Sigmoid;
+using Tanh    = nnstudio::builtin::activations::TanhAct;   ///< TanhAct avoids std::tanh clash
+using GELU    = nnstudio::builtin::activations::GELU;
+using Softmax = nnstudio::builtin::activations::Softmax;
+using LeakyReLU = nnstudio::builtin::activations::LeakyReLU;
 
 // ── Loss functions ────────────────────────────────────────────────────────────
 using MSELoss              = nnstudio::builtin::losses::MSE;
@@ -268,6 +269,7 @@ private:
 namespace functional {
 
 using namespace nnstudio::builtin::layers;
+using namespace nnstudio::builtin::activations;
 
 /// Stateless activation free functions — match torch.nn.functional.* naming.
 inline nnstudio::core::Tensor relu(const nnstudio::core::Tensor& x) {

@@ -4,7 +4,7 @@
  *
  * ADR-020 — motivation
  * ────────────────────
- * The original ActivationBase (builtin/layers/Activations.h) stores
+ * The original ActivationBase (builtin/activations/Activations.h) stores
  * lastInput_/lastOutput_ as member variables, making each instance stateful
  * and non-reentrant. That is fine for single-threaded sequential training but
  * will break under:
@@ -47,7 +47,7 @@
  * ActivationForward::ctxIsInput signals which tensor is in ctx.
  *
  * @see docs/blueprints.md §3.8
- * @see nnstudio/include/builtin/layers/ActivationsFnLayer.h
+ * @see nnstudio/include/builtin/activations/FnLayer.h
  * ============================================================================
 */
 #pragma once
