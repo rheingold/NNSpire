@@ -61,9 +61,10 @@ from .nnstudio import __version__  # noqa: F401
 from . import keras              # noqa: F401
 from . import torch_compat       # noqa: F401
 from . import plugin_manifest    # noqa: F401
+from . import runners            # noqa: F401
 
 __all__ = [
     "nn", "optim", "Tensor", "DType", "Device",
     "zeros", "ones", "full", "__version__",
-    "keras", "torch_compat", "plugin_manifest",
+    "keras", "torch_compat", "plugin_manifest", "runners",
 ]

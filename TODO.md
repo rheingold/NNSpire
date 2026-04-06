@@ -359,8 +359,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ### pybind11 bridge (`nnstudio/python-bridge/`)
 - [x] Python module `nnstudio` exposing: `Tensor`, all `Layer` subclasses, `ComputeGraph`, `Trainer`, `BackendRegistry`
-- [ ] `runners/` sub-package: Python-side runner clients mirroring `nnstudio/deployment/`
-- [ ] `pyproject.toml` for installable Python package
+- [x] `runners/` sub-package: Python-side runner clients mirroring `nnstudio/deployment/`
+- [x] `pyproject.toml` for installable Python package
 - [ ] Wheel build in CI
 
 ### Plugin scaffolds (`nnstudio/plugin-api/templates/`)
