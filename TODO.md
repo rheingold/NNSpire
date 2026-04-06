@@ -597,7 +597,26 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### App shell (`nnstudio/app/`)
 - [ ] `main.cpp` — Qt app init, backend detection, plugin loader, dependency check, QML engine setup
 - [ ] `controllers/` — `ModelController`, `TrainingController`, `BackendController`, `PluginController`, `HelpController`, **`CodeGraphSyncController`** (owns the parser ↔ model-graph ↔ canvas sync loop; see ADR-033)
-- [ ] Dockable panel system (QML `SplitView` + `DockManager` or equivalent)
+- [ ] Dockable panel system — every panel (model editor, training dashboard, weight viewer,
+  neuron viewer, tokenizer, KB help, output/debugger, ecosystem architect) is independently:
+  - **Movable** — drag by title bar to any position
+  - **Anchorable** — snap to left / right / top / bottom edge or centre tabbed area
+  - **Detachable** — float as an independent OS window (multi-monitor support)
+  - **Stackable** — drop onto another panel to create a tab group
+  - **Collapsible** — minimise to icon strip; panel remembers its last size on expand
+- [ ] **Workspace layout presets** — switchable from View menu and toolbar dropdown:
+  - `Code-first` — code pane wide, canvas narrow (default for experienced users)
+  - `Canvas-first` — visual canvas dominant, code pane collapsible side panel
+  - `Training` — training dashboard + weight viewer prominent, editor minimised
+  - `Minimal` — code pane + output/debugger only (terminal-programmer style)
+  - `Ecosystem` — AI Ecosystem Architect canvas full-width (Phase 5.5)
+- [ ] **Named layout save/load** — user saves current arrangement as a named profile;
+  all layouts listed in View menu; last-used layout restored on next launch
+- [ ] **Per-project layout override** — optional; stored in `view.json` sidecar;
+  takes precedence over global default only for that project
+- [ ] **Toolbox panel** — floating or dockable palette of layer/component types;
+  drag from toolbox to canvas or code cursor to insert; grouped by category;
+  user can pin/hide individual categories; toolbox position persisted per layout
 - [ ] Persistent settings: `<app_folder>/settings/` (portable mode) or OS config dir fallback
 - [ ] Application menu (File/Edit/View/Tools/Help)
 - [ ] `.nnsx` project bundle format — zip containing: `model.py` (canonical source), `view.json` (ADR-031 sidecar), `manifest.json`, `weights/` directory
@@ -905,6 +924,19 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] TorchScript export (via Python bridge + `torch.jit.script`)
 - [ ] TFLite export stub
 - [ ] `.nnsr` runner bundle builder: zip of weights + `manifest.json` + `runner.py` + `runner.cpp` + precompiled `.so`/`.dll`
+- [ ] **C++ library export** — generates self-contained, NNStudio-free compilable package:
+  `model.h` + `model.cpp` + `CMakeLists.txt` + `README.md`; output uses only stdlib +
+  Eigen (header-only); no `nnstudio-core` link dependency in the exported build
+- [ ] **Python package export** — generates pip-installable package: `pyproject.toml` +
+  `model.py` (uses real PyTorch or raw NumPy, no `nnstudio` import); `model.py` is the
+  round-trip of the canonical source with the `nnstudio.torch_compat` import replaced by
+  `import torch`
+- [ ] **"Compile to binary" one-click** — runs CMake + Ninja on the exported C++ package;
+  output is a `.dll`/`.so` or standalone executable; build stdout/stderr shown in the
+  integrated terminal panel; artifact path opened in OS file manager on success
+- [ ] **Multi-language code preview** — all generated code (export wizard, architecture
+  presets, sandbox snippets) shown with a `Python | C++` tab switcher; chosen language
+  persisted per-user in settings; both tabs always kept in sync with the model graph
 
 ### Runner connectors (`nnstudio/deployment/runners/`) — C++ + Python each
 - [ ] Triton gRPC client (HTTP/2 gRPC, model load/infer/health — KB doc 10 + 08)
@@ -999,6 +1031,136 @@ Useful for CI pipelines, scripting, and SSH sessions on remote pods.
 ### Phase 5 milestone
 - [ ] Export XOR MLP trained in Phase 3 to `.onnx` → load in ONNX Runtime embedded → verify matching output
 - [ ] Export same model as `.nnsr` bundle → verify bundle structure and manifest validity
+
+---
+
+## Phase 5.5 — AI Ecosystem Architecture Studio
+
+> **Goal: enterprise-architecture didactic** — the user can visually design, configure,
+> and learn a complete multi-component AI ecosystem (LLM runner, agents, vector stores,
+> crawlers, pipelines, NN models from the model editor) at the architectural level;
+> understand how the components interconnect, what each does, and how to configure it;
+> and export runnable configuration artefacts from the design.
+>
+> This is NOT a deployment automation platform — it is a **learning and design tool**
+> with export capability.  The visual language is ArchiMate-inspired (components,
+> interfaces, connectors, typed ports) but domain-specific and simplified.
+>
+> NNStudio models built in the model editor appear as first-class components in the
+> ecosystem canvas — the NN is one node among others in the full AI system picture.
+
+### Component library (`nnstudio/ecosystem/components/`)
+
+Each component type has: a C++ descriptor (name, category, ports, config schema),
+a QML node card, a KB reference, and a configuration panel.
+
+#### LLM Runners
+- [ ] **Ollama** — local; config: model tag, host:port, context length, GPU layers, NUMA pinning
+- [ ] **llama.cpp server** — local; config: GGUF path, threads, context, quantisation level
+- [ ] **vLLM** — local / pod; config: model HF ID, tensor-parallel degree, max batch
+- [ ] **LiteLLM proxy** — config: upstream provider list, routing policy, rate limits
+- [ ] **HuggingFace TGI** — local/container; config: HF model ID, dtype, sharding
+- [ ] **OpenAI-compatible endpoint** — generic; config: base URL, API key env-var, model name
+- [ ] **NNStudio model (local runner)** — inline reference to any model built in Phase 3;
+  runs via the embedded Python runtime; no separate server required
+
+#### Vector Stores / Retrieval
+- [ ] **Elasticsearch** — config: URL, index name, embedding field, k-NN metric
+- [ ] **Qdrant** — config: URL / gRPC, collection name, vector size, distance metric
+- [ ] **Chroma** — local (embedded) or server; config: persist dir or server URL, collection
+- [ ] **Weaviate** — config: URL, class name, vectorizer module
+- [ ] **Milvus / Zilliz** — config: URI, collection, index type
+- [ ] **FAISS (embedded)** — no server; config: index file path, metric, nprobe
+
+#### Agents / Orchestrators
+> These are architectural components — Studio draws how they are wired; it does NOT
+> execute Python orchestration code itself.  Export produces the orchestration script.
+- [ ] **RAG chain** — query → retriever → reranker → LLM; configurable at each stage
+- [ ] **ReAct agent** — tool-calling loop with configurable tool list
+- [ ] **Multi-agent supervisor** — one orchestrator, N worker agents; round-robin or priority routing
+- [ ] **LangChain chain blueprint** — maps to LangChain LCEL; exported as `chain.py`
+- [ ] **CrewAI crew** — agents + tasks + process type (sequential / hierarchical)
+- [ ] **Custom agent** (opaque node) — placeholder for bespoke orchestration code
+
+#### Data Ingestion / Crawlers
+- [ ] **Web crawler** — config: seed URLs, depth, rate limit, domain whitelist, output format
+- [ ] **Document loader** — source type (PDF, DOCX, PPTX, HTML, Markdown, plain text);
+  config: glob pattern or directory, chunking strategy, chunk size / overlap
+- [ ] **Database extract** — SQL query → rows → embedding; config: DSN, query, text column
+- [ ] **API poller** — periodic REST/GraphQL fetch; config: URL, interval, JSONPath selector, auth
+
+#### Connectors / Interfaces
+- [ ] **HTTP REST connector** — typed port; carries: request/response schema, base URL, auth method
+- [ ] **gRPC connector** — typed port; carries: proto service name, endpoint, TLS config
+- [ ] **Unix socket connector** — local IPC; carries: socket path, protocol (JSON-lines / length-prefix)
+- [ ] **Embedding dimension guard** — validates that the vector size produced by a model
+  matches the vector size expected by a vector store; raises a compatibility error on mismatch
+- [ ] **Token format guard** — validates tokenizer output format across connected components
+
+#### Embedding models (standalone, or embedded inside a runner)
+- [ ] **Sentence-Transformers** — local; config: model name, batch size, device
+- [ ] **Ollama embed** — via Ollama `/api/embeddings`; config: model tag
+- [ ] **OpenAI embeddings** — config: API key env-var, model (`text-embedding-3-small` etc.)
+- [ ] **Custom embedding** — NNStudio model from the model editor functioning as an encoder
+
+### Ecosystem canvas (`ui/EcosystemCanvas.qml`)
+- [ ] Separate canvas from the model editor — full panel occupying the `Ecosystem` layout preset
+- [ ] Component palette (toolbox) docked to left; grouped by category (Runners / Stores /
+  Agents / Ingestion / Connectors / NNStudio Models)
+- [ ] Drag component from palette → node card placed on canvas; double-click → config panel
+- [ ] Wire two ports by drag-connect; connector type inferred from port types; incompatible
+  types highlighted red with tooltip explaining the mismatch
+- [ ] **Interface compatibility enforcement** (algorithm-only, no AI):
+  - Port type system: `{LLM_TEXT_IN, LLM_TEXT_OUT, EMBED_VEC[dim], TOKEN_IDS, HTTP_REST, GRPC, UNIXSOCK, DOCS}`
+  - Each component declares its input/output port types; wiring validates at connection time
+  - Dimension mismatches (embedding size) shown as amber warning, not blocked (user may know what they're doing)
+  - Protocol mismatches (REST target → gRPC source) shown as red error, connector refused
+- [ ] **Architecture pattern gallery** — pre-wired templates the user can load as starting points:
+  - Naive RAG (crawler → chunk → embed → store → retriever → LLM)
+  - Agentic RAG (retriever + tools + ReAct loop)
+  - Multi-agent supervisor (planner + specialist agents + shared vector store)
+  - Local-only stack (Ollama + FAISS + llama.cpp; zero cloud)
+  - Hybrid local+cloud (Ollama for fast drafts, OpenAI for final answers)
+  - NNStudio model as a component (Studio-trained NN acts as a classifier inside the pipeline)
+- [ ] **Learn panel** — clicking any component opens a KB panel explaining: what it is, when
+  to use it, typical configuration parameters, links to official docs, cost/resource estimates
+- [ ] **Resource estimator** — per node: estimated VRAM (GPU), RAM (CPU), disk; totalled for
+  the whole design; warning shown if total exceeds user-configured budget
+
+### Configuration panel (per component)
+- [ ] All config fields shown as type-appropriate form controls (same widget system as model-editor Properties panel)
+- [ ] Sensitive fields (API keys, passwords) stored in OS keychain; form shows `****` populated
+  from keychain; never written to any project file
+- [ ] "Test connection" button per network component — sends a health-check request and shows
+  latency / error in the panel footer
+- [ ] VRAM/RAM usage estimated from config values (model size × quantisation factor × context length)
+
+### Export artefacts (`ui/EcosystemExportDialog.qml`)
+- [ ] **Docker Compose** — `docker-compose.yml` configuring all server components (Ollama,
+  Qdrant, Elasticsearch, etc.) with the configured versions, ports, volumes, environment vars;
+  NNStudio-model components mapped to a `nnstudio-runner` container
+- [ ] **Kubernetes Helm values** — `values.yaml` for a generic AI-stack chart; one entry per
+  component; secret refs replace inline key values
+- [ ] **Ollama Modelfile + run script** — `Modelfile` + `run_ollama.sh`/`.ps1` for the
+  configured model tag and parameters; one file per Ollama node in the design
+- [ ] **`.env` template** — all required environment variables listed with placeholder values
+  and comments; sensitive vars marked `# REQUIRED — set in CI/keychain, do not commit`
+- [ ] **Python orchestration script** — `run_pipeline.py` matching the designed architecture;
+  uses real library imports (LangChain, requests, qdrant-client, etc.);  no NNStudio import;
+  comments explain each section; NNStudio model nodes emitted as ONNX Runtime inference calls
+- [ ] **Architecture diagram (Mermaid)** — auto-generated `architecture.md` with a
+  Mermaid flowchart of all components and connections; suitable for documentation
+
+### Storage inside `.nnsp`
+- [ ] Ecosystem design stored under `ecosystem/design.json` in the project bundle
+- [ ] Port wiring, component configs (except secrets), and canvas positions all persisted
+- [ ] Multiple ecosystem designs per project supported (e.g. "local dev", "production K8s");
+  active design selected from a dropdown in the canvas toolbar
+
+### Phase 5.5 milestone
+- [ ] Design a local RAG pipeline (Ollama + FAISS + document loader) on the ecosystem canvas
+- [ ] Export Docker Compose + `.env` template; verify containers start from the export
+- [ ] Export Python orchestration script; verify it runs end-to-end with a PDF input
 
 ---
 
