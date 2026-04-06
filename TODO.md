@@ -223,7 +223,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ### C++ PyTorch-compatible shim (`include/nnstudio/torch_compat.h`)
 
-- [ ] `namespace torch` → alias block mapping to `nnstudio::*`:
+- [x] `namespace torch` → alias block mapping to `nnstudio::*`:
   - `torch::Tensor` → `nnstudio::core::Tensor`
   - `torch::zeros / torch::ones / torch::rand` → our factory functions
   - `torch::nn::Module` → `nnstudio::core::Layer`
@@ -236,9 +236,9 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - `torch::nn::MSELoss / CrossEntropyLoss / BCELoss` → our losses
   - `torch::optim::SGD / Adam / AdamW / RMSProp` → our optimizers
   - `torch::nn::functional::relu / sigmoid / softmax / ...` → our standalone activation callables
-- [ ] `torch::nn::Sequential` — thin wrapper building `ComputeGraph` from initializer list
-- [ ] The shim is **header-only** — zero link-time cost; only aliases, no new compiled symbols
-- [ ] Unit test: compile a simple 3-layer MLP using only `torch::` names against NNStudio
+- [x] `torch::nn::Sequential` — thin wrapper building `ComputeGraph` from initializer list
+- [x] The shim is **header-only** — zero link-time cost; only aliases, no new compiled symbols
+- [x] Unit test: compile a simple 3-layer MLP using only `torch::` names against NNStudio
 
 ### Python pybind11 bindings — torch-compatible naming (design constraint, not retrofit)
 

@@ -58,4 +58,13 @@ endif()
 #     deployment/test_onnx_export.cpp
 # )
 # target_link_libraries(test-deployment PRIVATE nnstudio-deployment GTest::gtest_main)
+
+# ─── Cross-framework compatibility layer tests ────────────────────────────────
+# Requires torch_compat.h — verifies the torch:: alias surface compiles and runs.
+add_executable(test-compat
+    compat/test_torch_compat.cpp
+)
+target_link_libraries(test-compat PRIVATE
+    nnstudio-builtin nnstudio-backend-cpu GTest::gtest_main)
+gtest_discover_tests(test-compat)
 # gtest_discover_tests(test-deployment)

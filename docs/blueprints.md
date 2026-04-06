@@ -596,7 +596,7 @@ Every activation must save enough for `backward()` to compute the derivative. Wh
 | Group | Who | `ctxIsInput` | What is in `ctx` | Why |
 |---|---|---|---|---|
 | **Save input** | `ReLUFn`, `LeakyReLUFn`, `GELUFn` | `true` | the input `x` | Derivative depends on the *sign* of the input |
-| **Save output** | `SigmoidFn`, `TanhFn`, `SoftmaxFn` | `false` | the output `y` | Derivative expressed via output is cheaper than recomputing from `x` |
+| **Save output** | `SigmoidFn`, `TanhActFn`, `SoftmaxFn` | `false` | the output `y` | Derivative expressed via output is cheaper than recomputing from `x` |
 
 #### Per-activation math
 
