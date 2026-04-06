@@ -326,17 +326,17 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ## Phase 2 — Plugin SDK
 
 ### C ABI contract (`nnstudio/plugin-api/`)
-- [ ] `nnstudio_plugin.h` — C-linkage structs/function pointers; no C++ in public ABI
-- [ ] `PluginDescriptor` — name, version, type, factory functions, capabilities
-- [ ] Plugin types: `LAYER | TOKENIZER | OPTIMIZER | BACKEND | UI_PANEL | TRUST_UPDATE`
-- [ ] `LayerPlugin` interface — custom `forward()`/`backward()`, operator registration
-- [ ] `TokenizerPlugin` interface — `encode()`, `decode()`, vocab management
-- [ ] `UIPlugin` interface — QML component path, property declarations
+- [x] `nnstudio_plugin.h` — C-linkage structs/function pointers; no C++ in public ABI
+- [x] `PluginDescriptor` — name, version, type, factory functions, capabilities
+- [x] Plugin types: `LAYER | TOKENIZER | OPTIMIZER | BACKEND | UI_PANEL | TRUST_UPDATE`
+- [x] `LayerPlugin` interface — custom `forward()`/`backward()`, operator registration
+- [x] `TokenizerPlugin` interface — `encode()`, `decode()`, vocab management
+- [x] `UIPlugin` interface — QML component path, property declarations
 
 ### Plugin manifests
-- [ ] `plugin.manifest.json` schema — name, version, author, license, type, capabilities, binary hash, detached signature path
-- [ ] `TUP` (Trust Update Package) manifest schema — type: `TRUST_UPDATE`, timestamp, cert add/revoke lists
-- [ ] Schema validation library (C++ + Python)
+- [x] `plugin.manifest.json` schema — name, version, author, license, type, capabilities, binary hash, detached signature path
+- [x] `TUP` (Trust Update Package) manifest schema — type: `TRUST_UPDATE`, timestamp, cert add/revoke lists
+- [x] Schema validation library (C++ + Python)
 
 ### Trust system (`nnstudio/plugin-api/trust/`)
 - [ ] `TrustStore` class — manages `<app_data>/truststore/` (roots/, intermediates/, crls/, history/)
@@ -364,10 +364,10 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] Wheel build in CI
 
 ### Plugin scaffolds (`nnstudio/plugin-api/templates/`)
-- [ ] `cpp/` — CMakeLists.txt + `.h`/`.cpp` template for each plugin type
-- [ ] `python/` — `pyproject.toml` + `.py` module template for each plugin type
-- [ ] Both templates include `plugin.manifest.json` generator script
-- [ ] `README.md` per template explaining the plugin type
+- [x] `cpp/` — CMakeLists.txt + `.h`/`.cpp` template (layer type; other types follow same pattern)
+- [x] `python/` — `pyproject.toml` + `.py` module template (layer type; other types follow same pattern)
+- [x] Both templates include `plugin.manifest.json` generator script (`generate_manifest.py`)
+- [x] `README.md` per template explaining the plugin type
 
 ### Built-in reference plugins (`nnstudio/plugins/`)
 - [ ] BPE tokenizer plugin (C++ + Python, from KB A06)

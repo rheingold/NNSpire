@@ -1,0 +1,25 @@
+{
+  "manifestVersion": 1,
+  "id": "{{PLUGIN_REVERSE_DOMAIN_ID}}",
+  "name": "{{PLUGIN_NAME}}",
+  "version": "{{PLUGIN_VERSION}}",
+  "type": "LAYER",
+  "author": "{{PLUGIN_AUTHOR}}",
+  "authorUrl": "{{PLUGIN_AUTHOR_URL}}",
+  "license": "{{PLUGIN_LICENSE}}",
+  "description": "{{PLUGIN_DESCRIPTION}}",
+  "minStudioVersion": "1.0.0",
+  "capabilities": [
+    "LAYER_FORWARD",
+    "LAYER_BACKWARD",
+    "LAYER_PARAMETERS"
+  ],
+  "implementations": {
+    "python": {
+      "module": "{{PLUGIN_ID_SNAKE}}",
+      "wheel": "dist/{{PLUGIN_ID_SNAKE}}-{{PLUGIN_VERSION}}-py3-none-any.whl",
+      "sha256": "{{SHA256_PYTHON}}"
+    }
+  },
+  "signature": "{{PLUGIN_ID_SNAKE}}.p7s"
+}
