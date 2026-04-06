@@ -1860,18 +1860,18 @@ For each of N blocks:
 **For NNStudio's text parsing / reasoning / QA use case:**  
 A Llama 2 7B-class model is the practical minimum for reliable open-domain reasoning. That is 7 billion floats × 4 bytes = **28 GB** just for weights in fp32; 14 GB in fp16. Training from scratch is not realistic — fine-tuning a pre-trained checkpoint (LoRA or full fine-tune) is the standard approach. NNStudio would load an existing `.onnx` or `.nns` checkpoint and run inference or fine-tuning on specific layers (`frozen = true` on base weights, `frozen = false` on LoRA adapters).
 
-**Status in NNStudio:**
+**Status in NNStudio (updated — Phase 2 complete):**
 
-| Layer | Status | Blocker |
+| Layer | Status | Notes |
 |---|---|---|
-| `Embedding` | ❌ not implemented | Tensor API accepts float only; integer index input needs design decision |
-| `LayerNorm` | ❌ not implemented | No blocker — good early target |
-| `GELU` | ❌ not implemented as `IActivation` | No blocker — easy after ADR-020 migration |
-| `MultiHeadAttention` | ❌ not implemented | Needs batch-matmul in Tensor API + scaled dot-product |
-| `ComputeGraph` (skip connections) | ❌ Phase 3 | Without this, residual connections cannot be expressed |
-| FFN (Dense→GELU→Dense) | ✅ Dense ready, GELU missing | GELU is the only missing piece |
+| `Embedding` | ✅ implemented | Float-stored IDs; dedicated int DType is Phase 4 |
+| `LayerNorm` | ✅ implemented | Normalises over last dim; learnable γ, β |
+| `GELU` | ✅ implemented | `GELUFn` (`IActivation`) + `GELU : ActivationBase` |
+| `MultiHeadAttention` | ✅ implemented | Causal mask, 4 weight + bias pairs, full backward |
+| `ComputeGraph` (skip connections) | ❌ Phase 3 | `Sequential` is still strictly linear |
+| FFN (Dense→GELU→Dense) | ✅ | Both `Dense` and `GELU` ready; wire in `Sequential` |
 
-Overall: **Phase 3–4 target.** LayerNorm and GELU are the two easiest to add first.
+Overall: **all individual building blocks ready.** Residual connections (skip connections) require `ComputeGraph` (Phase 3).  See §10.10 for the full updated status table.
 
 ---
 
@@ -2011,3 +2011,471 @@ These identifiers appear only in explanatory examples, not in production source 
 | ONNX | Open Neural Network Exchange — standard format for exporting models as a flat graph of named op-nodes (MatMul, Add, Relu, ...) |
 | DAG | Directed Acyclic Graph — general model topology enabling skip connections and multi-head architectures (cf. `Sequential` which is linear) |
 | BCE | Binary Cross-Entropy loss. For one sample: `L = -[y*log(p) + (1-y)*log(1-p)]` |
+
+---
+
+## Chapter 10 — Phase 1 + 2 Complete: The Full Toolkit
+
+> **What changed since Chapters 1–8?**
+> Chapters 1–8 documented the original spine: `Tensor → IBackend → Dense → Sequential → Loss → Optimizer → Trainer → XOR`.
+> This chapter covers everything built on top of that spine during Phase 1 and Phase 2 before any UI work begins.
+> All components listed here are **fully implemented, tested, and passing** as of commit `055eb99` (170/170 tests, 1.58 s).
+
+---
+
+### §10.1 — The Activation Paradigm Shift (ADR-020)
+
+#### The original design — `ActivationBase`
+
+The first activation layers (`ReLU`, `Sigmoid`, `TanhAct`, `LeakyReLU`, `Softmax`, `GELU`) were written as concrete `ILayer` subclasses that all inherit `ActivationBase`.  `ActivationBase` saves `lastInput_` or `lastOutput_` as a mutable member field between `forward()` and `backward()`.
+
+That works fine for single-threaded sequential training.  It breaks under:
+- **Multi-threaded batch evaluation** — thread A's forward clobbers thread B's saved context before thread B calls backward.
+- **ComputeGraph replay** — the graph can re-run `forward()` without calling `backward()`, leaving stale context.
+- **Quantised / fused kernels** — the saved context may not be a plain `Tensor` at all.
+
+#### ADR-020 — `IActivation` (stateless functor)
+
+`IActivation` (`include/core/IActivation.h`) is a pure-virtual interface for **stateless** activation functions:
+
+```cpp
+class IActivation {
+public:
+    // Returns output + saved ctx — NO mutable state on the object.
+    virtual ActivationForward forward(const Tensor& x) const = 0;
+
+    // Receives the ActivationForward from the matching forward() call.
+    virtual Result<Tensor> backward(const Tensor& gradOut,
+                                    const ActivationForward& fwd) const = 0;
+    virtual std::string_view name() const noexcept = 0;
+};
+```
+
+`ActivationForward` is a plain struct: `{ Tensor output; Tensor ctx; bool ctxIsInput; }`.
+`ctxIsInput = true` → ctx holds the **input** x (ReLU, LeakyReLU, GELU — need x's sign/value).
+`ctxIsInput = false` → ctx holds the **output** y (Sigmoid, Tanh, Softmax — derivative is cheaper via output).
+
+Because the functor has no mutable members, **one instance can be shared across threads and graph nodes**.
+
+#### `ActivationFunctors.h` — the six stateless functors
+
+| Functor | `ctxIsInput` | formula |
+|---|---|---|
+| `ReLUFn` | true | $f(x) = \max(0, x)$ |
+| `LeakyReLUFn(alpha)` | true | $f(x) = x$ if $x>0$ else $\alpha x$ |
+| `SigmoidFn` | false | $f(x) = 1/(1+e^{-x})$ |
+| `TanhActFn` | false | $f(x) = \tanh(x)$ |
+| `SoftmaxFn` | false | row-wise numerically stable softmax |
+| `GELUFn` | true | $0.5x(1+\tanh(\sqrt{2/\pi}\,(x+0.044715\,x^3)))$ |
+
+All six functors implement `IActivation` as zero-mutable-state structs.  The legacy `ActivationBase` layer subclasses delegate their `forward()`/`backward()` to these functors, eliminating the non-reentrant mutable fields while keeping backward compatibility with existing tests.
+
+#### `ActivationsFnLayer<Fn>` — the adapter
+
+`ActivationsFnLayer<Fn>` (`include/builtin/layers/ActivationsFnLayer.h`) wraps any `IActivation` implementor into an `ILayer` that can be dropped into any `Sequential`.  The **layer** (not the functor) owns the per-call `ActivationForward` context; the functor stays stateless.
+
+```cpp
+// Option A — owning (functor lives inside the layer)
+auto layer = ActivationsFnLayer<ReLUFn>{};
+auto layer = ActivationsFnLayer<LeakyReLUFn>{ LeakyReLUFn{0.2f} };
+
+// Option B — non-owning (functor shared externally)
+auto shared = std::make_shared<GELUFn>();
+auto layer  = ActivationsFnLayerPtr{ shared.get() };
+```
+
+New code should use `ActivationsFnLayer`.  Legacy code using `ReLU : ActivationBase` continues to work unchanged.
+
+---
+
+### §10.2 — The Full Layer Suite
+
+All layers below are in `include/builtin/layers/` and fully implement `ILayer::build() / forward() / backward()`.
+
+#### Dropout
+
+```
+Input  [N, F] → random zero mask (training) or identity (eval) → Output [N, F]
+```
+
+- **Inverted dropout**: surviving elements are scaled by `1/(1 - dropRate)` so the expected activation magnitude is unchanged between training and eval.
+- `setSeed(uint32_t)` for reproducible tests.
+- `setTraining(bool)`: eval mode makes `forward()` the identity; backward is transparent.
+
+#### BatchNorm1d
+
+```
+Input [N, F]  →  normalize over N  →  gamma[F] * x_hat + beta[F]  →  Output [N, F]
+```
+
+- Tracks `running_mean[F]` and `running_var[F]` during training (exponential moving average, momentum configurable).
+- Eval mode uses the running statistics.
+- Full backward through the normalisation including `dW(gamma)`, `db(beta)`, and `dX` through the shared mean/variance.
+- Learnable parameters: `gamma[F]` (scale, init = 1), `beta[F]` (shift, init = 0).
+
+#### LayerNorm
+
+```
+Input [N, D]  →  normalize over D (per sample)  →  gamma[D] * x_hat + beta[D]  →  Output [N, D]
+```
+
+- Normalises over the **feature dimension** (last dim), unlike BatchNorm which normalises over N.
+- No running statistics — LayerNorm is stateless outside the learnable `gamma`/`beta`.
+- Efficient backward via saved `x_hat` and `rstd` (reciprocal std-dev).
+- `normalizedDim` inferred from input shape when passed as `−1`.
+
+#### Embedding
+
+```
+Input  [N, seqLen]  (float-stored integer IDs)
+  →  row lookup in weight[vocabSize, embDim]
+  →  Output [N, seqLen, embDim]
+```
+
+- The weight matrix is a `[vocabSize × embDim]` lookup table initialised with uniform random values.
+- Forward: for each token ID `t`, copy `weight[t, :]` to the output row.
+- Backward: accumulates `gradOut[b, s, :]` into `dW[t, :]` for every `(b, s)` position that selected token `t`.  Multiple positions selecting the same token accumulate.
+- Integer token IDs are stored as `float32` and cast to `int64_t` internally (Phase 1 limitation; a dedicated `Int32/Int64` `DType` path is Phase 4).
+
+#### MultiHeadAttention
+
+```
+Input [N, L, d_model]
+  →  Wq, Wk, Wv projections  →  Q, K, V [N, L, d_model]
+  →  split h heads            →  [N*h, L, d_k]
+  →  scaled dot-product       →  Attn [N*h, L, L]  (softmax(QK^T / √d_k))
+  →  Attn @ V                 →  [N*h, L, d_k]
+  →  merge heads + Wo proj    →  Output [N, L, d_model]
+```
+
+- 8 learnable parameters: `Wq, Wk, Wv, Wo` (each `[d_model, d_model]`) and matching biases `bq, bk, bv, bo` (each `[d_model]`).
+- `causal=true`: masks score matrix above the diagonal to `−∞` before softmax (autoregressive generation).
+- `dropout` argument accepted; application at attention weights is Phase 4.
+- Full backward through all four projections.
+
+#### Conv2D
+
+```
+Input [N, C_in, H, W]
+  →  kernel[C_out, C_in, kH, kW] slide with stride / padding
+  →  Output [N, C_out, outH, outW]
+```
+
+- NCHW memory layout throughout.
+- `outH = (H + 2*padding − kH) / stride + 1`; same for W.
+- Phase 1 implementation: direct nested-loop convolution.  No `im2col`; correctness over peak throughput.  Backend GEMM acceleration is Phase 4.
+- Optional bias `[C_out]`.
+- Full backward: `dInput`, `dKernel`, `dBias`.
+
+---
+
+### §10.3 — The Full Loss Suite
+
+All losses are in `include/builtin/losses/Losses.h`.  All are stateless: `compute()` and `gradient()` are separate pure methods on the same `(pred, target)` pair.  The `kEps` clamp `[1e-7, 1-1e-7]` on logarithm inputs guards against `log(0) = −∞ → NaN` (the #1 silent training failure cause).
+
+| Class | Formula | Use case |
+|---|---|---|
+| `MSE` | $\frac{1}{N}\sum(p_i - t_i)^2$ | Regression; delegates to `IBackend::mse` |
+| `BCE` | $-\frac{1}{N}\sum[t\log p + (1-t)\log(1-p)]$ | Binary classification (sigmoid output required) |
+| `CrossEntropy` | $-\frac{1}{N}\sum\sum t_{ij}\log p_{ij}$ | Multi-class (softmax output required) |
+| `HuberLoss(δ)` | $0.5(p-t)^2$ if $\|p-t\|\le\delta$; else $\delta(\|p-t\|-\frac{\delta}{2})$ | Robust regression; less penalty for outliers |
+
+---
+
+### §10.4 — The Full Optimizer Suite
+
+All optimizers are in `include/builtin/optimizers/Optimizers.h`.  All implement `IOptimizer::step(params)` and respect `Parameter::frozen`.  Moment buffers are keyed on raw `Parameter*` address (stable for the model lifetime).
+
+| Class | Hyperparameters | Notes |
+|---|---|---|
+| `SGD` | `lr, momentum, weightDecay` | Velocity buffer per parameter when `momentum > 0` |
+| `Adam` | `lr, β1=0.9, β2=0.999, ε=1e-8, weightDecay` | Bias-corrected 1st/2nd moments; serialisable state for checkpoint resume |
+| `AdamW` | `lr, β1, β2, ε, decoupledDecay=0.01` | Weight decay applied directly (`θ *= 1-λ`) before Adam update — decoupled from adaptive lr |
+| `RMSProp` | `lr, α=0.99, ε=1e-8, weightDecay` | EMA of squared gradients: $E[g^2]_t = \alpha E[g^2]_{t-1} + (1-\alpha)g^2$ |
+
+`StepDecayScheduler(stepSize, gamma)` — implements `ILRScheduler::onStep()`: multiplies `optimizer.lr` by `gamma` every `stepSize` global steps.
+
+---
+
+### §10.5 — Checkpoint System
+
+`Checkpoint` (`include/core/Checkpoint.h`) provides stateless `save()` / `load()` for binary `.nns` checkpoint files.
+
+**File format** (all integers little-endian):
+
+```
+"NNSC" magic + uint16 version=1
+"WS" section  — count × (name_len, name, NNS1 tensor)
+"OS" section  — optimizer type string + step counter t +
+                count × (has_state flag + m tensor + v tensor)
+"TC" section  — uint64 globalStep + uint64 epoch
+"EN" end tag
+```
+
+Key design choices:
+- Raw gradients are **not** saved — they are recomputed on the first backward pass after resume.
+- `load()` is lenient: unknown section tags are skip-forwarded (forward-compat with future sections).
+- Optimizer state (`m`, `v`, `t`) is indexed by parameter **position** in `ILayer::parameters()`, not by name — name collisions are tolerated.
+- `Checkpoint::save()/load()` are called by `Trainer` automatically when `saveEvery > 0` is configured.
+
+---
+
+### §10.6 — `torch_compat` — The Code IS the Model
+
+`include/torch_compat.h` is a **header-only** shim that makes any translation unit that uses only the standard PyTorch / LibTorch C++ API work against the NNStudio engine with a one-line change:
+
+```cpp
+// swap exactly this one line:
+#include <torch_compat.h>    // ← NNStudio
+// #include <torch/torch.h>  // ← LibTorch
+
+auto model = torch::nn::Sequential(
+    torch::nn::Linear(4, 8),
+    torch::nn::ReLU(),
+    torch::nn::Linear(8, 1),
+    torch::nn::Sigmoid()
+);
+auto opt = torch::optim::Adam(1e-3f);
+```
+
+The shim maps:
+
+| PyTorch name | NNStudio type |
+|---|---|
+| `torch::Tensor` | `nnstudio::core::Tensor` |
+| `torch::nn::Linear` | `Dense` (wrapper storing `in_features`) |
+| `torch::nn::Conv2d` | `Conv2D` (wrapper storing `in_channels`) |
+| `torch::nn::Embedding` | `Embedding` (direct alias) |
+| `torch::nn::MultiheadAttention` | `MultiHeadAttention` (arg-order adapter) |
+| `torch::nn::BatchNorm1d` | `BatchNorm1d` (direct alias) |
+| `torch::nn::LayerNorm` | `LayerNorm` (direct alias) |
+| `torch::nn::Dropout` | `Dropout` (direct alias) |
+| `torch::nn::ReLU/Sigmoid/Tanh/GELU/Softmax/LeakyReLU` | Corresponding `ActivationBase` subclasses |
+| `torch::nn::Sequential` | **inline template class** — owns a `vector<unique_ptr<ILayer>>` |
+| `torch::nn::functional::relu/sigmoid/tanh/gelu/softmax/dropout` | Stateless calls on `IActivation` functors |
+| `torch::optim::SGD/Adam/AdamW/RMSprop` | Corresponding optimizer classes |
+| `torch::kFloat32, kFloat16, kInt8, kInt32, kBool` | `DType::*` constants |
+| `torch::kCPU, torch::kCUDA` | `Device::*` constants |
+
+`torch::nn::Sequential` in this header is **not** the same as `nnstudio::builtin::layers::Sequential` — it is a self-contained implementation that builds the wire-up at construction time from variadic template arguments, matching PyTorch's interface exactly:
+
+```cpp
+auto m = torch::nn::Sequential(
+    torch::nn::Linear(4, 8), torch::nn::ReLU(), torch::nn::Linear(8, 1));
+m.build({1, 4});
+auto y = m.forward(x).value();
+```
+
+**This shim is the foundation for ADR-030 option (b)** — the argument that NNStudio model files should use torch-compat code rather than a custom DSL.  The shim demonstrates that torch-compat code is already a first-class citizen in the engine.
+
+The Python-layer equivalent is `python-bridge/nnstudio/torch_compat.py`:
+
+```python
+import nnstudio.torch_compat as torch   # instead of: import torch
+import nnstudio.torch_compat.nn as nn
+
+model = nn.Sequential()
+model.add(nn.Linear(4, 8))
+model.add(nn.ReLU())
+```
+
+---
+
+### §10.7 — Plugin SDK
+
+#### The C ABI (`nnstudio_plugin.h`)
+
+The plugin interface is **pure C** — no C++ types cross the ABI boundary.  This allows plugins written in any language that can export a C symbol.  Every plugin shared library must export exactly one symbol:
+
+```c
+const NNPluginDescriptor* nnstudio_plugin_descriptor(void);
+```
+
+`NNPluginDescriptor` carries: `api_version`, `type`, `id` (reverse-domain string), `name`, `version`, `author`, `license`, `create()`, `destroy()`, and a `vtable*` pointer cast to the type-specific vtable struct.
+
+**Defined plugin types (Phase 2 ABI):**
+
+| `NNPluginType` | vtable struct | Purpose |
+|---|---|---|
+| `NN_PLUGIN_LAYER` | `NNLayerVTable` | Custom ILayer implementor |
+| `NN_PLUGIN_ACTIVATION` | `NNActivationVTable` | Custom activation function |
+| `NN_PLUGIN_OPTIMIZER` | `NNOptimizerVTable` | Custom optimiser |
+| `NN_PLUGIN_TOKENIZER` | `NNTokenizerVTable` | encode / decode / vocab introspection |
+| `NN_PLUGIN_BACKEND` | *(planned Phase 3)* | Custom compute backend |
+| `NN_PLUGIN_INPUT_ADAPTER` | *(planned Phase 3)* | Data reader / pre-processing |
+| `NN_PLUGIN_OUTPUT_ADAPTER` | *(planned Phase 3)* | Post-processing / sink |
+| `NN_PLUGIN_CONTEXT_SOURCE` | `NNContextSourceVTable` | RAG retrieval over query embeddings |
+| `NN_PLUGIN_RUNNER_CLIENT` | `NNRunnerClientVTable` | Remote inference server connector |
+| `NN_PLUGIN_UI_PANEL` | `NNUIPanelVTable` | QML component URL for dockable panels |
+| `NN_PLUGIN_TRUST_UPDATE` (99) | *(TrustUpdateHandler)* | Signed trust-store update packet |
+
+The `NNTensorView` struct (read-only window into engine-owned memory: `data, shape, ndim, dtype`) and `NNMutableTensorView` are the only tensor types that cross the ABI — no `std::shared_ptr`, no RTTI, no vtable.
+
+#### `PluginLoader` — loading sequence
+
+`PluginLoader` (`include/plugin-api/PluginLoader.h`) loads a shared library through a six-step sequence:
+1. `TrustVerifier::verify(path)` — check plugin signature against `TrustStore`
+2. If trust level < policy minimum → **reject** (never call `dlopen`)
+3. `dlopen` (Linux/macOS) / `LoadLibraryW` (Windows)
+4. Resolve `nnstudio_plugin_descriptor` symbol
+5. Check `api_version == NNSTUDIO_PLUGIN_API_VERSION`
+6. Return `LoadedPlugin` (RAII handle; destructor calls `destroy()` + `dlclose`)
+
+`LoadPolicy` is an enum: `RequireEnterprise`, `RequireCommunity`, `AllowUntrusted`.
+
+Phase 5 plans a **sandboxed** policy that routes through an `nnstudio-runner` sidecar process over gRPC instead of `dlopen`.
+
+#### Trust Architecture
+
+`TrustStore` (`include/plugin-api/trust/TrustStore.h`) — **trust level hierarchy**:
+
+| Level | Description |
+|---|---|
+| 3 — Root | Embedded in binary; hardware-verified at build time (HSM in production) |
+| 2 — Enterprise CA | Issued by Root; customer deploys to employees |
+| 1 — Community CA | Issued by Root; open-source plugin authors |
+| 0 — Untrusted | No valid signature found |
+
+The `.nnts` store file (binary, little-endian) contains a list of `CaEntry` records (DER-encoded X.509 certificates) signed by the Root CA.  The Root CA certificate is **not** stored in the file — it is embedded in the binary.
+
+`TrustVerifier` (`include/plugin-api/trust/TrustVerifier.h`) walks the cert chain from the plugin's embedded certificate up to a `CaEntry` in the `TrustStore` and returns a `VerifyResult { TrustLevel level; std::string subjectDN; }`.
+
+`TrustUpdateHandler` (`include/plugin-api/trust/TrustUpdateHandler.h`) verifies a Trust Update Packet (TUP) before calling `TrustStore::addCa()` / `revokeCa()`.  No CA can be added or removed except through a signed TUP — this is the anti-supply-chain-attack guarantee.
+
+**Plugin signing tool** — `src/plugin-api/tools/sign/main.cpp`: CLI tool `nnstudio-sign` that signs a plugin shared library with a Developer CA certificate and embeds the signature as a section in the binary.  Used during plugin release pipeline.
+
+---
+
+### §10.8 — Built-in Reference Plugins
+
+#### BPE Tokenizer (`plugins/bpe_tokenizer/`)
+
+A minimal **byte-level BPE tokenizer** implemented as `NN_PLUGIN_TOKENIZER`.  No external vocabulary file needed.
+
+- **Vocabulary size: 319 tokens**
+  - IDs 0–255: the 256 raw byte values (byte-fallback, handles any UTF-8 input)
+  - IDs 256–318: 63 BPE merge rules — GPT-2-style space+letter merges (` t`, ` a`, …) followed by common English bigrams (`th`, `he`, `in`, `er`, …) and trigrams (`the`, `ing`, ` the`, …)
+- Implements the full `NNTokenizerVTable`: `encode`, `decode`, `free_result`, `vocab_size`, `token_to_str`, `str_to_token`
+- `encode()` applies merge rules by rank (lowest rank = highest priority); `decode()` concatenates token strings
+- `token_to_str(0)` returns a 1-byte null-byte string (special case: `strlen == 0`, not null ptr)
+- Intent: demonstrate the plugin ABI works end-to-end; not for production NLP
+
+#### Example Activation (`plugins/example_activation/`)
+
+A reference `NN_PLUGIN_ACTIVATION` that implements the **Swish** activation:
+
+$$\text{Swish}(x) = x \cdot \sigma(x) = \frac{x}{1 + e^{-x}}$$
+
+Derivative: $\sigma(x) + x \cdot \sigma(x)(1 - \sigma(x))$
+
+Demonstrates: owning a per-instance state struct, `NNActivationVTable` wiring, `create()`/`destroy()` lifecycle, `doc_ref()` returning a KB anchor.
+
+Both plugins ship with a `plugin.manifest.json` (JSON5, fields: `id`, `name`, `version`, `author`, `license`, `type`, `description`, `requires_api_version`).
+
+---
+
+### §10.9 — Python Bridge
+
+The Python bridge (`nnstudio/python-bridge/`) exposes the C++ engine to Python via **pybind11** and layers three compatibility façades on top:
+
+#### pybind11 bindings (`bindings/module.cpp`)
+
+The compiled extension module (`nnstudio.<arch>.so` / `.pyd`) exposes:
+- `Tensor`, `DType`, `Device` Python classes
+- `zeros`, `ones`, `full` factory functions
+- The full `nn`, `optim`, and loss namespaces
+- `__version__` string
+
+On Windows (MinGW) the `__init__.py` probes well-known MSYS2 locations and calls `os.add_dll_directory()` so Python ≥ 3.8 can resolve MinGW runtime DLLs at import time.
+
+#### `nnstudio` package — torch-style import
+
+```python
+import nnstudio as torch         # drop-in swap
+import nnstudio.nn as nn
+import nnstudio.nn.functional as F
+import nnstudio.optim as optim
+```
+
+`nnstudio.torch_compat` module re-exports the same surface with explicit `torch.*` naming so existing scripts can alias the import with zero other changes:
+
+```python
+import nnstudio.torch_compat as torch
+model = torch.nn.Sequential()
+```
+
+#### Keras façade (`nnstudio.keras`)
+
+```python
+from nnstudio.keras import Model, layers, losses, optimizers, callbacks
+
+seq = layers.Sequential()
+seq.add(layers.Dense(4, 1))
+m = Model(seq)
+m.compile(optimizer=optimizers.Adam(), loss=losses.MeanSquaredError())
+history = m.fit(x, y, epochs=10)
+```
+
+Sub-modules: `layers` (Dense, Conv2D, Embedding, MHA, BN, LN, Dropout, activations), `losses` (MSE, BCE, Categorical CE, Huber), `optimizers` (Adam, AdamW, SGD, RMSProp), `callbacks` (EarlyStopping, ModelCheckpoint, LRScheduler, CSVLogger, TensorBoard stub).
+
+#### Runner clients (`nnstudio.runners`)
+
+Five connector classes unified under the `RunnerClient` protocol:
+
+| Class | Backend | Protocol |
+|---|---|---|
+| `TritonRunnerClient` | NVIDIA Triton | gRPC + REST (requires `tritonclient`) |
+| `TfServingRunnerClient` | TensorFlow Serving | REST + gRPC |
+| `KServeRunnerClient` | KServe V2 | HTTP Inference Protocol |
+| `OnnxRuntimeRunnerClient` | ONNX Runtime | in-process (no network) |
+| `OpenAIRunnerClient` | OpenAI-compatible REST | Ollama, LM Studio, vLLM (requires `httpx`) |
+
+All share: `connect(url)`, `load_model(name)`, `infer(model, input)`, `health()`, `disconnect()` plus typed exceptions (`RunnerConnectionError`, `RunnerInferenceError`, `RunnerModelNotFoundError`).
+
+---
+
+### §10.10 — Architecture Templates: Current Implementation Status
+
+The tables below supersede the "Status in NNStudio" entries in the Architecture Templates appendix.
+
+**Template 4 — Transformer block (as of Phase 2 / commit `055eb99`)**
+
+| Layer | Status | Notes |
+|---|---|---|
+| `Embedding` | ✅ implemented | `[vocabSize, embDim]` lookup; float-stored IDs (Phase 4: int DType) |
+| `LayerNorm` | ✅ implemented | normalises over last dim; learnable γ, β |
+| `GELU` | ✅ implemented | as `GELUFn` (`IActivation`) and `GELU : ActivationBase` |
+| `MultiHeadAttention` | ✅ implemented | causal mask, 4 weight pairs, full backward |
+| `ComputeGraph` (skip connections) | ❌ Phase 3 | `Sequential` is still strictly linear |
+| FFN (Dense→GELU→Dense) | ✅ | `Dense` + `GELU` both ready; wire together in `Sequential` |
+
+Residual connections (Template 5) still require `ComputeGraph`.  All other individual layer building blocks are available now.
+
+---
+
+### §10.11 — Test Coverage Map (Phase 2 complete)
+
+170/170 tests pass in 1.58 s (`ctest --preset engine-ninja`, RelWithDebInfo, MinGW GCC).
+
+| Test file | Count | What it verifies |
+|---|---|---|
+| `tests/builtin/test_layers.cpp` | ‑ | `Dense` forward/backward, shape relay |
+| `tests/builtin/test_activations.cpp` | ‑ | All 6 activation ILayer subclasses + ADR-020 functors |
+| `tests/builtin/test_conv2d.cpp` | ‑ | `Conv2D` padding/stride/backward |
+| `tests/builtin/test_embedding.cpp` | ‑ | `Embedding` lookup + grad accumulation |
+| `tests/builtin/test_losses.cpp` | ‑ | MSE, BCE, CrossEntropy, Huber compute + gradient |
+| `tests/builtin/test_optimizers.cpp` | ‑ | SGD, Adam, AdamW, RMSProp step; frozen params |
+| `tests/core/test_tensor.cpp` | ‑ | Shape/stride/reshape/transpose/operators/serialise |
+| `tests/core/test_compute_graph.cpp` | ‑ | DAG node recording + replay |
+| `tests/core/test_checkpoint.cpp` | ‑ | Save/load weights + Adam state + counters |
+| `tests/core/test_compat.cpp` | ‑ | `CompatibilityChecker` ONNX op-set |
+| `tests/core/test_early_stopping.cpp` | ‑ | Patience counter, delta threshold, restore-best |
+| `tests/core/test_trainer_xor.cpp` | ‑ | Full XOR training loop, 300 epochs convergence |
+| `tests/compat/test_torch_compat.cpp` | ‑ | `torch_compat.h` shim — Sequential, Linear, Adam |
+| `tests/plugin-api/test_plugin_loader.cpp` | ‑ | Trust-gated `dlopen`, AllowUntrusted path |
+| `tests/plugin-api/test_trust_store.cpp` | ‑ | `.nnts` save/load, cert chain |
+| `tests/plugin-api/test_trust_verifier.cpp` | ‑ | Signature verify, TrustLevel resolution |
+| `tests/plugin-api/test_bpe_tokenizer.cpp` | **17** | vocab_size=319, encode/decode round-trip, all 319 token_to_str, str_to_token |
+
+> **The engine is now fully equipped to build any standard architecture from scratch.**
+> The next step is Phase 3: the `NN_ENABLE_APP=ON` CMake preset, tree-sitter integration for the code parser, and the two-way WYSIWYG model editor (ADRs 030–033).
