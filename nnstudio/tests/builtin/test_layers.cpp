@@ -8,8 +8,10 @@
 #include <builtin/layers/NormLayers.h>
 #include <builtin/layers/ActivationsFnLayer.h>
 #include <builtin/layers/ActivationFunctors.h>
+#include <builtin/layers/Dense.h>
 #include <builtin/backends/CpuBackend.h>
 #include <core/BackendRegistry.h>
+#include <core/DType.h>
 #include <cmath>
 #include <numeric>
 
@@ -230,4 +232,22 @@ TEST_F(LayerTest, ActivationsFnLayer_TwoInstances_Independent) {
     ASSERT_TRUE(g2.ok());
     EXPECT_FLOAT_EQ(g2.value().flat(0), 1.0f);  // x2[0]=1   > 0
     EXPECT_FLOAT_EQ(g2.value().flat(1), 0.0f);  // x2[1]=-2  < 0
+}
+
+// ─── Dense dtype mismatch ──────────────────────────────────────────────────────
+// CpuBackend is Float32-only.  Passing an Int32 input must return
+// Result::error(DTypeMismatch) rather than silently reinterpreting bits.
+
+TEST_F(LayerTest, Dense_DTypeMismatch_ReturnsError) {
+    Dense d(4);
+    auto buildR = d.build({2, 3});
+    ASSERT_TRUE(buildR.ok());
+
+    // Build the dense layer with Float32 (its normal path) so weights exist,
+    // then pass an Int32 tensor to forward() to trigger the dtype guard.
+    Tensor bad = Tensor({1, 3}, DType::Int32);
+    auto r = d.forward(bad);
+
+    ASSERT_FALSE(r.ok()) << "Expected DTypeMismatch error but got ok()";
+    EXPECT_EQ(r.error().code, ErrorCode::DTypeMismatch);
 }

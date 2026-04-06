@@ -105,6 +105,12 @@ Result<Shape> Dense::build(const Shape& inputShape) {
 // ─── forward: y = x @ W^T + b ────────────────────────────────────────────────
 Result<Tensor> Dense::forward(const Tensor& x) {
     assert(built_ && "Dense::forward called before build()");
+    // CpuBackend only supports Float32; fail fast with a typed error rather
+    // than silently reinterpreting raw bytes as floats.
+    if (x.dtype() != DType::Float32)
+        return err(ErrorCode::DTypeMismatch,
+                   "Dense::forward: CpuBackend requires Float32 input, got " +
+                   std::string(dtypeName(x.dtype())));
     lastInput_ = x;
 
     Tensor Wt = B().transpose(weights_.tensor, 0, 1);

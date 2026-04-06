@@ -37,7 +37,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Third-party / dependency setup
 - [x] Copy/fetch Eigen headers — resolved via CMake FetchContent (3.4.0); no manual copy needed
 - [x] Copy/fetch GoogleTest — resolved via CMake FetchContent (1.14.0); no manual copy needed
-- [ ] Copy/fetch pybind11 into `nnstudio/third-party/pybind11/` — deferred to Python bridge phase
+- [x] Copy/fetch pybind11 into `nnstudio/third-party/pybind11/` — resolved via pip site-packages (3.0.3) → FetchContent fallback; no manual copy needed
 - [ ] Copy/fetch ONNX protobuf into `nnstudio/third-party/onnx/` — deferred to Format I/O phase
 - [x] Confirm OpenSSL 3.x available — OpenSSL 3.6.0 at `C:\Program Files\OpenSSL-Win64`; MSYS2 also has 3.1.4
 - [x] Verify Qt 6.5+ installation and record path in `ai_priv/ai_priv.md` — Qt 6.10.1 recorded
@@ -52,7 +52,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Basic ops: element-wise add/mul, reshape, slice, transpose, broadcast
 - [x] `matmul()` dispatching to backend
 - [x] Serialization: save/load to raw binary + metadata header (`NNS1` magic, binary little-endian)
-- [ ] Python binding via pybind11
+- [x] Python binding via pybind11
 - [x] Unit tests: shape arithmetic, op correctness vs NumPy reference values
 
 ### Layer subsystem (`nnstudio/core/layers/`)
@@ -64,7 +64,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `Embedding`
 - [x] `MultiHeadAttention`
 - [x] `LayerNorm` → `NormLayers.h`
-- [ ] Python bindings for all layers
+- [x] Python bindings for all layers
 - [ ] C++ export template for each layer type
 - [x] Unit tests: forward pass vs reference, backward pass gradient check
 
@@ -87,7 +87,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `Softmax` + derivative (Jacobian)
 - [x] `GELU` + derivative
 - [x] `@kb:` comments linking to `ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md`
-- [ ] Python bindings
+- [x] Python bindings
 - [x] Unit tests
 
 ### Loss functions (`nnstudio/core/losses/`)
@@ -95,7 +95,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `CrossEntropy` + gradient
 - [x] `BinaryCrossEntropy` + gradient
 - [x] `HuberLoss` + gradient
-- [ ] Python bindings
+- [x] Python bindings
 - [x] Unit tests (11 tests: MSE×3, BCE×3, CrossEntropy×2, Huber×4)
 
 ### Optimizers (`nnstudio/core/optimizers/`)
@@ -104,7 +104,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `AdamW`
 - [x] `RMSProp`
 - [x] LR scheduler base + `StepLR`, `CosineAnnealingLR`
-- [ ] Python bindings
+- [x] Python bindings
 - [x] Unit tests: parameter update step correctness (14 tests: SGD×5, Adam×3, AdamW×2, RMSProp×3, StepDecay×1)
 
 ### Compute graph (`nnstudio/core/graph/`)
@@ -167,7 +167,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Phase 1 milestone verification
 - [x] `cmake --build && ctest` passes all unit tests — **63/63 green** (15 new LayerTest + 48 prior)
 - [x] Can construct 3-layer MLP in C++, run forward pass on XOR dataset, verify output shape ← `test_trainer_xor.cpp`
-- [ ] Same via Python bindings: `import nnstudio; ...` works in embedded Python
+- [x] Same via Python bindings: `import nnstudio; ...` works in embedded Python
 
 ---
 
@@ -219,7 +219,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - This was a self-contained change: only `Tensor.cpp` + `Tensor.h` changed; public API surface unchanged
 - [x] Add `Tensor::item<T>()` accessor (type-safe scalar extraction) replacing raw `data()[i]`
 - [x] Unit tests: `Itemsize_Float32`, `Itemsize_Int8`, `Itemsize_Int32`, `RawData_NonNull`, `Dtype_RoundTrip` (5 new tests)
-- [ ] Unit tests: dtype mismatch returns `Result::error()` in CpuBackend dispatch
+- [x] Unit tests: dtype mismatch returns `Result::error()` in CpuBackend dispatch
 
 ### C++ PyTorch-compatible shim (`include/nnstudio/torch_compat.h`)
 
