@@ -304,11 +304,14 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `nnstudio::losses::*` (MSE, CrossEntropy, …) → `nnstudio::builtin::losses::*`
 - [x] `nnstudio::optimizers::*` (SGD, Adam, AdamW) → `nnstudio::builtin::optimizers::*`
 - [x] `CpuBackend` in `nnstudio::` → `nnstudio::builtin::backends::CpuBackend`
-- [ ] `Trainer` internals → `nnstudio::internal::training::*`
+- [x] `Trainer` internals → `nnstudio::internal::training::*`
 
 ### Folder renames (to match namespaces)
 
 - [ ] `nnstudio/core/include/nnstudio/core/` → split into `api/` (Tier 1 public) and `internal/` (Tier 2)
+  <!-- DEFERRED: 60+ #include <core/...> references across src, tests, python-bridge. Scope > 1 day.
+       Do as Phase 2 SDK prep step 0 (before nnstudio_plugin.h is written), so plugin authors
+       see the correct include paths from day one. Namespace migration is already done. -->
 - [x] `nnstudio/core/` layers/activations/losses/optimizers/backends → `nnstudio/builtin/`
 - [x] Update all `#include` paths in source files and tests
 

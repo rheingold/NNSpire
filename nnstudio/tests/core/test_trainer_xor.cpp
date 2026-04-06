@@ -25,7 +25,7 @@
 
 #include <cmath>
 
-using namespace nnstudio::core;
+using namespace nnstudio::internal::training;
 using namespace nnstudio::builtin::layers;
 using namespace nnstudio::builtin::losses;
 using namespace nnstudio::builtin::optimizers;

@@ -8,7 +8,7 @@
 #include <cmath>
 #include <limits>
 
-using namespace nnstudio::core;
+using namespace nnstudio::internal::training;
 
 // ─── Basic patience ───────────────────────────────────────────────────────────
 

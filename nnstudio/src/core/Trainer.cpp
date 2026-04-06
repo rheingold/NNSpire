@@ -7,7 +7,8 @@
 #include <cassert>
 #include <numeric>
 
-namespace nnstudio::core {
+namespace nnstudio::internal::training {
+using namespace nnstudio::core; // NOLINT(google-build-using-namespace)
 
 // ---------------------------------------------------------------------------
 // WALKTHROUGH — Chapter 4: The Training Loop
@@ -136,4 +137,4 @@ Result<Tensor> Trainer::predict(const Tensor& inputs) {
     return model_.forward(inputs);
 }
 
-} // namespace nnstudio::core
+} // namespace nnstudio::internal::training

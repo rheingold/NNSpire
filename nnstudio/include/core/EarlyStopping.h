@@ -37,7 +37,7 @@
 #include <functional>
 #include <limits>
 
-namespace nnstudio::core {
+namespace nnstudio::internal::training {
 
 class EarlyStoppingCallback {
 public:
@@ -86,4 +86,4 @@ private:
     int   counter_{0};
 };
 
-} // namespace nnstudio::core
+} // namespace nnstudio::internal::training

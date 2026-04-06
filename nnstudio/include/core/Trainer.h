@@ -51,7 +51,10 @@
 #include <vector>
 #include <cstdint>
 
-namespace nnstudio::core {
+namespace nnstudio::internal::training {
+
+// Pull in public-API types that Trainer depends on
+using namespace nnstudio::core; // NOLINT(google-build-using-namespace)
 
 // ─── Dataset view ─────────────────────────────────────────────────────────────
 struct DataBatch {
@@ -125,4 +128,4 @@ private:
     uint64_t                globalStep_{0};
 };
 
-} // namespace nnstudio::core
+} // namespace nnstudio::internal::training
