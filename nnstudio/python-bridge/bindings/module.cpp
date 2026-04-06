@@ -35,6 +35,7 @@
 #include <builtin/layers/ActivationsFnLayer.h>
 #include <builtin/losses/Losses.h>
 #include <builtin/optimizers/Optimizers.h>
+#include <core/ComputeGraph.h>
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -144,6 +145,36 @@ PYBIND11_MODULE(nnstudio, m) {
             auto r = l.forward(x);
             if (!r.ok()) throw std::runtime_error(r.error().message);
             return r.value();
+        })
+        .def("build", [](ILayer& l, std::vector<int64_t> shape) {
+            auto r = l.build(shape);
+            if (!r.ok()) throw std::runtime_error(r.error().message);
+            return r.value();
+        })
+        .def("backward", [](ILayer& l, const Tensor& grad) {
+            auto r = l.backward(grad);
+            if (!r.ok()) throw std::runtime_error(r.error().message);
+            return r.value();
+        })
+        .def("parameters", [](ILayer& l) { return l.parameters(); },
+             py::return_value_policy::reference_internal)
+        .def("setName", [](ILayer& l, const std::string& n) { l.setName(n); });
+
+    // ── Parameter ─────────────────────────────────────────────────────────────
+    // A trainable weight/bias tensor and its gradient accumulator.
+    py::class_<Parameter>(nn, "Parameter")
+        .def_readwrite("name",   &Parameter::name)
+        .def_readwrite("frozen", &Parameter::frozen)
+        .def_property("data",
+            [](Parameter& p) -> Tensor& { return p.tensor; },
+            [](Parameter& p, const Tensor& t) { p.tensor = t; })
+        .def_property_readonly("grad", [](const Parameter& p) -> py::object {
+            if (!p.tensor.hasGrad()) return py::none();
+            return py::cast(p.tensor.grad());
+        })
+        .def("__repr__", [](const Parameter& p) {
+            return "Parameter(name='" + p.name + "', numel=" +
+                   std::to_string(p.tensor.numel()) + ")";
         });
 
     // ── Linear (Dense) ───────────────────────────────────────────────────────
@@ -258,6 +289,11 @@ Matches torch.nn.Linear(in_features, out_features, bias=True).)doc");
             auto r = self.compute(pred, tgt);
             if (!r.ok()) throw std::runtime_error(r.error().message);
             return r.value();
+        })
+        .def("gradient", [](nsloss::MSE& self, const Tensor& pred, const Tensor& tgt) {
+            auto r = self.gradient(pred, tgt);
+            if (!r.ok()) throw std::runtime_error(r.error().message);
+            return r.value();
         });
 
     py::class_<nsloss::CrossEntropy>(nn, "CrossEntropyLoss")
@@ -266,12 +302,22 @@ Matches torch.nn.Linear(in_features, out_features, bias=True).)doc");
             auto r = self.compute(pred, tgt);
             if (!r.ok()) throw std::runtime_error(r.error().message);
             return r.value();
+        })
+        .def("gradient", [](nsloss::CrossEntropy& self, const Tensor& pred, const Tensor& tgt) {
+            auto r = self.gradient(pred, tgt);
+            if (!r.ok()) throw std::runtime_error(r.error().message);
+            return r.value();
         });
 
     py::class_<nsloss::BCE>(nn, "BCELoss")
         .def(py::init<>())
         .def("forward", [](nsloss::BCE& self, const Tensor& pred, const Tensor& tgt) {
             auto r = self.compute(pred, tgt);
+            if (!r.ok()) throw std::runtime_error(r.error().message);
+            return r.value();
+        })
+        .def("gradient", [](nsloss::BCE& self, const Tensor& pred, const Tensor& tgt) {
+            auto r = self.gradient(pred, tgt);
             if (!r.ok()) throw std::runtime_error(r.error().message);
             return r.value();
         });
@@ -283,6 +329,11 @@ Matches torch.nn.Linear(in_features, out_features, bias=True).)doc");
         .def(py::init<float>(), "delta"_a = 1.0f)
         .def("forward", [](nsloss::HuberLoss& self, const Tensor& pred, const Tensor& tgt) {
             auto r = self.compute(pred, tgt);
+            if (!r.ok()) throw std::runtime_error(r.error().message);
+            return r.value();
+        })
+        .def("gradient", [](nsloss::HuberLoss& self, const Tensor& pred, const Tensor& tgt) {
+            auto r = self.gradient(pred, tgt);
             if (!r.ok()) throw std::runtime_error(r.error().message);
             return r.value();
         });
@@ -323,6 +374,30 @@ Matches torch.nn.Linear(in_features, out_features, bias=True).)doc");
         if (!r.ok()) throw std::runtime_error(r.error().message);
         return r.value();
     }, "input"_a, "p"_a = 0.5f, "training"_a = true);
+
+    // ── ComputeGraph ──────────────────────────────────────────────────────────
+    // nn.ComputeGraph — DAG-based execution engine, exposes the same ILayer API.
+    using CG = nnstudio::core::ComputeGraph;
+    py::class_<CG, ILayer>(nn, "ComputeGraph")
+        .def(py::init<>())
+        // Graph construction
+        .def("input",  &CG::input,
+             "Allocate the input node (call once). Returns NodeId 0.")
+        .def("record", [](CG& g, ILayer& l, nnstudio::core::NodeId id) {
+            return g.record(&l, id);
+        }, py::keep_alive<1, 2>(),
+           "Record a layer op: inputId → layer → new NodeId.")
+        .def("setOutput",    &CG::setOutput)
+        .def("outputNodeId", &CG::outputNodeId)
+        // Trace mode
+        .def("setTraceMode", &CG::setTraceMode)
+        .def("traceMode",    &CG::traceMode)
+        // JSON serialization (for graph visualization)
+        .def("toJson", &CG::toJson)
+        .def_static("registeredLayerTypes", &CG::registeredLayerTypes)
+        // ILayer interface overrides already inherited from nn.Module
+        .def("parameters", [](CG& g) { return g.parameters(); },
+             py::return_value_policy::reference_internal);
 
     // ── optim submodule ───────────────────────────────────────────────────────
     auto optim = m.def_submodule("optim",

@@ -58,5 +58,11 @@ if _sys.platform == "win32":
 from .nnstudio import *          # noqa: F401, F403  — re-export compiled bindings
 from .nnstudio import __version__  # noqa: F401
 
-__all__ = ["nn", "optim", "Tensor", "DType", "Device",
-           "zeros", "ones", "full", "__version__"]
+from . import keras              # noqa: F401
+from . import torch_compat       # noqa: F401
+
+__all__ = [
+    "nn", "optim", "Tensor", "DType", "Device",
+    "zeros", "ones", "full", "__version__",
+    "keras", "torch_compat",
+]

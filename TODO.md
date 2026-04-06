@@ -116,7 +116,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `ILayer::forward()` optional `EvalTrace*` parameter (`nullptr` = zero-cost no-op in normal training)
 - [x] `ILayer::backward()` optional `EvalTrace*` parameter — captures `grad_output` and computed `grad_input`
 - [x] `Trainer::setTraceMode(bool)` — delegates to `ComputeGraph::setTraceMode()`; traces accessible via `ComputeGraph::traces()`
-- [ ] Python bindings
+- [x] Python bindings
 
 ### Training loop (`nnstudio/core/training/`)
 - [x] `Trainer` class: graph + optimizer + loss + dataset
@@ -129,7 +129,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - [x] Raw gradients are intentionally NOT saved — they are zeroed at the start of every step
         and recomputed by one forward+backward pass; losing them costs at most one step
 - [x] Early stopping callback → `EarlyStoppingCallback` in `EarlyStopping.h`
-- [ ] Python bindings
+- [x] Python bindings (`nnstudio.keras.Model.fit/predict/evaluate`, pure-Python training loop)
 
 ### Format I/O (`nnstudio/core/formats/`)
 - [ ] `OnnxIO::import()` — ONNX protobuf → ComputeGraph
@@ -256,17 +256,17 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `nnstudio.nn.MSELoss / CrossEntropyLoss / BCEWithLogitsLoss` — torch naming
 - [x] `nnstudio.optim.SGD / Adam / AdamW / RMSProp` — torch constructor signatures (params, lr, weight_decay, ...)
 - [x] `nnstudio.nn.functional.relu / sigmoid / softmax / gelu / dropout` — functional API
-- [ ] `nnstudio.torch_compat` re-export: `import nnstudio.torch_compat as torch` works as drop-in
+- [x] `nnstudio.torch_compat` re-export: `import nnstudio.torch_compat as torch` works as drop-in
 
 ### Python Keras-compatible aliases (additive, thin wrapper)
 
-- [ ] `nnstudio.keras.layers.Dense / Conv2D / Embedding / LSTM / MultiHeadAttention / BatchNormalization / Dropout / LayerNormalization`
-- [ ] `nnstudio.keras.losses.MeanSquaredError / CategoricalCrossentropy / BinaryCrossentropy`
-- [ ] `nnstudio.keras.optimizers.SGD / Adam / AdamW / RMSprop`
-- [ ] `nnstudio.keras.Model.compile(optimizer, loss, metrics)` — wraps `Trainer`
-- [ ] `nnstudio.keras.Model.fit(x, y, epochs, batch_size, validation_data, callbacks)` — wraps training loop
-- [ ] `nnstudio.keras.Model.predict(x)` — single forward pass, no grad
-- [ ] `nnstudio.keras.callbacks.EarlyStopping / ModelCheckpoint` — map to our callback system
+- [x] `nnstudio.keras.layers.Dense / Conv2D / Embedding / LSTM / MultiHeadAttention / BatchNormalization / Dropout / LayerNormalization`
+- [x] `nnstudio.keras.losses.MeanSquaredError / CategoricalCrossentropy / BinaryCrossentropy`
+- [x] `nnstudio.keras.optimizers.SGD / Adam / AdamW / RMSprop`
+- [x] `nnstudio.keras.Model.compile(optimizer, loss, metrics)` — wraps training loop
+- [x] `nnstudio.keras.Model.fit(x, y, epochs, batch_size, validation_data, callbacks)` — pure-Python training loop
+- [x] `nnstudio.keras.Model.predict(x)` — single forward pass, no grad
+- [x] `nnstudio.keras.callbacks.EarlyStopping / ModelCheckpoint` — pure-Python callback system
 
 ### Compatibility warning system
 
