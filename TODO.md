@@ -245,17 +245,17 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > ⚠️ These bindings do not exist yet — but they **must be designed with torch naming** from day one.
 > Do not expose `nnstudio.core.Dense`; expose `nnstudio.nn.Linear` with `Dense` as an alias.
 
-- [ ] Top-level module: `import nnstudio` → available sub-namespaces: `nnstudio.nn`, `nnstudio.optim`, `nnstudio.nn.functional`
-- [ ] `nnstudio.Tensor` matches `torch.Tensor` public surface: `.shape`, `.dtype`, `.device`, `.item()`, `.numpy()` (CPU copy), `__add__/__mul__/...`
-- [ ] `nnstudio.nn.Linear(in, out)` — default torch constructor signature
-- [ ] `nnstudio.nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding)` — torch signature
-- [ ] `nnstudio.nn.Embedding(num_embeddings, embedding_dim)` — torch signature
-- [ ] `nnstudio.nn.MultiheadAttention(embed_dim, num_heads)` — torch signature
-- [ ] `nnstudio.nn.Sequential(*layers)` — torch constructor
-- [ ] `nnstudio.nn.ReLU / Sigmoid / Tanh / GELU / Softmax / Dropout / BatchNorm1d / LayerNorm` — torch naming
-- [ ] `nnstudio.nn.MSELoss / CrossEntropyLoss / BCEWithLogitsLoss` — torch naming
-- [ ] `nnstudio.optim.SGD / Adam / AdamW / RMSProp` — torch constructor signatures (params, lr, weight_decay, ...)
-- [ ] `nnstudio.nn.functional.relu / sigmoid / softmax / gelu / dropout` — functional API
+- [x] Top-level module: `import nnstudio` → available sub-namespaces: `nnstudio.nn`, `nnstudio.optim`, `nnstudio.nn.functional`
+- [x] `nnstudio.Tensor` matches `torch.Tensor` public surface: `.shape`, `.dtype`, `.device`, `.item()`, `.numpy()` (CPU copy), `__add__/__mul__/...`
+- [x] `nnstudio.nn.Linear(in, out)` — default torch constructor signature
+- [x] `nnstudio.nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding)` — torch signature
+- [x] `nnstudio.nn.Embedding(num_embeddings, embedding_dim)` — torch signature
+- [x] `nnstudio.nn.MultiheadAttention(embed_dim, num_heads)` — torch signature
+- [x] `nnstudio.nn.Sequential(*layers)` — torch constructor
+- [x] `nnstudio.nn.ReLU / Sigmoid / Tanh / GELU / Softmax / Dropout / BatchNorm1d / LayerNorm` — torch naming
+- [x] `nnstudio.nn.MSELoss / CrossEntropyLoss / BCEWithLogitsLoss` — torch naming
+- [x] `nnstudio.optim.SGD / Adam / AdamW / RMSProp` — torch constructor signatures (params, lr, weight_decay, ...)
+- [x] `nnstudio.nn.functional.relu / sigmoid / softmax / gelu / dropout` — functional API
 - [ ] `nnstudio.torch_compat` re-export: `import nnstudio.torch_compat as torch` works as drop-in
 
 ### Python Keras-compatible aliases (additive, thin wrapper)
@@ -355,7 +355,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] `issue-enterprise-ca` subcommand — project owner issues Enterprise Intermediate CA cert (admin only)
 
 ### pybind11 bridge (`nnstudio/python-bridge/`)
-- [ ] Python module `nnstudio` exposing: `Tensor`, all `Layer` subclasses, `ComputeGraph`, `Trainer`, `BackendRegistry`
+- [x] Python module `nnstudio` exposing: `Tensor`, all `Layer` subclasses, `ComputeGraph`, `Trainer`, `BackendRegistry`
 - [ ] `runners/` sub-package: Python-side runner clients mirroring `nnstudio/deployment/`
 - [ ] `pyproject.toml` for installable Python package
 - [ ] Wheel build in CI

@@ -50,8 +50,38 @@ endif()
 
 if(NN_ENABLE_PYTHON)
     find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter Development)
-    find_package(pybind11 REQUIRED
-                 HINTS "${CMAKE_CURRENT_SOURCE_DIR}/third-party-deps/pybind11")
+    # Pin PYTHON_EXECUTABLE so pybind11's legacy FindPythonInterp/FindPythonLibsNew
+    # picks the same Python3 that find_package(Python3) found above.
+    set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}" CACHE FILEPATH
+        "Python interpreter used for building pybind11 bindings" FORCE)
+    # Locate pybind11 from: (1) local third-party-deps, (2) pip-installed site-packages,
+    # or (3) FetchContent download.  This order keeps offline / air-gapped builds working.
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -m pybind11 --cmakedir
+        OUTPUT_VARIABLE _PYBIND11_PIP_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    # The output may be wrapped in double-quotes when the path contains spaces.
+    # Strip them so CMake can use the path as a HINTS directory.
+    string(REGEX REPLACE "^\"(.*)\"$" "\\1" _PYBIND11_PIP_DIR "${_PYBIND11_PIP_DIR}")
+    file(TO_CMAKE_PATH "${_PYBIND11_PIP_DIR}" _PYBIND11_PIP_DIR)
+    find_package(pybind11 CONFIG QUIET
+        HINTS "${CMAKE_CURRENT_SOURCE_DIR}/third-party-deps/pybind11"
+              "${_PYBIND11_PIP_DIR}"
+    )
+    if(NOT pybind11_FOUND)
+        message(STATUS "pybind11: fetching via FetchContent (v2.13.6)")
+        include(FetchContent)
+        FetchContent_Declare(pybind11
+            GIT_REPOSITORY https://github.com/pybind/pybind11.git
+            GIT_TAG        v3.0.0
+            GIT_SHALLOW    TRUE
+        )
+        FetchContent_MakeAvailable(pybind11)
+    else()
+        message(STATUS "pybind11: found at ${pybind11_DIR}")
+    endif()
 endif()
 
 # ─── Third-party: Eigen (header-only linear algebra) ─────────────────────────
