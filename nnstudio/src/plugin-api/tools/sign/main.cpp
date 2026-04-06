@@ -272,22 +272,217 @@ static int cmdVerify(int argc, char** argv) {
     return (vr.level == nnstudio::trust::TrustLevel::Untrusted) ? 2 : 0;
 }
 
+// ─── create-tup ──────────────────────────────────────────────────────────────
+
+static int cmdCreateTup(int argc, char** argv) {
+    std::string rootKeyPath, action, certPath, dn, outPath;
+    for (int i = 0; i < argc; ++i) {
+        if (std::string{argv[i]} == "--root-key" && i+1 < argc) rootKeyPath = argv[++i];
+        if (std::string{argv[i]} == "--action"   && i+1 < argc) action      = argv[++i];
+        if (std::string{argv[i]} == "--cert"     && i+1 < argc) certPath    = argv[++i];
+        if (std::string{argv[i]} == "--dn"       && i+1 < argc) dn          = argv[++i];
+        if (std::string{argv[i]} == "--out"      && i+1 < argc) outPath     = argv[++i];
+    }
+    if (rootKeyPath.empty() || action.empty() || outPath.empty()) {
+        std::cerr << "Usage: create-tup --root-key <root.pem> --action add|revoke "
+                     "[--cert <ca.pem>|--dn <DN>] --out <update.tup>\n";
+        return 1;
+    }
+    if (action == "add" && certPath.empty()) {
+        std::cerr << "create-tup add requires --cert\n"; return 1;
+    }
+    if (action == "revoke" && dn.empty()) {
+        std::cerr << "create-tup revoke requires --dn\n"; return 1;
+    }
+
+    // Load root private key
+    BIO* kbio = BIO_new_file(rootKeyPath.c_str(), "r");
+    if (!kbio) sslDie("create-tup: cannot open root key");
+    EVP_PKEY* rootKey = PEM_read_bio_PrivateKey(kbio, nullptr, nullptr, nullptr);
+    BIO_free(kbio);
+    if (!rootKey) sslDie("create-tup: cannot read root private key");
+
+    // Build TUP payload
+    std::vector<uint8_t> tup;
+    tup.insert(tup.end(), {'N','N','T','U'});
+    writeU32LE(tup, 1);  // version
+    int64_t ts = static_cast<int64_t>(std::time(nullptr));
+    writeI64LE(tup, ts);
+    writeU32LE(tup, 1);  // action count
+
+    if (action == "add") {
+        // Load CA cert DER
+        BIO* cbio = BIO_new_file(certPath.c_str(), "r");
+        if (!cbio) sslDie("create-tup: cannot open cert file");
+        X509* cert = PEM_read_bio_X509(cbio, nullptr, nullptr, nullptr);
+        BIO_free(cbio);
+        if (!cert) sslDie("create-tup: cannot read cert PEM");
+        int derLen = i2d_X509(cert, nullptr);
+        std::vector<uint8_t> certDer(static_cast<size_t>(derLen));
+        uint8_t* p = certDer.data();
+        i2d_X509(cert, &p);
+
+        // Determine level from cert BasicConstraints CN
+        char cnBuf[256] = {};
+        X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,
+                                  cnBuf, sizeof(cnBuf));
+        X509_free(cert);
+        std::string cn(cnBuf);
+        uint32_t level = 1; // default Community
+        if (cn.find("Enterprise") != std::string::npos ||
+            cn.find("enterprise") != std::string::npos)
+            level = 2;
+
+        writeU32LE(tup, 1);   // AddCa
+        writeU32LE(tup, level);
+        writeVec(tup, certDer);
+    } else {
+        writeU32LE(tup, 2);   // RevokeCa
+        writeStr(tup, dn);
+    }
+
+    // Sign everything built so far
+    EVP_MD_CTX* mctx = EVP_MD_CTX_new();
+    size_t sigLen = 0;
+    EVP_DigestSignInit(mctx, nullptr, EVP_sha256(), nullptr, rootKey);
+    EVP_DigestSign(mctx, nullptr, &sigLen, tup.data(), tup.size());
+    std::vector<uint8_t> sig(sigLen);
+    EVP_DigestSign(mctx, sig.data(), &sigLen, tup.data(), tup.size());
+    sig.resize(sigLen);
+    EVP_MD_CTX_free(mctx);
+    EVP_PKEY_free(rootKey);
+
+    writeVec(tup, sig);
+
+    writeFileBin(outPath, tup.data(), tup.size());
+    std::cout << "TUP written: " << outPath
+              << "  (action=" << action << ", ts=" << ts << ")\n";
+    return 0;
+}
+
+// ─── issue-enterprise-ca ─────────────────────────────────────────────────────
+
+static int cmdIssueEnterpriseCa(int argc, char** argv) {
+    std::string rootKeyPath, rootCertPath, subject, outPrefix;
+    for (int i = 0; i < argc; ++i) {
+        if (std::string{argv[i]} == "--root-key"  && i+1 < argc) rootKeyPath  = argv[++i];
+        if (std::string{argv[i]} == "--root-cert" && i+1 < argc) rootCertPath = argv[++i];
+        if (std::string{argv[i]} == "--subject"   && i+1 < argc) subject      = argv[++i];
+        if (std::string{argv[i]} == "--out"       && i+1 < argc) outPrefix    = argv[++i];
+    }
+    if (rootKeyPath.empty() || rootCertPath.empty() || subject.empty() || outPrefix.empty()) {
+        std::cerr << "Usage: issue-enterprise-ca --root-key <root.pem> "
+                     "--root-cert <root-cert.pem> --subject <DN> --out <prefix>\n";
+        return 1;
+    }
+
+    // Load root key + cert
+    BIO* kbio = BIO_new_file(rootKeyPath.c_str(), "r");
+    if (!kbio) sslDie("issue-enterprise-ca: cannot open root key");
+    EVP_PKEY* rootKey = PEM_read_bio_PrivateKey(kbio, nullptr, nullptr, nullptr);
+    BIO_free(kbio);
+    if (!rootKey) sslDie("issue-enterprise-ca: cannot read root key");
+
+    BIO* cbio = BIO_new_file(rootCertPath.c_str(), "r");
+    if (!cbio) sslDie("issue-enterprise-ca: cannot open root cert");
+    X509* rootCert = PEM_read_bio_X509(cbio, nullptr, nullptr, nullptr);
+    BIO_free(cbio);
+    if (!rootCert) sslDie("issue-enterprise-ca: cannot read root cert");
+
+    // Generate enterprise CA keypair
+    EVP_PKEY* caKey = nullptr;
+    EVP_PKEY_CTX* pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr);
+    if (!pctx ||
+        EVP_PKEY_keygen_init(pctx) <= 0 ||
+        EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_X9_62_prime256v1) <= 0 ||
+        EVP_PKEY_keygen(pctx, &caKey) <= 0)
+        sslDie("issue-enterprise-ca: key generation failed");
+    EVP_PKEY_CTX_free(pctx);
+
+    // Build enterprise CA certificate
+    X509* caCert = X509_new();
+    ASN1_INTEGER_set(X509_get_serialNumber(caCert), 2);
+    X509_gmtime_adj(X509_getm_notBefore(caCert), 0);
+    X509_gmtime_adj(X509_getm_notAfter(caCert),  365 * 24 * 3600L * 5); // 5 years
+    X509_set_pubkey(caCert, caKey);
+
+    // Subject from --subject (simple CN= parsing, or raw DN string)
+    X509_NAME* caName = X509_NAME_new();
+    // Accept "/CN=.../O=.../C=..." style or bare string as CN
+    if (subject[0] == '/') {
+        size_t pos = 0;
+        while (pos < subject.size()) {
+            size_t slash = subject.find('/', pos + 1);
+            std::string attr = subject.substr(pos + 1,
+                slash == std::string::npos ? std::string::npos : slash - pos - 1);
+            size_t eq = attr.find('=');
+            if (eq != std::string::npos) {
+                std::string key = attr.substr(0, eq), val = attr.substr(eq + 1);
+                X509_NAME_add_entry_by_txt(caName, key.c_str(), MBSTRING_ASC,
+                    reinterpret_cast<const unsigned char*>(val.c_str()), -1, -1, 0);
+            }
+            pos = slash == std::string::npos ? subject.size() : slash;
+        }
+    } else {
+        X509_NAME_add_entry_by_txt(caName, "CN", MBSTRING_ASC,
+            reinterpret_cast<const unsigned char*>(subject.c_str()), -1, -1, 0);
+    }
+    X509_set_subject_name(caCert, caName);
+    X509_NAME_free(caName);
+    X509_set_issuer_name(caCert, X509_get_subject_name(rootCert));
+
+    // BasicConstraints CA:TRUE + keyCertSign
+    X509V3_CTX x3ctx; X509V3_set_ctx_nodb(&x3ctx);
+    X509V3_set_ctx(&x3ctx, rootCert, caCert, nullptr, nullptr, 0);
+    auto addExt = [&](int nid, const char* val) {
+        X509_EXTENSION* ext = X509V3_EXT_conf_nid(nullptr, &x3ctx, nid, val);
+        if (ext) { X509_add_ext(caCert, ext, -1); X509_EXTENSION_free(ext); }
+    };
+    addExt(NID_basic_constraints, "critical,CA:TRUE,pathlen:0");
+    addExt(NID_key_usage,         "critical,keyCertSign,cRLSign");
+
+    if (X509_sign(caCert, rootKey, EVP_sha256()) == 0)
+        sslDie("issue-enterprise-ca: X509_sign failed");
+
+    // Write enterprise CA key + cert
+    std::string caKeyPath  = outPrefix + "-key.pem";
+    std::string caCertPath = outPrefix + "-cert.pem";
+    BIO* out = BIO_new_file(caKeyPath.c_str(), "w");
+    if (!out || PEM_write_bio_PrivateKey(out, caKey, nullptr, nullptr, 0, nullptr, nullptr) != 1)
+        sslDie("issue-enterprise-ca: write CA key failed");
+    BIO_free(out);
+
+    out = BIO_new_file(caCertPath.c_str(), "w");
+    if (!out || PEM_write_bio_X509(out, caCert) != 1)
+        sslDie("issue-enterprise-ca: write CA cert failed");
+    BIO_free(out);
+
+    X509_free(caCert); X509_free(rootCert);
+    EVP_PKEY_free(caKey); EVP_PKEY_free(rootKey);
+
+    std::cout << "Enterprise CA key : " << caKeyPath  << "\n";
+    std::cout << "Enterprise CA cert: " << caCertPath << "\n";
+    return 0;
+}
+
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cout << "nnstudio-sign <subcommand> [options]\n"
-                     "  keygen        Generate ECDSA P-256 keypair\n"
-                     "  sign          Sign a plugin binary\n"
-                     "  verify        Verify a plugin's trust level\n"
-                     "  create-tup    Create a Trust Update Packet [Phase 2 TODO]\n"
-                     "  issue-enterprise-ca   Issue an enterprise CA cert [Phase 2 TODO]\n";
+                     "  keygen              Generate ECDSA P-256 keypair\n"
+                     "  sign                Sign a plugin binary (.nnsig sidecar)\n"
+                     "  verify              Verify a plugin's trust level\n"
+                     "  create-tup          Create a signed Trust Update Packet (.tup)\n"
+                     "  issue-enterprise-ca Issue an enterprise CA cert (signed by root CA)\n";
         return 1;
     }
     std::string sub = argv[1];
-    if (sub == "keygen")  return cmdKeygen(argc - 2, argv + 2);
-    if (sub == "sign")    return cmdSign  (argc - 2, argv + 2);
-    if (sub == "verify")  return cmdVerify(argc - 2, argv + 2);
+    if (sub == "keygen")             return cmdKeygen          (argc - 2, argv + 2);
+    if (sub == "sign")               return cmdSign            (argc - 2, argv + 2);
+    if (sub == "verify")             return cmdVerify          (argc - 2, argv + 2);
+    if (sub == "create-tup")         return cmdCreateTup       (argc - 2, argv + 2);
+    if (sub == "issue-enterprise-ca") return cmdIssueEnterpriseCa(argc - 2, argv + 2);
     std::cerr << "Unknown subcommand: " << sub << "\n";
     return 1;
 }

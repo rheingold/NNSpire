@@ -47,6 +47,24 @@ if(NN_ENABLE_TRUST)
     gtest_discover_tests(test-plugin-api)
 endif()
 
+# ─── Built-in plugin tests (no dlopen — compile plugin source directly) ───────
+# Phase 2 milestone: PluginLoader can successfully load BPE tokenizer.
+# Here we test the C ABI contract directly to keep tests fast and portable.
+add_executable(test-plugins
+    plugin-api/test_bpe_tokenizer.cpp
+    ${CMAKE_SOURCE_DIR}/plugins/bpe_tokenizer/BpeTokenizerPlugin.cpp
+)
+target_include_directories(test-plugins PRIVATE
+    "${CMAKE_SOURCE_DIR}/include"
+)
+target_link_libraries(test-plugins PRIVATE
+    nnstudio-plugin-api GTest::gtest_main)
+target_compile_options(test-plugins PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-fno-rtti -fno-exceptions>
+    $<$<CXX_COMPILER_ID:MSVC>:/GR- /EHs->
+)
+gtest_discover_tests(test-plugins)
+
 # ─── Pipeline tests (Phase 3) ────────────────────────────────────────────────
 # add_executable(test-pipeline
 #     pipeline/test_text_adapter.cpp

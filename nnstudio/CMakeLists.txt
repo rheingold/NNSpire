@@ -278,8 +278,8 @@ else()
     )
 endif()
 
-# Built-in plugins: Phase 2 — skip until plugin ABI is stable
-# add_subdirectory(plugins)
+# Built-in reference plugins — Phase 2 ABI is stable
+add_subdirectory(plugins)
 
 # Pipeline, deployment, app: require Qt — Phase 3+
 if(NN_ENABLE_APP)
