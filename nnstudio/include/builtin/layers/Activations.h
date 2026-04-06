@@ -69,20 +69,20 @@ public:
     std::string_view docRef()   const noexcept override {
         return "docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#relu";
     }
-    Result<Tensor> forward (const Tensor& x)       override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)       override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 private:
     ReLUFn fn_;
 };
 
-// ─── LeakyReLU: f(x) = x if x>0 else alpha*x ────────────────────────────────
+// ─── LeakyReLU: f(x) = x if x>0 else alpha*x ────────────────────────────────────
 class LeakyReLU : public ActivationBase {
 public:
     explicit LeakyReLU(float alpha = 0.01f) : fn_(alpha) {}
     std::string_view typeName() const noexcept override { return "LeakyReLU"; }
 
-    Result<Tensor> forward (const Tensor& x)       override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)       override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 
     std::unordered_map<std::string,std::string> config() const override {
         return {{"alpha", std::to_string(fn_.alpha_)}};
@@ -98,18 +98,18 @@ public:
     std::string_view docRef()   const noexcept override {
         return "docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#sigmoid";
     }
-    Result<Tensor> forward (const Tensor& x)       override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)       override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 private:
     SigmoidFn fn_;
 };
 
-// ─── TanhAct: f(x) = tanh(x) ─────────────────────────────────────────────────
+// ─── TanhAct: f(x) = tanh(x) ─────────────────────────────────────────────────────
 class TanhAct : public ActivationBase {
 public:
     std::string_view typeName() const noexcept override { return "Tanh"; }
-    Result<Tensor> forward (const Tensor& x)       override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)       override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 private:
     TanhActFn fn_;
 };
@@ -122,19 +122,19 @@ public:
     std::string_view docRef()   const noexcept override {
         return "docs/ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#softmax";
     }
-    Result<Tensor> forward (const Tensor& x)       override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)       override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 private:
     SoftmaxFn fn_;
 };
 
-// ─── GELU: f(x) = 0.5·x·(1+tanh(√(2/π)·(x+0.044715·x³))) ──────────────────
+// ─── GELU: f(x) = 0.5·x·(1+tanh(√(2/π)·(x+0.044715·x³))) ──────────────────────
 // @kb: docs/ai-standards-kb/annexes/A05-LLM-API-Standards.md
 class GELU : public ActivationBase {
 public:
     std::string_view typeName() const noexcept override { return "GELU"; }
-    Result<Tensor> forward (const Tensor& x)       override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)       override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 private:
     GELUFn fn_;
 };

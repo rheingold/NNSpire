@@ -71,12 +71,12 @@ public:
         return Result<Shape>(inputShape);
     }
 
-    Result<Tensor> forward(const Tensor& x) override {
+    Result<Tensor> forward(const Tensor& x, EvalTrace* /*trace*/ = nullptr) override {
         ctx_ = fn_.forward(x);
         return Result<Tensor>(ctx_.output);
     }
 
-    Result<Tensor> backward(const Tensor& gradOut) override {
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* /*trace*/ = nullptr) override {
         return fn_.backward(gradOut, ctx_);
     }
 
@@ -106,14 +106,14 @@ public:
         return Result<Shape>(inputShape);
     }
 
-    Result<Tensor> forward(const Tensor& x) override {
+    Result<Tensor> forward(const Tensor& x, EvalTrace* /*trace*/ = nullptr) override {
         if (!fn_) return Result<Tensor>(
             Error{ErrorCode::InvalidArgument, "ActivationsFnLayerPtr: null IActivation"});
         ctx_ = fn_->forward(x);
         return Result<Tensor>(ctx_.output);
     }
 
-    Result<Tensor> backward(const Tensor& gradOut) override {
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* /*trace*/ = nullptr) override {
         if (!fn_) return Result<Tensor>(
             Error{ErrorCode::InvalidArgument, "ActivationsFnLayerPtr: null IActivation"});
         return fn_->backward(gradOut, ctx_);

@@ -226,7 +226,7 @@ public:
     }
 
     /// Runs forward through all children in recording order.
-    nnstudio::core::Result<nnstudio::core::Tensor> forward(const nnstudio::core::Tensor& x) override {
+    nnstudio::core::Result<nnstudio::core::Tensor> forward(const nnstudio::core::Tensor& x, nnstudio::core::EvalTrace* /*trace*/ = nullptr) override {
         nnstudio::core::Tensor t = x;
         for (auto& l : layers_) {
             auto r = l->forward(t);
@@ -237,7 +237,7 @@ public:
     }
 
     /// Runs backward through all children in reverse order.
-    nnstudio::core::Result<nnstudio::core::Tensor> backward(const nnstudio::core::Tensor& gradOut) override {
+    nnstudio::core::Result<nnstudio::core::Tensor> backward(const nnstudio::core::Tensor& gradOut, nnstudio::core::EvalTrace* /*trace*/ = nullptr) override {
         nnstudio::core::Tensor g = gradOut;
         for (int i = static_cast<int>(layers_.size()) - 1; i >= 0; --i) {
             auto r = layers_[i]->backward(g);

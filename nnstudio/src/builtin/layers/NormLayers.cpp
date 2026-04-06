@@ -28,7 +28,7 @@ Result<Shape> Dropout::build(const Shape& inputShape) {
     return Result<Shape>(inputShape);
 }
 
-Result<Tensor> Dropout::forward(const Tensor& x) {
+Result<Tensor> Dropout::forward(const Tensor& x, EvalTrace* /*trace*/) {
     if (!training_ || dropRate_ <= 0.0f) {
         mask_ = Tensor{};    // clear mask — backward is identity
         return Result<Tensor>(x);
@@ -45,7 +45,7 @@ Result<Tensor> Dropout::forward(const Tensor& x) {
     return Result<Tensor>(out);
 }
 
-Result<Tensor> Dropout::backward(const Tensor& gradOut) {
+Result<Tensor> Dropout::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     if (!training_ || dropRate_ <= 0.0f || mask_.numel() == 0)
         return Result<Tensor>(gradOut);
 
@@ -85,7 +85,7 @@ Result<Shape> BatchNorm1d::build(const Shape& inputShape) {
     return Result<Shape>(inputShape);
 }
 
-Result<Tensor> BatchNorm1d::forward(const Tensor& x) {
+Result<Tensor> BatchNorm1d::forward(const Tensor& x, EvalTrace* /*trace*/) {
     if (x.ndim() != 2)
         return Result<Tensor>(Error{ErrorCode::InvalidArgument,
             "BatchNorm1d::forward expects [N, F]"});
@@ -146,7 +146,7 @@ Result<Tensor> BatchNorm1d::forward(const Tensor& x) {
     return Result<Tensor>(out);
 }
 
-Result<Tensor> BatchNorm1d::backward(const Tensor& gradOut) {
+Result<Tensor> BatchNorm1d::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     const int64_t N = static_cast<int64_t>(N_);
     const int64_t F = numFeatures_;
 
@@ -234,7 +234,7 @@ Result<Shape> LayerNorm::build(const Shape& inputShape) {
     return Result<Shape>(inputShape);
 }
 
-Result<Tensor> LayerNorm::forward(const Tensor& x) {
+Result<Tensor> LayerNorm::forward(const Tensor& x, EvalTrace* /*trace*/) {
     // Support 1-D [D] (single sample) by treating it as [1, D]
     const bool is1D = (x.ndim() == 1);
     const int64_t D = normalizedDim_;
@@ -285,7 +285,7 @@ Result<Tensor> LayerNorm::forward(const Tensor& x) {
     return Result<Tensor>(out);
 }
 
-Result<Tensor> LayerNorm::backward(const Tensor& gradOut) {
+Result<Tensor> LayerNorm::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     const int64_t D = normalizedDim_;
     const int64_t N = lastN_;
     const bool is1D = (gradOut.ndim() == 1);

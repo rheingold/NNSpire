@@ -49,8 +49,8 @@ public:
     std::vector<const Parameter*> parameters() const override { return {}; }
 
     Result<Shape>  build   (const Shape& inputShape) override;
-    Result<Tensor> forward (const Tensor& x)         override;
-    Result<Tensor> backward(const Tensor& gradOut)   override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)         override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr)   override;
 
     /// Toggle training/eval mode.
     void setTraining(bool training) noexcept { training_ = training; }
@@ -88,8 +88,8 @@ public:
     std::string_view typeName() const noexcept override { return "BatchNorm1d"; }
 
     Result<Shape>  build   (const Shape& inputShape) override;
-    Result<Tensor> forward (const Tensor& x)         override;
-    Result<Tensor> backward(const Tensor& gradOut)   override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)         override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr)   override;
 
     std::vector<Parameter*>       parameters()       override;
     std::vector<const Parameter*> parameters() const override;
@@ -144,8 +144,8 @@ public:
     std::string_view typeName() const noexcept override { return "LayerNorm"; }
 
     Result<Shape>  build   (const Shape& inputShape) override;
-    Result<Tensor> forward (const Tensor& x)         override;
-    Result<Tensor> backward(const Tensor& gradOut)   override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)         override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr)   override;
 
     std::vector<Parameter*>       parameters()       override;
     std::vector<const Parameter*> parameters() const override;

@@ -113,8 +113,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Graph serialization (JSON)
 - [x] Graph visualization data export (for UI consumption)
 - [x] `EvalTrace` struct: opt-in per-layer capture of inputs, outputs, and gradients
-- [ ] `ILayer::forward()` optional `EvalTrace*` parameter (`nullptr` = zero-cost no-op in normal training)
-- [ ] `ILayer::backward()` optional `EvalTrace*` parameter — captures `grad_output` and computed `grad_input`
+- [x] `ILayer::forward()` optional `EvalTrace*` parameter (`nullptr` = zero-cost no-op in normal training)
+- [x] `ILayer::backward()` optional `EvalTrace*` parameter — captures `grad_output` and computed `grad_input`
 - [x] `Trainer::setTraceMode(bool)` — delegates to `ComputeGraph::setTraceMode()`; traces accessible via `ComputeGraph::traces()`
 - [ ] Python bindings
 

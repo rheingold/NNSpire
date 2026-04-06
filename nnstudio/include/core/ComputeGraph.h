@@ -228,14 +228,14 @@ public:
      * forward() executes each recorded op in recording order.
      * The intermediate tensors are stored in nodeValues_ for backward().
      */
-    Result<Tensor> forward(const Tensor& x) override;
+    Result<Tensor> forward(const Tensor& x, EvalTrace* trace = nullptr) override;
 
     /**
      * backward() iterates recorded ops in REVERSE, calling each layer's backward()
      * and propagating the gradient toward the graph input (not used by Trainer,
      * but returned for completeness / nested-graph support).
      */
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 
     /** Flattens parameters from all recorded layers (de-duplicated). */
     std::vector<Parameter*>       parameters() override;

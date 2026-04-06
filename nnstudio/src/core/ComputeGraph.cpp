@@ -52,7 +52,7 @@ Result<Shape> ComputeGraph::build(const Shape& inputShape) {
 
 // ─── ILayer::forward ─────────────────────────────────────────────────────────
 
-Result<Tensor> ComputeGraph::forward(const Tensor& x) {
+Result<Tensor> ComputeGraph::forward(const Tensor& x, EvalTrace* /*trace*/) {
     if (tape_.empty()) return Result<Tensor>{x};
 
     if (traceMode_) traces_.clear();
@@ -96,7 +96,7 @@ Result<Tensor> ComputeGraph::forward(const Tensor& x) {
 
 // ─── ILayer::backward ────────────────────────────────────────────────────────
 
-Result<Tensor> ComputeGraph::backward(const Tensor& gradOut) {
+Result<Tensor> ComputeGraph::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     if (tape_.empty()) return Result<Tensor>{gradOut};
 
     // Seed: gradient of the last node's output

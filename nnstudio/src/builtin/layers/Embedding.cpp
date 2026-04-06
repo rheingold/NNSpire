@@ -52,7 +52,7 @@ Result<Shape> Embedding::build(const Shape& inputShape) {
 
 // ─── forward ──────────────────────────────────────────────────────────────────
 
-Result<Tensor> Embedding::forward(const Tensor& x) {
+Result<Tensor> Embedding::forward(const Tensor& x, EvalTrace* /*trace*/) {
     // x: [N, seqLen] — float values used as integer token IDs
     if (x.ndim() != 2) return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Embedding::forward: input must be rank 2 [N, seqLen]"});
     if (!isBuilt())    return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Embedding::forward: call build() first"});
@@ -89,7 +89,7 @@ Result<Tensor> Embedding::forward(const Tensor& x) {
 
 // ─── backward ─────────────────────────────────────────────────────────────────
 
-Result<Tensor> Embedding::backward(const Tensor& gradOut) {
+Result<Tensor> Embedding::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     // gradOut: [N, seqLen, embDim]
     if (gradOut.ndim() != 3) return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Embedding::backward: gradOut must be rank 3"});
 

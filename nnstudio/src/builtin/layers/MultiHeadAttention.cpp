@@ -176,7 +176,7 @@ Result<Shape> MultiHeadAttention::build(const Shape& inputShape) {
 
 // ─── forward ──────────────────────────────────────────────────────────────────
 
-Result<Tensor> MultiHeadAttention::forward(const Tensor& x) {
+Result<Tensor> MultiHeadAttention::forward(const Tensor& x, EvalTrace* /*trace*/) {
     // x: [N, L, embDim]
     if (x.ndim() != 3) return Result<Tensor>(Error{ErrorCode::InvalidArgument, "MultiHeadAttention::forward: input must be rank 3 [N,L,embDim]"});
     if (!isBuilt())    return Result<Tensor>(Error{ErrorCode::InvalidArgument, "MultiHeadAttention::forward: call build() first"});
@@ -234,7 +234,7 @@ Result<Tensor> MultiHeadAttention::forward(const Tensor& x) {
 
 // ─── backward ─────────────────────────────────────────────────────────────────
 
-Result<Tensor> MultiHeadAttention::backward(const Tensor& gradOut) {
+Result<Tensor> MultiHeadAttention::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     // gradOut: [N, L, embDim]
     if (gradOut.ndim() != 3) return Result<Tensor>(Error{ErrorCode::InvalidArgument, "MultiHeadAttention::backward: gradOut must be rank 3"});
 

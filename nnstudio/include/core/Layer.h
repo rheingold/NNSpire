@@ -82,8 +82,9 @@ struct Parameter {
     bool        frozen{false}; ///< if true, optimizer skips this param
 };
 
-// ─── Forward declaration for ComputeGraph ────────────────────────────────────
+// ─── Forward declarations (avoids circular includes) ────────────────────────
 class ComputeGraph;
+struct EvalTrace;
 
 // ─── ILayer — pure abstract module ───────────────────────────────────────────
 /**
@@ -137,14 +138,14 @@ public:
      * @param x  Input tensor, shape [batch, ...inputShape].
      * @return   Output tensor on success.
      */
-    virtual Result<Tensor> forward(const Tensor& x) = 0;
+    virtual Result<Tensor> forward(const Tensor& x, EvalTrace* trace = nullptr) = 0;
 
     /**
      * Accumulate gradients from a backward pass.
      * @param gradOut  Gradient of the loss w.r.t. this layer's output, same shape as output.
      * @return         Gradient w.r.t. this layer's input (to propagate further back).
      */
-    virtual Result<Tensor> backward(const Tensor& gradOut) = 0;
+    virtual Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) = 0;
 
     // ── Parameters ───────────────────────────────────────────────────────────
     /** All learnable parameters (including sub-layers if this is a composite). */
@@ -217,8 +218,8 @@ public:
     size_t size() const noexcept { return layers_.size(); }
 
     Result<Shape> build(const Shape& inputShape) override;
-    Result<Tensor> forward(const Tensor& x) override;
-    Result<Tensor> backward(const Tensor& gradOut) override;
+    Result<Tensor> forward(const Tensor& x, EvalTrace* trace = nullptr) override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr) override;
 
     std::vector<Parameter*>       parameters() override;
     std::vector<const Parameter*> parameters() const override;

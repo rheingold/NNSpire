@@ -89,7 +89,7 @@ Result<Shape> Conv2D::build(const Shape& inputShape) {
 
 // ─── forward ──────────────────────────────────────────────────────────────────
 
-Result<Tensor> Conv2D::forward(const Tensor& x) {
+Result<Tensor> Conv2D::forward(const Tensor& x, EvalTrace* /*trace*/) {
     // x: [N, C_in, H, W]
     if (x.ndim() != 4) return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Conv2D::forward: input must be rank 4 [N,C,H,W]"});
     if (!isBuilt())    return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Conv2D::forward: call build() first"});
@@ -156,7 +156,7 @@ Result<Tensor> Conv2D::forward(const Tensor& x) {
 
 // ─── backward ─────────────────────────────────────────────────────────────────
 
-Result<Tensor> Conv2D::backward(const Tensor& gradOut) {
+Result<Tensor> Conv2D::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     // gradOut: [N, F, outH, outW]
     if (gradOut.ndim() != 4) return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Conv2D::backward: gradOut must be rank 4"});
     if (!isBuilt())           return Result<Tensor>(Error{ErrorCode::InvalidArgument, "Conv2D::backward: call build() first"});

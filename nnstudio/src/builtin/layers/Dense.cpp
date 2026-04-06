@@ -103,7 +103,7 @@ Result<Shape> Dense::build(const Shape& inputShape) {
 }
 
 // ─── forward: y = x @ W^T + b ────────────────────────────────────────────────
-Result<Tensor> Dense::forward(const Tensor& x) {
+Result<Tensor> Dense::forward(const Tensor& x, EvalTrace* /*trace*/) {
     assert(built_ && "Dense::forward called before build()");
     // CpuBackend only supports Float32; fail fast with a typed error rather
     // than silently reinterpreting raw bytes as floats.
@@ -126,7 +126,7 @@ Result<Tensor> Dense::forward(const Tensor& x) {
 }
 
 // ─── backward: dW = gradOut^T @ x,  db = sum(gradOut),  dX = gradOut @ W ────
-Result<Tensor> Dense::backward(const Tensor& gradOut) {
+Result<Tensor> Dense::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     assert(built_ && "Dense::backward called before build()");
     assert(lastInput_.numel() > 0 && "Dense::backward called before forward()");
 

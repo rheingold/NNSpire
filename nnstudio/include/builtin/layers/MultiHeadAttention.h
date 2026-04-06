@@ -75,8 +75,8 @@ public:
 
     // ── ILayer ───────────────────────────────────────────────────────────────
     Result<Shape>  build   (const Shape& inputShape) override;
-    Result<Tensor> forward (const Tensor& x)         override;
-    Result<Tensor> backward(const Tensor& gradOut)   override;
+    Result<Tensor> forward (const Tensor& x, EvalTrace* trace = nullptr)         override;
+    Result<Tensor> backward(const Tensor& gradOut, EvalTrace* trace = nullptr)   override;
 
     std::vector<Parameter*>       parameters()       override;
     std::vector<const Parameter*> parameters() const override;

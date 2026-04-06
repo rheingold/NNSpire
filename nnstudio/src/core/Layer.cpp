@@ -51,7 +51,7 @@ Result<Shape> Sequential::build(const Shape& inputShape) {
     return Result<Shape>(current);
 }
 
-Result<Tensor> Sequential::forward(const Tensor& x) {
+Result<Tensor> Sequential::forward(const Tensor& x, EvalTrace* /*trace*/) {
     Tensor current = x;
     for (auto& layer : layers_) {
         auto r = layer->forward(current);
@@ -61,7 +61,7 @@ Result<Tensor> Sequential::forward(const Tensor& x) {
     return Result<Tensor>(current);
 }
 
-Result<Tensor> Sequential::backward(const Tensor& gradOut) {
+Result<Tensor> Sequential::backward(const Tensor& gradOut, EvalTrace* /*trace*/) {
     Tensor grad = gradOut;
     // Traverse in reverse
     for (auto it = layers_.rbegin(); it != layers_.rend(); ++it) {
