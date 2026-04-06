@@ -77,7 +77,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > - [x] Add `core/include/nnstudio/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
 > - [x] Add `ActivationsFnLayer.h` adapter wrapping `IActivation` into a full `ILayer` (`ActivationsFnLayer<Fn>` owning + `ActivationsFnLayerPtr` non-owning)
 > - [x] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to implement `IActivation` (remove `lastInput_`/`lastOutput_`; return as `ctx` in `ActivationForward`)
-> - [ ] Update `blueprints.md §3.8` to reflect the new interface
+  - [x] Update `blueprints.md §3.8` to reflect the new interface (IActivation / ActivationForward / ActivationsFnLayer)
 > - [x] Add unit tests: `ActivationsFnLayer_ReLU_Forward`, `_Backward`, `_NoParams`
 
 - [x] `ReLU` + derivative

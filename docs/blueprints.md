@@ -508,64 +508,103 @@ The same `float*` block is read by Eigen with a different stride interpretation.
 
 ---
 
-### 3.8 Activation functions — `ActivationBase` and its subclasses
+### 3.8 Activation functions — `IActivation`, functors, and `ActivationBase`
 
 **Files:**  
-[`builtin/include/nnstudio/builtin/layers/Activations.h`](nnstudio/builtin/include/nnstudio/builtin/layers/Activations.h)  
-[`builtin/layers/Activations.cpp`](nnstudio/builtin/layers/Activations.cpp)  
-[`tests/core/test_activations.cpp`](nnstudio/tests/core/test_activations.cpp)
+[`include/core/IActivation.h`](nnstudio/include/core/IActivation.h)  
+[`include/builtin/layers/ActivationFunctors.h`](nnstudio/include/builtin/layers/ActivationFunctors.h)  
+[`include/builtin/layers/Activations.h`](nnstudio/include/builtin/layers/Activations.h)  
+[`include/builtin/layers/ActivationsFnLayer.h`](nnstudio/include/builtin/layers/ActivationsFnLayer.h)  
+[`src/builtin/layers/ActivationFunctors.cpp`](nnstudio/src/builtin/layers/ActivationFunctors.cpp)  
+[`src/builtin/layers/Activations.cpp`](nnstudio/src/builtin/layers/Activations.cpp)  
+[`tests/builtin/test_activations.cpp`](nnstudio/tests/builtin/test_activations.cpp)
 
-#### The three-level inheritance chain
+#### The two-tier design (ADR-020)
 
-The full chain for, say, `ReLU`:
+Activations now live on two tiers:
 
 ```
-nnstudio::ILayer                              ← the contract (pure virtual)
-  └─ nnstudio::builtin::layers::ActivationBase   ← partial impl (two no-ops factored out)
-       └─ nnstudio::builtin::layers::ReLU        ← concrete: adds typeName/forward/backward
+Tier 1 — pure stateless functor  (nnstudio::core::IActivation)
+  No mutable state. Can be shared across threads and graph nodes.
+  Implemented by: ReLUFn, LeakyReLUFn, SigmoidFn, TanhFn, SoftmaxFn, GELUFn
+
+Tier 2 — ILayer adapter  (wraps one Tier-1 functor, owns the per-call context)
+  Path A — legacy:  ActivationBase subclasses (ReLU, Sigmoid, …)
+                    Each class owns a Tier-1 functor fn_ + an ActivationForward ctx_.
+  Path B — new:     ActivationsFnLayer<Fn> / ActivationsFnLayerPtr
+                    Generic adapter; preferred for new code and plugin authoring.
 ```
 
-`Dense` skips `ActivationBase` entirely — it extends `ILayer` directly because it does have parameters and a non-trivial `build()`.
+The `ILayer` tree for `ReLU` (Path A):
+```
+nnstudio::ILayer
+  └─ nnstudio::builtin::layers::ActivationBase   ← no-ops for parameters()/build()
+       └─ nnstudio::builtin::layers::ReLU        ← typeName + delegates to ReLUFn
+```
+
+The `ILayer` tree for `ActivationsFnLayer<ReLUFn>` (Path B):
+```
+nnstudio::ILayer
+  └─ ActivationsFnLayer<ReLUFn>                  ← owns ReLUFn fn_; stores ctx_
+```
+
+Both paths produce an `ILayer` that behaves identically from the caller's perspective. Path B is preferred when you want a reentrant, share-friendly activation (e.g. the same `ReLUFn` functor instance used in multiple graph branches) or when writing a plugin.
+
+`Dense` skips `ActivationBase` entirely — it extends `ILayer` directly because it has learnable parameters and a non-trivial `build()`.
 
 #### What `ActivationBase` contributes
 
-`ActivationBase` is a partial `ILayer` implementation. It provides exactly two methods inline, factoring out boilerplate that is identical for every parameterless activation:
+`ActivationBase` factors out the two methods that are identical for every parameterless activation:
 
 ```cpp
-// Activations have no learnable parameters — always return empty list
+// Activations have no learnable parameters
 std::vector<Parameter*>       parameters()       override { return {}; }
 std::vector<const Parameter*> parameters() const override { return {}; }
 
-// Output shape == input shape — no allocation needed, just mark built
+// Output shape == input shape — just mark built and pass through
 Result<Shape> build(const Shape& inputShape) override {
     markBuilt();
-    return Result<Shape>(inputShape);   // pass shape through unchanged
+    return Result<Shape>(inputShape);
 }
 ```
 
-What it does **not** provide — these remain pure virtual, forcing each concrete class to implement them:
-- `typeName()` — each activation has its own name
-- `forward()` — each activation has its own math
-- `backward()` — each activation has its own derivative
+It also inherits `ctx_` (an `ActivationForward`) that the concrete class's `forward()` populates and `backward()` consumes.
+
+#### The `IActivation` interface and `ActivationForward`
+
+```cpp
+struct ActivationForward {
+    Tensor output;      // the activation's output (always present)
+    Tensor ctx;         // saved tensor for backward
+    bool   ctxIsInput;  // true → ctx is the input x; false → ctx is the output y
+};
+
+class IActivation {
+    virtual ActivationForward  forward (const Tensor& x)                             const = 0;
+    virtual Result<Tensor>     backward(const Tensor& gradOut,
+                                        const ActivationForward& fwd)                const = 0;
+    virtual std::string_view   name()    const noexcept = 0;
+};
+```
+
+`IActivation::forward()` returns `ActivationForward` which bundles the output *and* the saved context in one value. The caller (`ActivationBase` or `ActivationsFnLayer`) stores that struct between the forward and backward calls. The functor itself never touches mutable state — it receives the context back as a parameter to `backward()`.
 
 #### Two different save strategies
 
-Every activation must save something in `forward()` so that `backward()` can compute the derivative without re-running forward. Which tensor to save depends on the math:
+Every activation must save enough for `backward()` to compute the derivative. Which tensor to save depends on the math:
 
-| Group | Who | What is saved | Why |
-|---|---|---|---|
-| **Save input** | `ReLU`, `LeakyReLU`, `GELU` | `lastInput_` | Derivative depends on the *sign* of the input: was it positive or negative? |
-| **Save output** | `Sigmoid`, `TanhAct`, `Softmax` | `lastOutput_` | Derivative simplifies to an expression in the *output* value itself — cheaper to reuse than to recompute from input |
-
-`lastInput_` and `lastOutput_` are both inherited `Tensor` fields from `ILayer` (see [Layer.h](nnstudio/core/include/nnstudio/core/Layer.h)).
+| Group | Who | `ctxIsInput` | What is in `ctx` | Why |
+|---|---|---|---|---|
+| **Save input** | `ReLUFn`, `LeakyReLUFn`, `GELUFn` | `true` | the input `x` | Derivative depends on the *sign* of the input |
+| **Save output** | `SigmoidFn`, `TanhFn`, `SoftmaxFn` | `false` | the output `y` | Derivative expressed via output is cheaper than recomputing from `x` |
 
 #### Per-activation math
 
 **ReLU** — `f(x) = max(0, x)`
 
 ```
-forward:   y = clamp(x, 0, ∞)           saves lastInput_
-backward:  dX = gradOut ⊙ (lastInput_ > 0 ? 1 : 0)
+forward:   y = clamp(x, 0, ∞)           ctx = x  (ctxIsInput = true)
+backward:  dX = gradOut ⊙ (ctx > 0 ? 1 : 0)
            (the ⊙ mask zeros out gradient for every input that was ≤ 0)
 ```
 
@@ -574,40 +613,40 @@ backward:  dX = gradOut ⊙ (lastInput_ > 0 ? 1 : 0)
 **LeakyReLU** — `f(x) = x if x > 0 else α·x`, default `α = 0.01`
 
 ```
-forward:   y_i = x_i > 0 ? x_i : α·x_i     saves lastInput_
-backward:  dX_i = gradOut_i · (lastInput_i > 0 ? 1 : α)
+forward:   y_i = x_i > 0 ? x_i : α·x_i     ctx = x  (ctxIsInput = true)
+backward:  dX_i = gradOut_i · (ctx_i > 0 ? 1 : α)
 ```
 
-`α` is a constructor parameter (`LeakyReLU(0.01f)`). It is stored in `alpha_` and persisted via `config()`. Unlike a `Parameter`, it is **not** learned — it is fixed after construction.
+`α` is a constructor parameter (`LeakyReLUFn(0.01f)`). It is stored in `alpha_` and persisted via `config()`. Unlike a `Parameter`, it is **not** learned — it is fixed after construction.
 
 **Sigmoid** — `f(x) = σ(x) = 1 / (1 + e^{−x})`
 
 ```
-forward:   y = 1 / (1 + exp(−x))        saves lastOutput_ = y
-backward:  dX = gradOut ⊙ y·(1−y)
+forward:   y = 1 / (1 + exp(−x))        ctx = y  (ctxIsInput = false)
+backward:  dX = gradOut ⊙ ctx·(1−ctx)
            (the elegant identity: dσ/dx = σ(1−σ))
 ```
 
-The backward pass never looks at the original input — it only needs the saved output. This is why `lastOutput_` is used here: `y·(1−y)` is cheaper to compute than expanding `σ(x)·(1−σ(x))` from `x`.
+The backward pass never looks at the original input — it only needs `ctx` (the saved output). `y·(1−y)` is cheaper to compute than expanding `σ(x)·(1−σ(x))` from `x`.
 
 **TanhAct** — `f(x) = tanh(x)`
 
 ```
-forward:   y = tanh(x)                  saves lastOutput_ = y
-backward:  dX = gradOut ⊙ (1 − y²)
+forward:   y = tanh(x)                  ctx = y  (ctxIsInput = false)
+backward:  dX = gradOut ⊙ (1 − ctx²)
            (identity: d/dx tanh(x) = 1 − tanh²(x))
 ```
 
 Same pattern as Sigmoid: the derivative in terms of the output is simpler.  
-Note: the class is named `TanhAct` (not `Tanh`) to avoid collision with `std::tanh`.
+Note: the functor is named `TanhFn` (not `Tanh`) to avoid collision with `std::tanh`.
 
 **Softmax** — `f(x)_i = exp(x_i − max) / Σ_j exp(x_j − max)` (row-wise)
 
 ```
-forward:   Per row: subtract max, exp, divide by row sum.   saves lastOutput_
+forward:   Per row: subtract max, exp, divide by row sum.   ctx = y  (ctxIsInput = false)
            The max subtraction is numerical stability only — mathematically neutral.
-backward:  dX_i = s_i · (gradOut_i − Σ_j gradOut_j·s_j)
-           where s = lastOutput_  (the softmax output vector)
+backward:  dX_i = ctx_i · (gradOut_i − Σ_j gradOut_j·ctx_j)
+           where ctx = lastOutput  (the softmax output vector)
 ```
 
 **Softmax backward is NOT element-wise.** Every output `s_i` depends on every input (because of the normalisation denominator), which means `∂s_i / ∂x_j ≠ 0` for `i ≠ j`. The full Jacobian is a dense matrix — the implementation computes it using the dot-product form above, which is `O(C)` per sample rather than `O(C²)`.
@@ -615,24 +654,31 @@ backward:  dX_i = s_i · (gradOut_i − Σ_j gradOut_j·s_j)
 **GELU** — `f(x) = 0.5·x·(1 + tanh(√(2/π)·(x + 0.044715·x³)))` (Hendrycks & Gimpel 2016)
 
 ```
-forward:   element-wise; saves lastInput_
-backward:  chain rule through the tanh approximation (see Activations.cpp for derivation)
+forward:   element-wise; ctx = x  (ctxIsInput = true)
+backward:  chain rule through the tanh approximation (see ActivationFunctors.cpp for derivation)
 ```
 
 GELU is the standard activation in Transformer and LLM architectures (GPT, BERT). It is a smooth, probabilistic gate: unlike ReLU it is never exactly zero for negative inputs — it has a small negative region, which helps gradients flow.
 
 #### How activations sit in the XOR pipeline
 
-The XOR model is literally four `ILayer` objects in a `Sequential`:
+The XOR model is four `ILayer` objects in a `ComputeGraph`:
 
 ```
 Dense   (2→4)   ← nnstudio::builtin::layers::Dense
-ReLU            ← nnstudio::builtin::layers::ReLU
+ReLU            ← nnstudio::builtin::layers::ReLU          (Path A — ActivationBase subclass)
 Dense   (4→1)   ← nnstudio::builtin::layers::Dense
-Sigmoid         ← nnstudio::builtin::layers::Sigmoid
+Sigmoid         ← nnstudio::builtin::layers::Sigmoid        (Path A — ActivationBase subclass)
 ```
 
-`Sequential` does not know or care which namespace each child comes from — they are all `ILayer*`. Forward and backward dispatch through the vtable. An activation layer costs essentially zero in parameters: `parameters()` returns `{}`, `build()` just marks itself built, and the math is a simple element-wise loop or backend call.
+Equivalently, using the Path B adapter:
+
+```cpp
+ActivationsFnLayer<ReLUFn>     relu;    // same ILayer, same math, reentrant functor
+ActivationsFnLayer<SigmoidFn>  sigmoid;
+```
+
+`ComputeGraph` (and any caller of an `ILayer*`) does not know or care which path was used — they are all `ILayer*`. Forward and backward dispatch through the vtable. An activation layer costs essentially zero in parameters: `parameters()` returns `{}`, `build()` just marks itself built, and the math is a simple element-wise loop or backend call.
 
 ### 3.9 Why activations exist — the non-linearity requirement
 
