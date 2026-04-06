@@ -141,3 +141,41 @@ TEST_F(TensorTest, LoadBadMagicFails) {
     std::remove(path);
 }
 
+// ── void* buffer refactor tests ──────────────────────────────────────────────
+
+TEST_F(TensorTest, Itemsize_Float32) {
+    auto t = Tensor::zeros({3, 4}, DType::Float32);
+    EXPECT_EQ(t.itemsize(), 4u);
+}
+
+TEST_F(TensorTest, Itemsize_Int8) {
+    // Int8 tensor: allocation only — no compute in Phase 1, but buffer is valid.
+    Tensor t({5}, DType::Int8);
+    EXPECT_EQ(t.itemsize(), 1u);
+    EXPECT_EQ(t.numel(), 5);
+}
+
+TEST_F(TensorTest, Itemsize_Int32) {
+    Tensor t({2, 3}, DType::Int32);
+    EXPECT_EQ(t.itemsize(), 4u);
+}
+
+TEST_F(TensorTest, RawData_NonNull) {
+    auto t = Tensor::ones({2, 2});
+    EXPECT_NE(t.rawData(), nullptr);
+    // For Float32, rawData() and data() must point to the same address.
+    EXPECT_EQ(t.rawData(), static_cast<void*>(t.data()));
+}
+
+TEST_F(TensorTest, Dtype_RoundTrip) {
+    auto f32 = Tensor::zeros({1}, DType::Float32);
+    auto i8  = Tensor({3},      DType::Int8);
+    auto i32 = Tensor({3},      DType::Int32);
+    EXPECT_EQ(f32.dtype(), DType::Float32);
+    EXPECT_EQ(i8.dtype(),  DType::Int8);
+    EXPECT_EQ(i32.dtype(), DType::Int32);
+    EXPECT_EQ(f32.itemsize(), 4u);
+    EXPECT_EQ(i8.itemsize(),  1u);
+    EXPECT_EQ(i32.itemsize(), 4u);
+}
+

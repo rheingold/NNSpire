@@ -58,11 +58,11 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Layer subsystem (`nnstudio/core/layers/`)
 - [x] Abstract `Layer` base: `forward()`, `backward()`, `parameters()`, `serialize()`, `docRef()`
 - [x] `Dense` (fully connected)
-- [ ] `Conv2D`
+- [x] `Conv2D`
 - [x] `BatchNorm` → `BatchNorm1d` in `NormLayers.h`
 - [x] `Dropout` → `NormLayers.h`
-- [ ] `Embedding`
-- [ ] `MultiHeadAttention`
+- [x] `Embedding`
+- [x] `MultiHeadAttention`
 - [x] `LayerNorm` → `NormLayers.h`
 - [ ] Python bindings for all layers
 - [ ] C++ export template for each layer type
@@ -108,14 +108,14 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Unit tests: parameter update step correctness (14 tests: SGD×5, Adam×3, AdamW×2, RMSProp×3, StepDecay×1)
 
 ### Compute graph (`nnstudio/core/graph/`)
-- [ ] `ComputeGraph` DAG: node registration during forward pass
-- [ ] Autograd: `backward()` traversal, gradient accumulation
+- [x] `ComputeGraph` DAG: node registration during forward pass
+- [x] Autograd: `backward()` traversal, gradient accumulation
 - [ ] Graph serialization (JSON)
 - [ ] Graph visualization data export (for UI consumption)
-- [ ] `EvalTrace` struct: opt-in per-layer capture of inputs, outputs, and gradients
+- [x] `EvalTrace` struct: opt-in per-layer capture of inputs, outputs, and gradients
 - [ ] `ILayer::forward()` optional `EvalTrace*` parameter (`nullptr` = zero-cost no-op in normal training)
 - [ ] `ILayer::backward()` optional `EvalTrace*` parameter — captures `grad_output` and computed `grad_input`
-- [ ] `Trainer::setTraceMode(bool)` — when true, passes a live `EvalTrace` to each layer each step
+- [x] `Trainer::setTraceMode(bool)` — delegates to `ComputeGraph::setTraceMode()`; traces accessible via `ComputeGraph::traces()`
 - [ ] Python bindings
 
 ### Training loop (`nnstudio/core/training/`)
@@ -128,7 +128,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - [ ] Save epoch + batch-within-epoch counters for exact resume position
   - [ ] Raw gradients are intentionally NOT saved — they are zeroed at the start of every step
         and recomputed by one forward+backward pass; losing them costs at most one step
-- [ ] Early stopping callback
+- [x] Early stopping callback → `EarlyStoppingCallback` in `EarlyStopping.h`
 - [ ] Python bindings
 
 ### Format I/O (`nnstudio/core/formats/`)
@@ -144,7 +144,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `IBackend` interface: `matmul()`, `elementWise()`, `memAlloc()`, `memFree()`, `sync()`
 - [x] `CpuBackend` — Eigen-based matmul reference implementation (reference + didactical; retained permanently)
 - [ ] `CudaBackend` — our own cuBLAS/cuDNN implementation; didactical, makes every CUDA op visible; conditional compile (`NN_ENABLE_CUDA=ON`); disabled if CUDA toolkit not found
-- [ ] `LibTorchBackend` — **additive production backend** alongside `CudaBackend`; delegates all ops to LibTorch optimised CUDA/cuDNN/TensorRT kernels; opt-in via `NN_ENABLE_LIBTORCH=ON`; gives full cuDNN perf without reimplementing kernels — **blocked by Tensor void* refactor** (see Cross-Framework Compat section)
+- [ ] `LibTorchBackend` — **additive production backend** alongside `CudaBackend`; delegates all ops to LibTorch optimised CUDA/cuDNN/TensorRT kernels; opt-in via `NN_ENABLE_LIBTORCH=ON`; gives full cuDNN perf without reimplementing kernels
 - [x] `QuantumBackend` — stub; interface compiles, all methods call `__builtin_trap()`; registered in BackendRegistry
 - [x] `BackendRegistry` — runtime registration and selection by device tag
 - [x] Dynamic loading: each backend is a separate shared library loaded on demand
@@ -209,15 +209,17 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > | TensorFlow C++ | ❌ Google deprecated it | ❌ not worth the cost | **Skip** |
 > | MLX (Apple) | N/A | 🟡 growing — revisit post-v1.0 | **Defer** |
 
-### Prerequisite: Tensor dtype-generic buffer `[! BLOCKS ALL BELOW]`
+### Prerequisite: Tensor dtype-generic buffer ~~`[! BLOCKS ALL BELOW]`~~ ✓ **DONE**
 
-- [ ] Change `Tensor` internal buffer from `shared_ptr<float[]>` to `shared_ptr<void>` + `itemsize_` derived from `DType`
+- [x] Change `Tensor` internal buffer from `shared_ptr<float[]>` to `shared_ptr<void>` + `itemsize_` derived from `DType`
   - `DType` enum already exists; `dtypeBytes()` already exists
-  - All existing tests continue to pass (Float32 is still the default)
-  - Backend `matmul()/elementWise()` gain dtype dispatch (`switch(dtype_)`) — Float16/Int8 paths stub with `Result::error()` until CUDA backend
-  - This is a self-contained change: only `Tensor.cpp` + `CpuBackend.cpp` change; public API surface unchanged
+  - `rawData()` type-erased accessor added; `itemsize()` public getter added
+  - All existing tests continue to pass (Float32 is still the default; 98/98 green)
+  - `CpuBackend` unchanged — uses `data()` which still returns `float*` via `static_cast`
+  - This was a self-contained change: only `Tensor.cpp` + `Tensor.h` changed; public API surface unchanged
 - [ ] Add `Tensor::item<T>()` accessor (type-safe scalar extraction) replacing raw `data()[i]`
-- [ ] Unit tests: dtype-round-trip save/load, dtype mismatch returns `Result::error()`
+- [x] Unit tests: `Itemsize_Float32`, `Itemsize_Int8`, `Itemsize_Int32`, `RawData_NonNull`, `Dtype_RoundTrip` (5 new tests)
+- [ ] Unit tests: dtype mismatch returns `Result::error()` in CpuBackend dispatch
 
 ### C++ PyTorch-compatible shim (`include/nnstudio/torch_compat.h`)
 

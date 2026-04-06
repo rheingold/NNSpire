@@ -20,13 +20,14 @@ namespace nnstudio::core {
 // Private constructor (shared-buffer view constructor)
 // ---------------------------------------------------------------------------
 Tensor::Tensor(Shape shape, Strides strides, DType dtype, Device device,
-               std::shared_ptr<float[]> data)
+               std::shared_ptr<void> data, size_t itemsize)
     : shape_(std::move(shape))
     , strides_(std::move(strides))
     , dtype_(dtype)
     , device_(device)
     , numel_(shapeNumel(shape_))
     , data_(std::move(data))
+    , itemsize_(itemsize)
 {}
 
 // ---------------------------------------------------------------------------
@@ -39,15 +40,20 @@ Tensor::Tensor(Shape shape, DType dtype, Device device, bool requires_grad)
     , device_(device)
     , requires_grad_(requires_grad)
     , numel_(shapeNumel(shape_))
-    , data_(std::shared_ptr<float[]>(new float[numel_ > 0 ? numel_ : 1]))
-{}
+    , itemsize_(dtypeBytes(dtype))
+{
+    const size_t bytes = static_cast<size_t>(numel_ > 0 ? numel_ : 1) * itemsize_;
+    auto* raw = new char[bytes];
+    data_ = std::shared_ptr<void>(raw, [](void* p){ delete[] static_cast<char*>(p); });
+}
 
 // ---------------------------------------------------------------------------
 // Factory methods
 // ---------------------------------------------------------------------------
 Tensor Tensor::full(Shape shape, float value, DType dtype, Device dev) {
     Tensor t(std::move(shape), dtype, dev, false);
-    for (int64_t i = 0; i < t.numel_; ++i) t.data_[i] = value;
+    auto* p = static_cast<float*>(t.data_.get());
+    for (int64_t i = 0; i < t.numel_; ++i) p[i] = value;
     return t;
 }
 
@@ -61,7 +67,7 @@ Tensor Tensor::ones(Shape shape, DType dtype, Device dev) {
 
 Tensor Tensor::fromData(const float* data, Shape shape, Device dev) {
     Tensor t(shape, DType::Float32, dev, false);
-    std::memcpy(t.data_.get(), data, static_cast<size_t>(t.numel_) * sizeof(float));
+    std::memcpy(t.data_.get(), data, static_cast<size_t>(t.numel_) * t.itemsize_);
     return t;
 }
 
@@ -71,7 +77,7 @@ Tensor Tensor::fromData(std::initializer_list<float> data, Shape shape, Device d
 
 Tensor Tensor::clone() const {
     Tensor t(shape_, dtype_, device_, requires_grad_);
-    std::memcpy(t.data_.get(), data_.get(), static_cast<size_t>(numel_) * sizeof(float));
+    std::memcpy(t.data_.get(), data_.get(), static_cast<size_t>(numel_) * itemsize_);
     return t;
 }
 
@@ -84,7 +90,7 @@ float Tensor::at(std::initializer_list<int64_t> idx) const {
     auto it = idx.begin();
     for (int i = 0; i < ndim(); ++i, ++it)
         offset += *it * strides_[i];
-    return data_[offset];
+    return static_cast<const float*>(data_.get())[offset];
 }
 
 float& Tensor::at(std::initializer_list<int64_t> idx) {
@@ -93,7 +99,7 @@ float& Tensor::at(std::initializer_list<int64_t> idx) {
     auto it = idx.begin();
     for (int i = 0; i < ndim(); ++i, ++it)
         offset += *it * strides_[i];
-    return data_[offset];
+    return static_cast<float*>(data_.get())[offset];
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +117,8 @@ const Tensor& Tensor::grad() const {
 
 void Tensor::zeroGrad() {
     if (grad_) {
-        for (int64_t i = 0; i < numel_; ++i) grad_->data_[i] = 0.0f;
+        auto* p = static_cast<float*>(grad_->data_.get());
+        for (int64_t i = 0; i < numel_; ++i) p[i] = 0.0f;
     }
 }
 
@@ -119,10 +126,13 @@ void Tensor::accumulateGrad(const Tensor& g) {
     assert(g.shape_ == shape_);
     if (!grad_) {
         grad_ = std::make_shared<Tensor>(shape_, dtype_, device_, false);
-        for (int64_t i = 0; i < numel_; ++i) grad_->data_[i] = 0.0f;
+        auto* p = static_cast<float*>(grad_->data_.get());
+        for (int64_t i = 0; i < numel_; ++i) p[i] = 0.0f;
     }
+    auto*       dst = static_cast<float*>(grad_->data_.get());
+    const auto* src = static_cast<const float*>(g.data_.get());
     for (int64_t i = 0; i < numel_; ++i)
-        grad_->data_[i] += g.data_[i];
+        dst[i] += src[i];
 }
 
 // ---------------------------------------------------------------------------
@@ -152,7 +162,7 @@ Result<Tensor> Tensor::reshape(Shape newShape) const {
     if (!isContiguous())
         return err(ErrorCode::InvalidArgument, "reshape requires contiguous tensor; clone first");
 
-    return Tensor(newShape, rowMajorStrides(newShape), dtype_, device_, data_);
+    return Tensor(newShape, rowMajorStrides(newShape), dtype_, device_, data_, itemsize_);
 }
 
 Result<Tensor> Tensor::transpose(int dim0, int dim1) const {
@@ -204,7 +214,7 @@ Result<void> Tensor::save(std::string_view path) const {
     int64_t n = numel_;
     f.write(reinterpret_cast<const char*>(&n), sizeof(n));
 
-    f.write(reinterpret_cast<const char*>(data_.get()), numel_ * sizeof(float));
+    f.write(reinterpret_cast<const char*>(data_.get()), numel_ * static_cast<int64_t>(itemsize_));
 
     if (!f)
         return Result<void>(Error{ErrorCode::IoError, "Tensor::save: write error"});
@@ -240,7 +250,7 @@ Result<Tensor> Tensor::load(std::string_view path) {
                                     "Tensor::load: numel/shape mismatch"});
 
     Tensor t(shape);
-    f.read(reinterpret_cast<char*>(t.data_.get()), numel * sizeof(float));
+    f.read(reinterpret_cast<char*>(t.data_.get()), numel * static_cast<int64_t>(t.itemsize_));
     if (!f)
         return Result<Tensor>(Error{ErrorCode::IoError,
                                     "Tensor::load: file truncated"});

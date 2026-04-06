@@ -64,7 +64,13 @@ inline int64_t shapeNumel(const Shape& shape) {
 //
 // The key members in the private section:
 //
-//   data_    — the actual numbers, owned via shared_ptr<float[]>.
+//   data_    — the actual numbers, owned via shared_ptr<void> (dtype-generic).
+//              For DType::Float32 the pointed-to memory is a float[] allocation;
+//              for future dtypes (Float16, Int8, Int32) it will be the
+//              correspondingly typed byte array.  The public data() accessor
+//              casts to float* — valid for Float32 only (Phase 1 contract).
+//              rawData() gives the type-erased pointer for backends that need it.
+//              itemsize_ = dtypeBytes(dtype_) drives ALL byte-count arithmetic.
 //              shared_ptr means reshape/transpose can return a *view* that
 //              shares the same buffer without copying (zero-copy slicing).
 //
@@ -245,17 +251,25 @@ public:
     void setRequiresGrad(bool v) noexcept { requires_grad_ = v; }
 
     // ------------------------------------------------------------------
-    // Raw data access (CPU float32 only in Phase 1)
+    // Raw data access
     // ------------------------------------------------------------------
-    float*       data()       noexcept { return data_.get(); }
-    const float* data() const noexcept { return data_.get(); }
+    /// Float32 pointer — valid only for DType::Float32 tensors (Phase 1 contract).
+    float*       data()       noexcept { return static_cast<float*>(data_.get()); }
+    const float* data() const noexcept { return static_cast<const float*>(data_.get()); }
+
+    /// Type-erased raw pointer — use for LibTorchBackend / non-Float32 paths.
+    void*       rawData()       noexcept { return data_.get(); }
+    const void* rawData() const noexcept { return data_.get(); }
+
+    /// Item size in bytes — always equals dtypeBytes(dtype()).
+    size_t itemsize() const noexcept { return itemsize_; }
 
     float  at(std::initializer_list<int64_t> idx) const;
     float& at(std::initializer_list<int64_t> idx);
 
-    // Flat (linear) index access — respects strides
-    float  flat(int64_t i) const noexcept { return data_[i]; }
-    float& flat(int64_t i)       noexcept { return data_[i]; }
+    // Flat (linear) index access — Float32 only (Phase 1)
+    float  flat(int64_t i) const noexcept { return static_cast<const float*>(data_.get())[i]; }
+    float& flat(int64_t i)       noexcept { return static_cast<float*>(data_.get())[i]; }
 
     // ------------------------------------------------------------------
     // Gradient
@@ -324,12 +338,13 @@ private:
     Device                     device_  { Device::CPU };
     bool                       requires_grad_ { false };
     int64_t                    numel_         { 0 };
-    std::shared_ptr<float[]>   data_;
+    std::shared_ptr<void>      data_;          ///< dtype-generic buffer
+    size_t                     itemsize_{ 4 }; ///< dtypeBytes(dtype_), set at construction
     std::shared_ptr<Tensor>    grad_;          // allocated lazily
 
     // Private constructor used by reshape/views (shares buffer)
     Tensor(Shape shape, Strides strides, DType dtype, Device device,
-           std::shared_ptr<float[]> data);
+           std::shared_ptr<void> data, size_t itemsize);
 
 };
 
