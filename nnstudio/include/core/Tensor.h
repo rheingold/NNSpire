@@ -264,6 +264,22 @@ public:
     /// Item size in bytes — always equals dtypeBytes(dtype()).
     size_t itemsize() const noexcept { return itemsize_; }
 
+    /**
+     * Scalar accessor — extracts the single element of a 1-element tensor.
+     *
+     * Matches torch.Tensor.item() semantics.
+     *
+     * @tparam T  C++ type matching the tensor dtype (float → Float32, int32_t → Int32, etc.).
+     * @pre  numel() == 1
+     * @pre  sizeof(T) == itemsize()
+     */
+    template<typename T>
+    T item() const {
+        assert(numel() == 1    && "Tensor::item<T>() called on non-scalar tensor");
+        assert(sizeof(T) == itemsize() && "Tensor::item<T>() dtype/size mismatch");
+        return *static_cast<const T*>(data_.get());
+    }
+
     float  at(std::initializer_list<int64_t> idx) const;
     float& at(std::initializer_list<int64_t> idx);
 

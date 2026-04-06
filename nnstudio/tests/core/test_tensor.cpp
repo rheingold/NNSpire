@@ -179,3 +179,14 @@ TEST_F(TensorTest, Dtype_RoundTrip) {
     EXPECT_EQ(i32.itemsize(), 4u);
 }
 
+TEST_F(TensorTest, Item_Float32) {
+    auto t = Tensor::full({1}, 3.14f, DType::Float32);
+    EXPECT_FLOAT_EQ(t.item<float>(), 3.14f);
+}
+
+TEST_F(TensorTest, Item_Int32) {
+    // Construct a scalar Int32 tensor and write a value via rawData().
+    Tensor t({1}, DType::Int32);
+    *static_cast<int32_t*>(t.rawData()) = 42;
+    EXPECT_EQ(t.item<int32_t>(), 42);
+}

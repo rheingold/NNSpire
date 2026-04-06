@@ -217,7 +217,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - All existing tests continue to pass (Float32 is still the default; 98/98 green)
   - `CpuBackend` unchanged — uses `data()` which still returns `float*` via `static_cast`
   - This was a self-contained change: only `Tensor.cpp` + `Tensor.h` changed; public API surface unchanged
-- [ ] Add `Tensor::item<T>()` accessor (type-safe scalar extraction) replacing raw `data()[i]`
+- [x] Add `Tensor::item<T>()` accessor (type-safe scalar extraction) replacing raw `data()[i]`
 - [x] Unit tests: `Itemsize_Float32`, `Itemsize_Int8`, `Itemsize_Int32`, `RawData_NonNull`, `Dtype_RoundTrip` (5 new tests)
 - [ ] Unit tests: dtype mismatch returns `Result::error()` in CpuBackend dispatch
 
