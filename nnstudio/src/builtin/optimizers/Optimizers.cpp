@@ -6,6 +6,8 @@
 #include <builtin/optimizers/Optimizers.h>
 #include <cmath>
 #include <cassert>
+#include <istream>
+#include <ostream>
 
 using namespace nnstudio::core;
 
@@ -133,3 +135,67 @@ void StepDecayScheduler::onStep(IOptimizer& opt, uint64_t globalStep) {
 } // namespace optimizers
 } // namespace builtin
 } // namespace nnstudio
+
+// ─── Adam::saveState / loadState ─────────────────────────────────────────────
+// Binary layout (per parameter):
+//   has_state : uint8   (1 = this param has accumulated moments)
+//   if has_state:
+//     count   : uint64  (== numel of the parameter)
+//     m       : float32[count]
+//     v       : float32[count]
+//
+// The step counter is written once at the start (uint64).
+
+namespace nnstudio { namespace builtin { namespace optimizers {
+
+void Adam::saveState(std::ostream& out,
+                     const std::vector<Parameter*>& params) const {
+    // Write step counter
+    out.write(reinterpret_cast<const char*>(&step_), sizeof(step_));
+
+    for (const auto* p : params) {
+        const float* key = p->tensor.data();
+        auto itM = m_.find(key);
+        auto itV = v_.find(key);
+        if (itM == m_.end() || itV == v_.end()) {
+            uint8_t has = 0;
+            out.write(reinterpret_cast<const char*>(&has), sizeof(has));
+        } else {
+            uint8_t has = 1;
+            out.write(reinterpret_cast<const char*>(&has), sizeof(has));
+            uint64_t count = static_cast<uint64_t>(itM->second.size());
+            out.write(reinterpret_cast<const char*>(&count), sizeof(count));
+            out.write(reinterpret_cast<const char*>(itM->second.data()),
+                      static_cast<std::streamsize>(count * sizeof(float)));
+            out.write(reinterpret_cast<const char*>(itV->second.data()),
+                      static_cast<std::streamsize>(count * sizeof(float)));
+        }
+    }
+}
+
+void Adam::loadState(std::istream& in,
+                     const std::vector<Parameter*>& params) {
+    in.read(reinterpret_cast<char*>(&step_), sizeof(step_));
+
+    for (auto* p : params) {
+        uint8_t has = 0;
+        in.read(reinterpret_cast<char*>(&has), sizeof(has));
+        if (!has) continue;
+
+        uint64_t count = 0;
+        in.read(reinterpret_cast<char*>(&count), sizeof(count));
+
+        float* key = p->tensor.data();
+        auto& mBuf = m_[key];
+        auto& vBuf = v_[key];
+        mBuf.resize(static_cast<size_t>(count));
+        vBuf.resize(static_cast<size_t>(count));
+
+        in.read(reinterpret_cast<char*>(mBuf.data()),
+                static_cast<std::streamsize>(count * sizeof(float)));
+        in.read(reinterpret_cast<char*>(vBuf.data()),
+                static_cast<std::streamsize>(count * sizeof(float)));
+    }
+}
+
+} } } // namespace nnstudio::builtin::optimizers

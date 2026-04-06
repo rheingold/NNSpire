@@ -10,7 +10,7 @@ add_executable(test-core
     core/test_compute_graph.cpp
     core/test_early_stopping.cpp
     core/test_trainer_xor.cpp
-    # core/test_checkpoint.cpp      # Phase 1 remaining
+    core/test_checkpoint.cpp
     # core/test_onnx_roundtrip.cpp  # deferred
 )
 target_link_libraries(test-core PRIVATE

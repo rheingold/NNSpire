@@ -27,6 +27,7 @@
 #include <string_view>
 #include <cassert>
 #include <cstring>
+#include <iosfwd>
 
 namespace nnstudio::core {
 
@@ -320,6 +321,10 @@ public:
     //   [4*numel] data   float32[]
     Result<void>   save(std::string_view path) const;
     static Result<Tensor> load(std::string_view path);
+
+    /** Stream-based variants for embedding tensors inside larger binary files. */
+    Result<void>   save(std::ostream& out) const;
+    static Result<Tensor> load(std::istream& in);
 
     // ------------------------------------------------------------------
     // Comparisons (shape only)

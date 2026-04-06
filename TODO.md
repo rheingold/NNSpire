@@ -121,12 +121,12 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Training loop (`nnstudio/core/training/`)
 - [x] `Trainer` class: graph + optimizer + loss + dataset
 - [x] Callback interface: `onEpochStart/End`, `onBatchStart/End`, `onMetric`
-- [ ] Checkpoint save/load to `.nns` format
-  - [ ] Save model weights (W, b) into embedded ONNX blob
-  - [ ] Save **optimizer state** into `.nns` extension: Adam `m`, `v`, step counter `t` per parameter
+- [x] Checkpoint save/load to `.nns` format
+  - [x] Save model weights (W, b) into embedded ONNX blob
+  - [x] Save **optimizer state** into `.nns` extension: Adam `m`, `v`, step counter `t` per parameter
         (without this, Adam loses its accumulated momentum on resume and must rebuild from scratch)
-  - [ ] Save epoch + batch-within-epoch counters for exact resume position
-  - [ ] Raw gradients are intentionally NOT saved — they are zeroed at the start of every step
+  - [x] Save epoch + batch-within-epoch counters for exact resume position
+  - [x] Raw gradients are intentionally NOT saved — they are zeroed at the start of every step
         and recomputed by one forward+backward pass; losing them costs at most one step
 - [x] Early stopping callback → `EarlyStoppingCallback` in `EarlyStopping.h`
 - [ ] Python bindings

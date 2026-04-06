@@ -35,6 +35,7 @@
 
 #include <core/IOptimizer.h>
 #include <cstdint>
+#include <iosfwd>
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -72,6 +73,12 @@ public:
 
     std::string_view name() const noexcept override { return "Adam"; }
     void step(std::vector<Parameter*>& params) override;
+
+    // Checkpoint support — serializes/restores m, v, step by param index.
+    void saveState(std::ostream& out,
+                   const std::vector<Parameter*>& params) const override;
+    void loadState(std::istream& in,
+                   const std::vector<Parameter*>& params) override;
 
 protected:
     float beta1_, beta2_, eps_, weightDecay_;

@@ -36,6 +36,7 @@
 #include <variant>
 #include <string>
 #include <cassert>
+#include <cstdint>
 #include <utility>
 
 namespace nnstudio::core {

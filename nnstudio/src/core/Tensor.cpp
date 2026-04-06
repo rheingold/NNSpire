@@ -12,6 +12,8 @@
 #include <cmath>
 #include <sstream>
 #include <fstream>
+#include <istream>
+#include <ostream>
 #include <cstdint>
 
 namespace nnstudio::core {
@@ -197,12 +199,8 @@ Tensor Tensor::operator/(float s) const { return backend().divScalar(*this, s); 
 
 static constexpr char kMagic[4] = {'N','N','S','1'};
 
-Result<void> Tensor::save(std::string_view path) const {
-    std::ofstream f(std::string(path), std::ios::binary | std::ios::trunc);
-    if (!f)
-        return Result<void>(Error{ErrorCode::IoError,
-                                  "Tensor::save: cannot open '" + std::string(path) + "'"});
-
+// Stream-based core implementations
+Result<void> Tensor::save(std::ostream& f) const {
     f.write(kMagic, 4);
 
     int32_t nd = static_cast<int32_t>(shape_.size());
@@ -221,12 +219,7 @@ Result<void> Tensor::save(std::string_view path) const {
     return Result<void>();
 }
 
-Result<Tensor> Tensor::load(std::string_view path) {
-    std::ifstream f(std::string(path), std::ios::binary);
-    if (!f)
-        return Result<Tensor>(Error{ErrorCode::IoError,
-                                    "Tensor::load: cannot open '" + std::string(path) + "'"});
-
+Result<Tensor> Tensor::load(std::istream& f) {
     char magic[4];
     f.read(magic, 4);
     if (std::memcmp(magic, kMagic, 4) != 0)
@@ -255,6 +248,23 @@ Result<Tensor> Tensor::load(std::string_view path) {
         return Result<Tensor>(Error{ErrorCode::IoError,
                                     "Tensor::load: file truncated"});
     return Result<Tensor>(std::move(t));
+}
+
+// Path-based wrappers — delegate to stream overloads
+Result<void> Tensor::save(std::string_view path) const {
+    std::ofstream f(std::string(path), std::ios::binary | std::ios::trunc);
+    if (!f)
+        return Result<void>(Error{ErrorCode::IoError,
+                                  "Tensor::save: cannot open '" + std::string(path) + "'"});
+    return save(f);
+}
+
+Result<Tensor> Tensor::load(std::string_view path) {
+    std::ifstream f(std::string(path), std::ios::binary);
+    if (!f)
+        return Result<Tensor>(Error{ErrorCode::IoError,
+                                    "Tensor::load: cannot open '" + std::string(path) + "'"});
+    return load(f);
 }
 
 // ---------------------------------------------------------------------------

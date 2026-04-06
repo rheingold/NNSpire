@@ -26,6 +26,7 @@
 
 #include <core/Layer.h>
 #include <cstdint>
+#include <iosfwd>
 #include <vector>
 #include <string_view>
 
@@ -50,6 +51,30 @@ public:
 
     float lr() const noexcept { return lr_; }
     void  setLR(float lr) noexcept { lr_ = lr; }
+
+    uint64_t stepCount() const noexcept { return step_; }
+    void     setStepCount(uint64_t t) noexcept { step_ = t; }
+
+    // ── Checkpoint serialization ─────────────────────────────────────────────
+    /**
+     * Serialize optimizer state (moment vectors, step counter, etc.) to a
+     * binary stream.  The `params` list must be the same order as the model's
+     * parameters() — state is stored by parameter index, not by pointer.
+     *
+     * Default no-op: optimizers without persistent state (e.g. vanilla SGD)
+     * need not override this.
+     */
+    virtual void saveState(std::ostream& /*out*/,
+                           const std::vector<Parameter*>& /*params*/) const {}
+
+    /**
+     * Restore optimizer state from a binary stream produced by saveState().
+     * `params` must be the same list (same order, same count) as at save time.
+     *
+     * Default no-op.
+     */
+    virtual void loadState(std::istream& /*in*/,
+                           const std::vector<Parameter*>& /*params*/) {}
 
 protected:
     float    lr_;
