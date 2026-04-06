@@ -419,12 +419,188 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 >   accomplish this in a single gesture (click / dropdown / drag / keyboard shortcut)
 >   once they know the tool?*  If not, redesign it.
 
+> ---
+>
+> ### Design Decisions — Editor Paradigm (must be resolved before Phase 3 implementation)
+>
+> The model editor should be primarily a **Visual Code Editor & Runner/Debugger** —
+> not a pure drag-and-drop canvas and not a pure text editor, but a **two-view
+> environment** where the code and the visual graph are always in sync — analogous
+> to how FrontPage Express let you switch between HTML source and WYSIWYG layout
+> with real-time bidirectional reflection of every change.
+>
+> The following four architectural questions must be decided (and recorded as ADRs)
+> before implementation begins.  Recommendations are given; use `[! decision needed]`
+> items to track the votes.
+>
+> ---
+>
+> #### ADR-030 — Canonical Model Representation  `[! decision needed]`
+>
+> **Options:**
+>
+> **(a) Abstract IR only** — the `.nnsx` project contains an abstract
+> XML/JSON/MessagePack model description.  All code (engine, torch, keras, ONNX)
+> is generated from it at compile/export time.  The user never edits code directly
+> in the primary workflow.
+>
+> **(b) Native NNStudio / torch-compat source code** — the source file
+> (`model.py` or `model.cpp`) *is* the canonical representation.  The visual canvas
+> is a live rendering of the parsed AST.  Export to other frameworks is a well-defined
+> code-to-code translation.
+>
+> **(c) Multi-framework native editing** — the user can choose which framework language
+> is "live" (NNStudio engine, PyTorch, Keras …) and the editor hides/shows features
+> that are not expressible in the currently selected framework.  Switching framework
+> re-parses the same file under a different grammar.
+>
+> **Recommendation: (b) — native code as source of truth.**
+>
+> Rationale: NNStudio already has a `torch_compat.h` C++ shim and a
+> `nnstudio.torch_compat` Python module whose public API is *syntactically identical*
+> to PyTorch.  This means "NNStudio engine code" and "torch-compatible code" are the
+> same text.  There is no IR translation for the primary path — code IS the model.
+> Export to real PyTorch is then a mechanical projection, not a lossy round-trip.
+> Option (c) is additive on top of (b): grammar switching can be layered in later
+> without changing the core data model.  Option (a) creates a private IR language
+> that users must learn and that must track all framework evolution forever.
+>
+> **Decision gate items:**
+> - [ ] Confirm ADR-030 choice (a / b / c) and record in `ARCHITECTURE.md §ADR-030`
+> - [ ] If (b) or (c): choose Python or C++ as the *default* code surface for new
+>   projects (recommendation: Python — lower barrier, identical in both cases thanks
+>   to `torch_compat`)
+> - [ ] If (a): design the IR schema and its versioning strategy before any other work
+>
+> ---
+>
+> #### ADR-031 — UI Metadata Storage  `[! decision needed]`
+>
+> Applies when the canonical representation is code (ADR-030 b or c).  The UI needs
+> to store information that does not belong in the model definition: canvas node
+> positions, colour groups, user annotations, folding state, wizard bookmarks.
+>
+> **Option I — Sidecar file** — a companion `.nnsx.view.json` (or a `view/` entry
+> inside the `.nnsx` zip bundle) keyed on stable node identifiers derived from the
+> AST (layer variable names / positional indices, not line numbers).
+>
+> **Option II — Structured comments** — `# @nnstudio {"x":120,"y":80}` comments
+> embedded directly above each layer construction call in the source file.
+>
+> **Recommendation: Option I — sidecar inside the `.nnsx` bundle.**
+>
+> Rationale: source code stays clean and runnable outside NNStudio without any
+> stripping step.  The sidecar is completely invisible to Python/C++ tooling
+> (formatters, linters, type checkers).  The key stability problem ("positions go
+> stale when the user rearranges code") is solved by keying entries on the AST
+> node's fully-qualified name (e.g. `layer_0_Linear`, `layer_1_ReLU`) rather than
+> on line numbers — the same convention tree-sitter uses for named captures.
+> Structured comments (Option II) are fragile: formatters remove them, diffs are
+> noisy, and a parse error in the comment annotation can corrupt the whole file.
+>
+> **Decision gate items:**
+> - [ ] Confirm ADR-031 choice (I / II) and record in `ARCHITECTURE.md §ADR-031`
+> - [ ] If (I): define the `.nnsx` bundle format — zip with `model.py`, `view.json`,
+>   `manifest.json`, `weights/` — and the view-JSON schema version field
+> - [ ] Define the node-identity key algorithm (variable name > positional index >
+>   hash of construction-call arguments, in that priority order)
+>
+> ---
+>
+> #### ADR-032 — Unparsed / Unrecognized Code Visualization  `[! decision needed]`
+>
+> When the model editor's grammar recognizes layer/optimizer/loss construction calls,
+> any source code that does NOT match a known pattern must be handled gracefully —
+> no AI, algorithm-only.
+>
+> **Proposed approach (concrete grammar + AST walk):**
+>
+> 1. Use **tree-sitter** with the existing Python (or C++) grammar plus a set of
+>    named query patterns covering all recognized NNStudio/torch constructs.
+> 2. Walk the concrete syntax tree; tag every matched node as `recognized`.
+> 3. Any top-level statement or expression that is NOT tagged `recognized` is
+>    classified as `opaque` and rendered in the code editor with an **amber
+>    left-border gutter marker** + a **subtle amber background tint**.
+> 4. `opaque` nodes are preserved byte-for-byte; the code generator never touches
+>    them.  They participate in execution normally — only the visual canvas cannot
+>    represent them as layer nodes.
+> 5. A "Show opaque" toggle in the canvas toolbar reveals `opaque` blocks as
+>    grey "custom code" placeholder nodes, showing the first line of source text.
+> 6. Hovering an amber node in the code editor shows a tooltip:
+>    *"Not recognized as a known layer/optimizer — will run as-is but cannot be
+>    visualised. See PLUGIN-SDK.md to wrap it as a plugin."*
+>
+> **Decision gate items:**
+> - [ ] Confirm tree-sitter as the parser foundation (alternative: ANTLR4 grammar)
+>   and record in `ARCHITECTURE.md §ADR-032`
+> - [ ] Define the query-pattern file format and where it lives in the repo
+>   (`nnstudio/app/grammar/nnstudio_torch.scm` is the suggested path)
+> - [ ] Decide whether `opaque` blocks appear as placeholder nodes on the canvas
+>   (recommendation: yes, opt-out toggle) or are hidden entirely (opt-in toggle)
+>
+> ---
+>
+> #### ADR-033 — Two-Way WYSIWYG Editor  `[! decision needed]`
+>
+> The central UX bet: the code pane and the visual canvas are **two views of the
+> same in-memory model graph**, both writable, both always in sync.
+>
+> **Architecture:**
+>
+> ```
+> Code editor keystroke ──► tree-sitter incremental re-parse
+>                                    │
+>                           [model graph diff]
+>                                    │
+>                     ┌─────────────▼──────────────┐
+>                     │   In-memory Model Graph     │
+>                     │ (single source of truth)    │
+>                     └───────┬───────────┬─────────┘
+>                             │           │
+>              canvas redraw ◄┘           └► code re-emit (minimal diff)
+>         (Qt Quick SceneGraph)            (preserves unrecognized nodes
+>                                          verbatim via CST edit API)
+> ```
+>
+> - **Code → graph**: tree-sitter's edit API applies incremental re-parses (sub-
+>   millisecond for typical model files).  The grammar extracts layer nodes and
+>   edges; the model graph is updated structurally, not by full re-parse.
+> - **Graph → code**: mutations from canvas interactions (add layer, change property,
+>   reorder) emit minimal code insertions/deletions using tree-sitter's node-edit
+>   API, preserving all surrounding code and comments unchanged.  This is the same
+>   mechanism language servers use for code actions.
+> - **Round-trip fidelity**: `code → parse → emit` must produce output ≤ one
+>   whitespace-normalization pass away from the input.  This is a hard requirement;
+>   validated by a round-trip fuzz test suite (Phase 3.5).
+> - **Conflict resolution**: if both panes are modified within a single event tick
+>   (impossible in single-threaded Qt, but guarded anyway), the code editor wins.
+>
+> **Recommendation: implement.** The FrontPage Express analogy is exact and the
+> technical path is clear.  tree-sitter already ships C++ and Python grammars;
+> the Qt text editor component (QPlainTextEdit or a Monaco WebEngine embed) can
+> apply AST-driven decorations via `ExtraSelection`; the canvas is a Qt Quick
+> `Canvas` or `ShaderEffect` scene.  The main risk is round-trip fidelity for
+> complex files — mitigated by the fuzz test suite and by making the canvas
+> generate idiomatic, predictable code patterns.
+>
+> **Decision gate items:**
+> - [ ] Confirm ADR-033 (implement two-way WYSIWYG vs. one-way canvas-generates-code)
+>   and record in `ARCHITECTURE.md §ADR-033`
+> - [ ] Choose text editor component: `QPlainTextEdit` + custom highlighter (lighter),
+>   or Monaco via `QWebEngineView` (full LSP support, heavier); recommendation:
+>   `QPlainTextEdit` for Phase 3, Monaco as an opt-in for Phase 3.5+
+> - [ ] Confirm tree-sitter bindings strategy: compile tree-sitter as a C library
+>   and call from C++ (recommended — no runtime dependency, statically linkable),
+>   or use the WASM build inside Monaco (only applicable if Monaco is chosen)
+> - [ ] Define the fuzz-test harness for round-trip fidelity (runs at every CI build)
+
 ### App shell (`nnstudio/app/`)
 - [ ] `main.cpp` — Qt app init, backend detection, plugin loader, dependency check, QML engine setup
-- [ ] `controllers/` — `ModelController`, `TrainingController`, `BackendController`, `PluginController`, `HelpController`
+- [ ] `controllers/` — `ModelController`, `TrainingController`, `BackendController`, `PluginController`, `HelpController`, **`CodeGraphSyncController`** (owns the parser ↔ model-graph ↔ canvas sync loop; see ADR-033)
 - [ ] Dockable panel system (QML `SplitView` + `DockManager` or equivalent)
 - [ ] Persistent settings: `<app_folder>/settings/` (portable mode) or OS config dir fallback
 - [ ] Application menu (File/Edit/View/Tools/Help)
+- [ ] `.nnsx` project bundle format — zip containing: `model.py` (canonical source), `view.json` (ADR-031 sidecar), `manifest.json`, `weights/` directory
 
 ### First-run Dependency Manager
 - [ ] Detect: Python runtime, C++ compiler, CUDA, system BLAS on startup
@@ -435,21 +611,91 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] MinGW-w64 auto-install to `<install>/runtime/mingw64/` (Windows)
 
 ### Model editor panel (`ui/ModelEditor.qml`)
-- [ ] Layer stack widget — add/remove/reorder layers via drag-and-drop rows
-- [ ] Per-layer property form — edit all parameters (neuron count, kernel size, activation, etc.)
-- [ ] Auto-generated topology diagram from `ComputeGraph` (not manual drawing)
-- [ ] Import ONNX model → populate layer stack
-- [ ] Export layer stack → ONNX / `.nns`
-- [ ] Layer "?" button opens KB help for that layer type
-- [ ] **Architecture preset gallery** — 🥪 sandwich icon in UI; pre-defined architecture templates the user can load as a starting point:
-  - MLP (classifer, regressor)
-  - Autoencoder
-  - CNN (image classifier)
-  - Transformer encoder block
-  - GPT decoder block
-  - ResNet block (skip connection)
-  - User can ALSO design fully custom stacking from scratch; a visible **warning banner** is shown when the rule "every two consecutive Dense layers must have a non-linear layer between them" is violated (engine still allows it — the warning is educational, not a block)
-  - See `blueprints.md § Annex — Architecture Templates` for the template specs and typical sizes
+
+> The model editor is a **split-pane Visual Code Editor & Runner/Debugger** — not a
+> pure canvas, not a pure text editor.  Left pane: code editor.  Right pane: visual
+> canvas graph.  Both are always live.  Editing either pane updates the other in real
+> time (see ADR-033).  The user can collapse either pane to work full-screen in either
+> mode.  The split is a draggable `SplitView`; ratio is persisted in settings.
+
+#### Parser subsystem (`nnstudio/app/parser/`)
+- [ ] Integrate **tree-sitter** as a static C library (`third-party-deps/tree-sitter/`)
+- [ ] Bundle `tree-sitter-python` grammar (primary) and `tree-sitter-cpp` grammar (secondary)
+- [ ] Implement `nnstudio_torch.scm` query file — named captures for all recognized
+  layer/optimizer/loss construction patterns (see ADR-032)
+- [ ] `NNParser` C++ class — wraps tree-sitter; exposes `parse(source)`,
+  `applyEdit(edit)`, `recognizedNodes()`, `opaqueNodes()`
+- [ ] `ModelGraphBuilder` — walks recognized nodes → produces `ModelGraph` (in-memory
+  DAG of `ModelNode` structs: type, params, connections, AST range)
+- [ ] Round-trip fuzz test: `source → parse → emit → parse` must produce identical
+  `ModelGraph` (not identical text — opaque nodes and comments are preserved verbatim)
+
+#### In-memory Model Graph
+- [ ] `ModelGraph` — DAG of `ModelNode`, `ModelEdge`; owns the single source of truth
+  while the editor is open
+- [ ] `ModelNode` — `{id, type, params, astRange, canvasPos, canvasGroup, userNote}`;
+  `id` is the AST variable name if present, otherwise `layer_<index>`
+- [ ] Change notifications via Qt signals: `nodeAdded`, `nodeRemoved`, `nodeChanged`,
+  `edgeAdded`, `edgeRemoved` — both panes subscribe and update independently
+- [ ] `ModelGraphDiff` — structural diff between two `ModelGraph` snapshots; used by
+  the code emitter to produce minimal textual edits
+
+#### Code editor pane (`ui/CodeEditorPane.qml` / `CodeEditorWidget`)
+- [ ] `QPlainTextEdit`-based editor with custom `QSyntaxHighlighter` for Python/C++
+  (Phase 3); option to swap in Monaco via `QWebEngineView` (Phase 3.5, see ADR-033)
+- [ ] Layer-aware syntax highlighting on top of the base grammar — recognized nodes
+  get a distinct foreground colour per node type (layer=blue, optimizer=green,
+  loss=orange); **opaque nodes get an amber left-gutter bar + amber background tint**
+- [ ] Hover tooltip on amber (opaque) regions: *"Not recognized as a known construct —
+  will run as-is but cannot be visualised. See PLUGIN-SDK.md."*
+- [ ] Gutter icons: ▶ run-to-here, 🔍 inspect activations at this layer, ⚠ warning
+- [ ] Code edits feed `NNParser::applyEdit()` → `ModelGraphBuilder` → `ModelGraph`
+  signals → canvas redraws (target latency: < 50 ms for files < 5 000 lines)
+- [ ] **Opaque-node toggle**: toolbar button shows/hides opaque blocks on the canvas
+  (they are always present and unmodified in code regardless of toggle state)
+
+#### Visual canvas pane (`ui/CanvasPane.qml`)
+- [ ] Qt Quick `Canvas`/`ShaderEffect` scene; nodes are QML `Item` delegates
+- [ ] Auto-layout via Sugiyama/layered-graph algorithm (C++, no external lib needed)
+- [ ] Node cards: show type name + key params (e.g. `Linear(128→64)`), coloured by type
+- [ ] Opaque nodes rendered as grey placeholder cards labelled **"Custom code"** with
+  first line of source text; eye icon toggles their visibility
+- [ ] Drag to reorder nodes → `ModelGraph.nodeReordered` → code emitter moves
+  corresponding source lines (all surrounding code preserved verbatim)
+- [ ] Click node → Properties Panel updates; double-click → code editor scrolls to
+  and highlights that node's AST range
+- [ ] Add node from palette → code emitter inserts construction call after last
+  recognized node (or at code-editor cursor if the code pane has focus)
+- [ ] Delete node → code emitter removes corresponding lines; confirms if any opaque
+  code depends on the deleted variable
+- [ ] Connection lines auto-drawn from `ModelEdge` list; sequential models: straight
+  vertical flow; branching models: curved bezier edges
+- [ ] Mini-map for large graphs (> 20 nodes)
+
+#### Properties panel (shared, context-sensitive)
+- [ ] Updates when a node is selected in either pane
+- [ ] All `ModelNode.params` shown as type-appropriate form fields (spinbox / checkbox
+  / combobox / text); edits flow back through `ModelGraph` → code emitter → code editor
+- [ ] "?" button per parameter opens KB deep-link for that parameter
+- [ ] **Warning banner**: "every two consecutive Dense layers must have a non-linear
+  activation between them" — educational, not a build block
+- [ ] **User note** field — free text stored in `view.json` sidecar (ADR-031); never
+  emitted into source code
+
+#### Architecture preset gallery
+- [ ] 🥪 sandwich toolbar icon opens the gallery
+- [ ] Presets: MLP (classifier, regressor), Autoencoder, CNN (image classifier),
+  Transformer encoder block, GPT decoder block, ResNet skip-connection block
+- [ ] Loading a preset inserts the template source at the cursor; canvas reflects immediately
+- [ ] See `blueprints.md § Annex — Architecture Templates` for specs and typical sizes
+
+#### Import / export
+- [ ] Import ONNX model → populate `ModelGraph` → emit `model.py` source
+- [ ] Export to: `.nnsx` bundle, ONNX, plain `model.py`, plain `model.cpp`
+- [ ] **Run** button: executes `model.py` in the embedded Python runtime; stdout/stderr
+  shown in the integrated Runner/Debugger panel
+- [ ] **Debugger** panel (Phase 3 stub, Phase 3.5 full): set breakpoint at any recognized
+  layer call; `EvalTrace` captures that layer's output; activations shown in Weight Viewer
 
 ### Training dashboard panel (`ui/TrainingDashboard.qml`)
 - [ ] Live loss/metric chart (Qt Charts or custom Canvas)
