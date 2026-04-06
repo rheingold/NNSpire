@@ -270,7 +270,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ### Compatibility warning system
 
-- [ ] `CompatibilityChecker` — static analysis pass over `ComputeGraph` nodes:
+- [x] `CompatibilityChecker` — static analysis pass over `ComputeGraph` nodes:
   - Classifies each node as: `standard_torch | standard_keras | nnstudio_extension`
   - Reports list of non-standard ops used in the project
 - [ ] CLI: `nnstudio-sign verify --compat=torch` — exits non-zero if any extension ops present
@@ -280,10 +280,10 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ### ONNX export alignment
 
-- [ ] Map every torch-compatible layer to a standard ONNX op (no custom domain required):
+- [x] Map every torch-compatible layer to a standard ONNX op (no custom domain required):
   - `Linear` → `Gemm`, `Conv2d` → `Conv`, `Embedding` → `Gather`, `LayerNorm` → `LayerNormalization`,
     `BatchNorm1d` → `BatchNormalization`, `ReLU/Sigmoid/Tanh/GELU/Softmax` → standard ONNX ops
-- [ ] NNStudio extension layers: register under `com.nnstudio.*` custom op domain; export with sidecar `.onnx_ops.dll`
+- [x] NNStudio extension layers: register under `com.nnstudio.*` custom op domain; export with sidecar `.onnx_ops.dll`
 - [ ] Plugin ONNX adapter contract: each plugin optionally provides `onnx_export()` → custom op node + sidecar impl
 
 ---

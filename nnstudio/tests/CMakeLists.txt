@@ -11,6 +11,7 @@ add_executable(test-core
     core/test_early_stopping.cpp
     core/test_trainer_xor.cpp
     core/test_checkpoint.cpp
+    core/test_compat.cpp
     # core/test_onnx_roundtrip.cpp  # deferred
 )
 target_link_libraries(test-core PRIVATE

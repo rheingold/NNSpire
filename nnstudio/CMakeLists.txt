@@ -118,6 +118,7 @@ set(CORE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/Trainer.cpp
     ${CMAKE_SOURCE_DIR}/src/core/ComputeGraph.cpp
     ${CMAKE_SOURCE_DIR}/src/core/Checkpoint.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/CompatibilityChecker.cpp
     # future:
     # ${CMAKE_SOURCE_DIR}/src/core/formats/OnnxIO.cpp
     # ${CMAKE_SOURCE_DIR}/src/core/formats/NNSFormat.cpp

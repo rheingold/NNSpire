@@ -166,6 +166,10 @@ public:
      *  Empty when traceMode() == false. */
     const std::vector<EvalTrace>& traces() const noexcept { return traces_; }
 
+    /** Read-only view of the forward tape (all recorded ops in order).
+     *  Used by CompatibilityChecker and serialization helpers. */
+    const std::vector<OpRecord>& ops() const noexcept { return tape_; }
+
     // ── JSON serialization ───────────────────────────────────────────────────
 
     /**
