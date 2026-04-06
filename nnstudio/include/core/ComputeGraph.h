@@ -59,6 +59,8 @@
 #include <core/Tensor.h>
 
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -92,6 +94,28 @@ struct EvalTrace {
     Tensor      gradOutput;  ///< deep copy of the gradient arriving at this layer's output
     Tensor      gradInput;   ///< deep copy of the gradient propagated toward its input
 };
+
+// ─── LayerFactory — registry for fromJson() reconstruction ───────────────────
+/**
+ * A function that constructs an ILayer from a config map and an optional name.
+ * Register concrete factories with ComputeGraph::registerLayerFactory().
+ *
+ * Example registration:
+ *   ComputeGraph::registerLayerFactory("Dense", [](
+ *       const std::unordered_map<std::string,std::string>& cfg,
+ *       const std::string& name) -> std::unique_ptr<ILayer>
+ *   {
+ *       int out = std::stoi(cfg.at("out_features"));
+ *       bool bias = cfg.count("use_bias") && cfg.at("use_bias") == "true";
+ *       auto l = std::make_unique<Dense>(out, bias);
+ *       l->setName(name);
+ *       return l;
+ *   });
+ */
+using LayerConstructor = std::function<
+    std::unique_ptr<ILayer>(
+        const std::unordered_map<std::string, std::string>& config,
+        const std::string& name)>;
 
 // ─── ComputeGraph ─────────────────────────────────────────────────────────────
 /**
@@ -142,6 +166,51 @@ public:
      *  Empty when traceMode() == false. */
     const std::vector<EvalTrace>& traces() const noexcept { return traces_; }
 
+    // ── JSON serialization ───────────────────────────────────────────────────
+
+    /**
+     * Serialize the graph topology and layer configs to a JSON string.
+     *
+     * Output schema:
+     * {
+     *   "outputNodeId": <uint>,
+     *   "nodes": [
+     *     { "id": <uint>, "type": "<typeName>", "name": "<name>",
+     *       "config": { <key>: <value>, ... } }
+     *   ],
+     *   "edges": [
+     *     { "from": <inputNodeId>, "to": <outputNodeId>, "layer": <nodeIndex> }
+     *   ]
+     * }
+     *
+     * This is also the visualization data export used by the UI / Studio.
+     */
+    std::string toJson() const;
+
+    /**
+     * Reconstruct a ComputeGraph from a JSON string produced by toJson().
+     *
+     * Layer instances are created via the factory registry populated by
+     * registerLayerFactory().  Each reconstructed layer is OWNED by the
+     * returned object (stored in ownedLayers_).
+     *
+     * Returns an error if:
+     *   - The JSON is malformed (ErrorCode::IoError)
+     *   - A layer type has no registered factory (ErrorCode::NotImplemented)
+     */
+    static Result<ComputeGraph> fromJson(const std::string& json);
+
+    /**
+     * Register a factory function for a given layer type name.
+     * This is a global (process-wide) registry.
+     * Call once at startup, e.g. in a CpuBackend::init() or main().
+     */
+    static void registerLayerFactory(const std::string& typeName,
+                                     LayerConstructor   ctor);
+
+    /** List all registered type names (diagnostic helper). */
+    static std::vector<std::string> registeredLayerTypes();
+
     // ── ILayer interface ─────────────────────────────────────────────────────
 
     std::string_view typeName() const noexcept override { return "ComputeGraph"; }
@@ -182,6 +251,10 @@ private:
     NodeId  outputId_ {kInvalidNode};
     bool    traceMode_{false};
     std::vector<EvalTrace> traces_;
+
+    /// Layers owned by this graph (created via fromJson()).
+    /// These are kept alive for the lifetime of the graph.
+    std::vector<std::unique_ptr<ILayer>> ownedLayers_;
 
     NodeId allocNode() noexcept { return nextId_++; }
 };

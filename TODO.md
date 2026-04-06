@@ -110,8 +110,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Compute graph (`nnstudio/core/graph/`)
 - [x] `ComputeGraph` DAG: node registration during forward pass
 - [x] Autograd: `backward()` traversal, gradient accumulation
-- [ ] Graph serialization (JSON)
-- [ ] Graph visualization data export (for UI consumption)
+- [x] Graph serialization (JSON)
+- [x] Graph visualization data export (for UI consumption)
 - [x] `EvalTrace` struct: opt-in per-layer capture of inputs, outputs, and gradients
 - [ ] `ILayer::forward()` optional `EvalTrace*` parameter (`nullptr` = zero-cost no-op in normal training)
 - [ ] `ILayer::backward()` optional `EvalTrace*` parameter — captures `grad_output` and computed `grad_input`

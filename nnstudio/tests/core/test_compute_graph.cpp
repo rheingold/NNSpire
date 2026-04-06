@@ -1,5 +1,5 @@
 /* ============================================================================
- * test_compute_graph.cpp — unit tests for ComputeGraph / EvalTrace
+ * test_compute_graph.cpp — unit tests for ComputeGraph / EvalTrace / JSON
  * Phase 1 unit tests
  * ============================================================================ */
 
@@ -8,6 +8,7 @@
 #include <builtin/layers/Dense.h>
 #include <builtin/layers/Activations.h>
 #include <builtin/backends/CpuBackend.h>
+#include <memory>
 #include <core/BackendRegistry.h>
 #include <cmath>
 
@@ -185,4 +186,121 @@ TEST_F(ComputeGraphTest, Parameters_NoDuplicates) {
         for (auto* q : seen) EXPECT_NE(p, q);
         seen.push_back(p);
     }
+}
+// ─── JSON serialization ───────────────────────────────────────────────────────
+
+// Helper: register Dense + ReLU factories once per test binary.
+static bool factoriesRegistered = false;
+static void ensureFactories() {
+    if (factoriesRegistered) return;
+    factoriesRegistered = true;
+
+    using namespace nnstudio::builtin::layers;
+    using CfgMap = std::unordered_map<std::string, std::string>;
+
+    ComputeGraph::registerLayerFactory("Dense",
+        [](const CfgMap& cfg, const std::string& name) -> std::unique_ptr<ILayer> {
+            int out  = cfg.count("out_features") ? std::stoi(cfg.at("out_features")) : 1;
+            bool bias= !cfg.count("use_bias") || cfg.at("use_bias") == "true";
+            auto l   = std::make_unique<Dense>(out, bias);
+            l->setName(name);
+            return l;
+        });
+
+    ComputeGraph::registerLayerFactory("ReLU",
+        [](const CfgMap& /*cfg*/, const std::string& name) -> std::unique_ptr<ILayer> {
+            auto l = std::make_unique<ReLU>();
+            l->setName(name);
+            return l;
+        });
+}
+
+// toJson() must produce a non-empty string containing "nodes" and "edges".
+TEST_F(ComputeGraphTest, ToJson_ContainsMandatoryKeys) {
+    Dense d1(4);
+    ReLU  act;
+
+    ComputeGraph g;
+    d1.setName("dense1");
+    act.setName("relu1");
+
+    auto h0 = g.input();
+    auto h1 = g.record(&d1, h0);
+    auto h2 = g.record(&act, h1);
+    g.setOutput(h2);
+
+    std::string j = g.toJson();
+    EXPECT_FALSE(j.empty());
+    EXPECT_NE(j.find("\"nodes\""),      std::string::npos);
+    EXPECT_NE(j.find("\"edges\""),      std::string::npos);
+    EXPECT_NE(j.find("\"outputNodeId\""),std::string::npos);
+    EXPECT_NE(j.find("\"Dense\""),      std::string::npos);
+    EXPECT_NE(j.find("\"ReLU\""),       std::string::npos);
+    EXPECT_NE(j.find("\"dense1\""),     std::string::npos);
+}
+
+// toJson() node count must match recorded layer count.
+TEST_F(ComputeGraphTest, ToJson_NodeCount) {
+    Dense d1(4), d2(1);
+    ComputeGraph g;
+    auto h0 = g.input();
+    auto h1 = g.record(&d1, h0);
+    auto h2 = g.record(&d2, h1);
+    g.setOutput(h2);
+
+    std::string j = g.toJson();
+    // Count occurrences of "\"id\":" to find node entries
+    size_t count = 0, pos = 0;
+    while ((pos = j.find("\"id\":", pos)) != std::string::npos) { ++count; ++pos; }
+    EXPECT_EQ(count, 2u);
+}
+
+// fromJson() reconstructs a graph that can run forward() successfully.
+TEST_F(ComputeGraphTest, FromJson_RoundTrip_ForwardSucceeds) {
+    ensureFactories();
+
+    Dense d1(4);
+    ReLU  act;
+    Dense d2(1);
+
+    ComputeGraph g;
+    auto h0 = g.input();
+    auto h1 = g.record(&d1,  h0);
+    auto h2 = g.record(&act, h1);
+    auto h3 = g.record(&d2,  h2);
+    g.setOutput(h3);
+    g.build({2});
+
+    std::string json = g.toJson();
+
+    auto r = ComputeGraph::fromJson(json);
+    ASSERT_TRUE(r.ok()) << r.error().message;
+
+    auto& g2 = r.value();
+    auto br   = g2.build({2});
+    ASSERT_TRUE(br.ok()) << br.error().message;
+
+    auto fr = g2.forward(Tensor::ones({3, 2}));
+    ASSERT_TRUE(fr.ok()) << fr.error().message;
+    EXPECT_EQ(fr.value().shape()[0], 3);  // batch
+    EXPECT_EQ(fr.value().shape()[1], 1);  // output features
+}
+
+// fromJson() with unknown layer type returns NotImplemented.
+TEST_F(ComputeGraphTest, FromJson_UnknownType_ReturnsError) {
+    ensureFactories();
+
+    // Manually craft a JSON referencing an unregistered type
+    const std::string badJson = R"({
+  "outputNodeId": 1,
+  "nodes": [
+    { "id": 1, "type": "UnknownLayer", "name": "", "config": {} }
+  ],
+  "edges": [
+    { "from": 0, "to": 1, "layer": 0 }
+  ]
+})";
+    auto r = ComputeGraph::fromJson(badJson);
+    ASSERT_FALSE(r.ok());
+    EXPECT_EQ(r.error().code, ErrorCode::NotImplemented);
 }
