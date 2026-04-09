@@ -2558,18 +2558,33 @@ backward:  dW[outF,inF] = B().matmul( gT[outF,B],  x  [B,  inF]  )   // gT = gra
 
 All methods here operate **element-by-element** on identically shaped tensors, or on one tensor and a scalar constant. They are entirely independent on each element — perfectly parallelisable (one GPU thread per element).
 
-> **Critical distinction:** `mul(a, b)` is the **Hadamard product** ($A \odot B$) — element $i$ of `a` multiplied by element $i$ of `b`. This is **not** matrix multiplication. When activation backward code writes `B().mul(gradOut, mask)`, it applies a per-element binary mask, not a GEMM.
+> **Critical distinction — Hadamard product vs matrix multiply:**
+>
+> `mul(a, b)` is the **Hadamard product** (denoted $A \odot B$) — each element at position $i$ of `a` is multiplied by the element at the *same position* $i$ of `b`. **Both operands must have exactly the same shape.** This is entirely different from `matmul`, which contracts an inner dimension and requires `A: [M,K]` and `B: [K,N]` (the rule "columns of A = rows of B"):
+>
+> | Operation | Shape rule | Concrete 2×2 example | Result shape |
+> |---|---|---|---|
+> | `matmul(A, B)` | A is `[M,K]`, B is `[K,N]` — inner dims must match | A=`[[1,2],[3,4]]`, B=`[[5,6],[7,8]]` → `[[19,22],[43,50]]` | `[M,N]` = `[2,2]` |
+> | `mul(A, B)` Hadamard | A and B must be **the same shape** | A=`[[1,2],[3,4]]` ⊙ B=`[[5,6],[7,8]]` → `[[5,12],[21,32]]` | `[2,2]` (same) |
+>
+> `matmul` says "take a weighted sum across all K connections" — the neuron's summing rule.
+> `mul` says "scale each position independently" — the dropout mask, the activation gradient gate.
+>
+> **Why does Hadamard require identical shapes?**
+> Because $c_{ij} = a_{ij} \cdot b_{ij}$ — there is no summation; every output element needs exactly one pair. If shapes differ there is no 1-to-1 correspondence. Broadcasting (allowing mismatched shapes provided one can be stretched) is a separate capability not currently in `IBackend`; it would require a `mulBroadcast` method.
+>
+> **Note on the scalar variants** (`addScalar`, `subScalar`, `mulScalar`, `divScalar`): these belong in the same Arithmetic group rather than the Math Functions group (§A.4) because they form natural paired families with their tensor-tensor counterparts (`add`/`addScalar`, `mul`/`mulScalar`, etc.). Operationally they are equally "element-wise" — the grouping is structural convention for readability, not a mathematical distinction. `mulScalar(a, 2.0)` and `sqrt(a)` are equally per-element; they just appear in different rows because of their pairing origin.
 
 | Method | Math | Concrete example (flat tensors for brevity) | Used by |
 |---|---|---|---|
 | `add(a, b)` | $c_i = a_i + b_i$ | `{1,2,3} + {4,5,6}` → `{5,7,9}` | Bias column-broadcast in `Dense`; residual skip connections (Phase 3) |
 | `sub(a, b)` | $c_i = a_i - b_i$ | `{5,7,9} - {3,2,1}` → `{2,5,8}` | Loss gradients: `pred - target`; BatchNorm centering |
-| `mul(a, b)` | $c_i = a_i \cdot b_i$ (Hadamard) | `{2,4,6} * {1,0,1}` → `{2,0,6}` | Dropout mask application; ReLU/LeakyReLU backward gradient masking; attention weight × value |
-| `div_(a, b)` | $c_i = a_i / b_i$ (name avoids C++ `div` keyword) | `{6,8,4} / {2,4,2}` → `{3,2,2}` | Sigmoid forward: `ones / (ones + exp(-x))`; LayerNorm normalisation |
-| `addScalar(a, s)` | $c_i = a_i + s$ | `{1,2,3} + 1.0` → `{2,3,4}` | Sigmoid: `exp(-x) + 1.0`; Adam bias-correction denominators `1 - β^t` |
-| `subScalar(a, s)` | $c_i = a_i - s$ | `{5,6,7} − 2.0` → `{3,4,5}` | BatchNorm/LayerNorm: subtract mean |
-| `mulScalar(a, s)` | $c_i = a_i \cdot s$ | `{2,4,8} * 0.5` → `{1,2,4}` | Sigmoid derivative: `mulScalar(sq, -1)` for `1 - tanh²`; dropout inverted scale `1/(1-p)` |
-| `divScalar(a, s)` | $c_i = a_i / s$ | `{6,8,4} / 2.0` → `{3,4,2}` | Attention scale $1/\sqrt{d_k}$; MSE: divide sum by N |
+| `mul(a, b)` | $c_i = a_i \cdot b_i$ — **Hadamard** (element $i$ × element $i$, same-shape operands required) | `{2,4,6}` ⊙ `{1,0,1}` → `{2,0,6}` | Dropout mask application; ReLU/LeakyReLU backward gradient masking; attention weight × value |
+| `div_(a, b)` | $c_i = a_i / b_i$ (name avoids C++ `div` keyword) | `{6,8,4}` / `{2,4,2}` → `{3,2,2}` | Sigmoid forward: `ones / (ones + exp(-x))`; LayerNorm normalisation |
+| `addScalar(a, s)` | $c_i = a_i + s$ | `{1,2,3}` + 1.0 → `{2,3,4}` | Sigmoid: `exp(-x) + 1.0`; Adam bias-correction denominators `1 - β^t` |
+| `subScalar(a, s)` | $c_i = a_i - s$ | `{5,6,7}` − 2.0 → `{3,4,5}` | BatchNorm/LayerNorm: subtract mean |
+| `mulScalar(a, s)` | $c_i = a_i \cdot s$ | `{2,4,8}` × 0.5 → `{1,2,4}` | Sigmoid derivative: `mulScalar(sq, -1)` for `1 - tanh²`; dropout inverted scale `1/(1-p)` |
+| `divScalar(a, s)` | $c_i = a_i / s$ | `{6,8,4}` / 2.0 → `{3,4,2}` | Attention scale $1/\sqrt{d_k}$; MSE: divide sum by N |
 | `neg(a)` | $c_i = -a_i$ | `{1,-2,3}` → `{-1,2,-3}` | Sigmoid: `neg(x)` to get $-x$ before `exp`; BCE gradient sign flip |
 
 **Anatomy of Sigmoid via vtable calls:**
@@ -2601,7 +2616,13 @@ Unary functions applied independently to each element. Like §A.3, they are triv
 | `abs(a)` | $c_i = \|a_i\|$ | `abs({-3, 4, -0.5})` → `{3, 4, 0.5}` | HuberLoss: compares $\|p - t\|$ against the threshold $\delta$ to choose the quadratic vs. linear branch |
 | `clamp(a, lo, hi)` | $c_i = \min(\max(a_i, \text{lo}), \text{hi})$ | `clamp({-2, 0.5, 3}, 0, 1)` → `{0, 0.5, 1}` | ReLU forward: `clamp(x, 0, +∞)` (most elegant use — entire ReLU is one vtable call); `kEps` loss guard: `clamp(p, 1e-7, 1-1e-7)` |
 
-**TanhAct: the raw-loop counter-example.**
+> **`clamp` by other names — same concept appears across many fields:**
+> - **Audio engineering / sound mixing:** *hard clipping* or *peak limiting* — any signal level exceeding the ceiling is cut flat; the louder the input beyond the threshold, the more is lost (unlike soft-knee compression which is gentle). `clamp(signal, -1.0, 1.0)` is exactly what a digital limiter does.
+> - **Electronics / signal processing:** *saturation* — an amplifier that cannot output beyond its supply voltage clips; *hard limiting*; or *rail-to-rail clipping* in ADC overflow.
+> - **Image processing:** thresholding or *value quantisation floor/ceiling* — clamping pixel values to `[0, 255]` after a brightness adjustment.
+> - **Control systems:** *output saturation* — a PID controller whose actuator has physical limits (a motor can't spin faster than its max RPM).
+>
+> In all cases the concept is identical: values inside the band `[lo, hi]` pass through unchanged; values outside are pinned to the nearest boundary. The NNStudio use is precisely the audio-engineer's "limiter for numerical safety": prevent `log(0)` → `−∞` by pinning predictions to `[1e-7, 1-1e-7]` before computing entropy.
 
 `tanh` could be expressed as $\tanh(x) = 2\sigma(2x) - 1 = 2/(1+e^{-2x}) - 1$ — entirely via vtable ops. Instead it currently uses a raw C loop:
 
@@ -2619,25 +2640,47 @@ A CUDA backend would not accelerate this. The vtable rewrite is a one-liner once
 
 Reductions collapse one dimension (or all dimensions for `dim = -1`) to a single value.
 
-| Method | Math | Shape example | Notes |
+**Working matrix used in all examples below:**
+
+$$A = \begin{pmatrix}1 & 2 \\ 3 & 4 \\ 5 & 6\end{pmatrix} \quad \text{shape } [3, 2]$$
+
+The two axes are: `dim=0` = the row axis (collapse 3 rows → 1), `dim=1` = the column axis (collapse 2 columns → 1).
+
+| Method | Math | Examples with A `[3,2]` above | Notes |
 |---|---|---|---|
-| `sum(a, dim, keepdim)` | $c_j = \sum_i a_{ij}$ along `dim` | `sum([32×10], dim=0, false)` → `[10]` | `dim=-1` = global sum → scalar `[1]`. Bias gradient in `Dense::backward`: `sum(gradOut, dim=0)` accumulates all batch rows |
-| `mean(a, dim, keepdim)` | $c_j = \frac{1}{N}\sum_i a_{ij}$ | `mean([32×1], dim=-1, false)` → scalar `[1]` | MSE loss output (one mean over all elements). `keepdim=true` retains the collapsed dim as size 1 — necessary for broadcasting: |
-| `max(a, dim, keepdim)` | $c_j = \max_i a_{ij}$ | `max([4×8], dim=1, true)` → `[4×1]` | Numerically stable Softmax: subtract per-row max before exp, so the largest pre-exp value is `exp(0)=1.0`, preventing overflow |
+| `sum(a, dim, keepdim)` | $c_j = \sum_i a_{ij}$ along `dim` | `sum(A, dim=0, false)` → `{9, 12}` shape `[2]` (col sums: 1+3+5, 2+4+6) · `sum(A, dim=1, false)` → `{3, 7, 11}` shape `[3]` (row sums: 1+2, 3+4, 5+6) · `sum(A, dim=-1, false)` → `{21}` shape `[1]` (global) | Bias gradient in `Dense::backward`: `sum(gradOut, dim=0)` accumulates all batch rows into one gradient vector |
+| `mean(a, dim, keepdim)` | $c_j = \frac{1}{N}\sum_i a_{ij}$ | `mean(A, dim=0, true)` → `{{3.0, 4.0}}` shape `[1,2]` (col means: (1+3+5)/3, (2+4+6)/3) · `mean(A, dim=1, false)` → `{1.5, 3.5, 5.5}` shape `[3]` (row means) | MSE loss output (global mean). `keepdim=true` keeps the collapsed dim as size 1 — needed for broadcasting subtraction: `A - mean(A, dim=0, keepdim=True)` zero-centres each column |
+| `max(a, dim, keepdim)` | $c_j = \max_i a_{ij}$ | `max(A, dim=0, false)` → `{5, 6}` shape `[2]` (col maxima) · `max(A, dim=1, true)` → `{{2},{4},{6}}` shape `[3,1]` (per-row max) | Numerically stable Softmax: subtract per-row max before exp — `max(A, dim=1, keepdim=True)` gives shape `[3,1]` which broadcasts cleanly against `A [3,2]` |
 
-**Why `keepdim` matters:**
+**Why `keepdim` matters — illustrated:**
 
-```python
-a: shape [4, 3]
-sum(a, dim=0, keepdim=False) → shape [3]     # cannot subtract from a without reshape
-sum(a, dim=0, keepdim=True)  → shape [1, 3]  # broadcasts: a − sum gives zero-mean rows
+```
+A:  shape [3, 2]           A:  shape [3, 2]
+    [[1, 2],                   [[1, 2],
+     [3, 4],                    [3, 4],
+     [5, 6]]                    [5, 6]]
+
+mean(A, dim=0, keepdim=False) → [3.0, 4.0]   shape [2]
+                                  ↕  can't subtract from A: [2] vs [3,2] — shapes incompatible
+
+mean(A, dim=0, keepdim=True)  → [[3.0, 4.0]]  shape [1,2]
+                                  ↕  broadcasts against [3,2]: each row gets centred
+A - mean → [[-2.0,-2.0],[-0.0,-0.0],[2.0,2.0]]
 ```
 
 **Softmax numerical stability via `max` + `sum`:**
 
 $$\text{softmax}_i = \frac{e^{a_i - M}}{\sum_k e^{a_k - M}}, \quad M = \max_j a_j$$
 
-Subtracting $M$ shifts all exponents so the largest is $e^0 = 1.0$ — no overflow risk regardless of the input magnitude. The result is mathematically identical (the $e^{-M}$ factors cancel).
+Row example with `a = {1, 3, 2}`:
+
+| Without stability | With `M = max = 3` |
+|---|---|
+| $e^1=2.72,\ e^3=20.09,\ e^2=7.39$ → sum=30.2 | $e^{-2}=0.135,\ e^0=1.0,\ e^{-1}=0.368$ → sum=1.503 |
+| softmax = `{0.090, 0.665, 0.245}` ✓ | softmax = `{0.090, 0.665, 0.245}` ✓ (identical) |
+| overflow safe? For large inputs: $e^{800}$ = inf ✗ | $e^{800-800} = e^0 = 1.0$ ✓ always safe |
+
+Subtracting $M$ shifts all exponents so the largest is always $e^0 = 1.0$ — no overflow regardless of input magnitude. The result is mathematically identical because the $e^{-M}$ factors cancel in numerator and denominator.
 
 ---
 
@@ -2649,7 +2692,29 @@ These do not move elements in memory on CPU; they manipulate the `strides_` and 
 |---|---|---|---|
 | `reshape(a, newShape)` | Reinterpret memory as a different shape, preserving total element count (`numel`) | `reshape([6], {2,3})` — a flat vector becomes a 2×3 matrix | Strides-only alias if data is contiguous. Used by `Embedding` to pack batch output; MHA head split/merge |
 | `transpose(a, dim0, dim1)` | Swap two dimensions — strides swap only, no data copy on CPU | `transpose([3,4], 0, 1)` → logical shape `[4,3]`, same memory | `Dense::forward` uses this to compute $W^T$ without any allocation: `B().transpose(weights_.tensor, 0, 1)` |
-| `cat(tensors, dim)` | Concatenate a list of tensors along one dimension — **does** allocate a new buffer | `cat([{2,3}, {4,3}], dim=0)` → `{6,3}` | MHA uses `cat` to merge attention heads after the per-head computation back into `[B, L, d_model]` |
+| `cat(tensors, dim)` | Concatenate a list of tensors along one dimension — **does** allocate a new buffer | See below | MHA uses `cat` to merge attention heads after the per-head computation back into `[B, L, d_model]` |
+
+**`cat` concrete example (two 3×2 matrices):**
+
+```
+A = [[1, 2],          B = [[7, 8],
+     [3, 4],               [9, 10],
+     [5, 6]]               [11,12]]
+  shape [3, 2]            shape [3, 2]
+
+cat([A, B], dim=0)  →  [[1, 2],       shape [6, 2]
+                         [3, 4],       (stacked vertically — more rows)
+                         [5, 6],
+                         [7, 8],
+                         [9,10],
+                         [11,12]]
+
+cat([A, B], dim=1)  →  [[1, 2, 7, 8], shape [3, 4]
+                         [3, 4, 9,10], (stacked horizontally — more columns)
+                         [5, 6,11,12]]
+```
+
+`cat` along `dim=0` = "append more samples." `cat` along `dim=1` = "append more features." MHA uses `dim=1` on the head axis: after computing all $h$ heads independently as `[B, L, d_k]` each, `cat(heads, dim=2)` along the feature axis reassembles them into `[B, L, h*d_k] = [B, L, d_model]`.
 
 **Transpose layout note.** The CPU stride-swap trick means `B().transpose(W, 0, 1)` is O(1) — it creates a new `Tensor` header pointing to the same `data_` buffer but with `strides_` reversed. `CpuBackend::matmul` then handles the col/row-major identity described in Chapter 2. A naïve CUDA backend that assumes contiguous row-major layout before calling `cublasSgemm` would need to materialise a copy here — which is why the cuBLAS wrapper must accept leading-dimension arguments rather than transposing physically.
 
@@ -2832,3 +2897,183 @@ This mirrors `NNSTUDIO_PLUGIN_API_VERSION` in the plugin ABI (§10.7). Used for 
 - The `transpose` 🟡 for CUDA is a known trade-off: CPU transpose is free (strides swap); CUDA cuBLAS expects contiguous row-major input, so a physical transpose copy may be needed unless the caller passes `CUBLAS_OP_T` directly — a `CudaBackend::matmul` implementation should absorb this internally via `ld` (leading dimension) arguments rather than materialising the copy.
 - `applyFunctor1D` 🔮 in CUDA reflects that applying arbitrary C++ lambdas on the GPU requires JIT compilation (NVRTC / PTX). This is solvable but non-trivial, and is intentionally deferred to ADR-034 step 2.
 
+---
+
+### §A.11 — Writing Plugin Activations That Use Vtable Primitives
+
+This section is a practical guide for **plugin activation authors**: how to build an `IActivation` implementation that routes its compute through `IBackend` vtable calls so that a CUDA (or any future) backend accelerates it automatically, and how the framework surfaces acceleration warnings when the backend cannot honour those calls at hardware speed.
+
+---
+
+#### A.11.1 — The `B()` accessor
+
+Every `IActivation` subclass has access to the active backend through `B()` (documented in §A.1). Calling any vtable method through `B()` routes computation to whatever backend is registered at runtime:
+
+```cpp
+// Plugin file: my_activation.cpp
+#include <nnstudio/plugin-api/IActivation.h>
+
+class SwishAct final : public nnstudio::IActivation {
+public:
+    // forward(x) = x * sigmoid(x) = x / (1 + exp(-x))
+    Tensor forward(const Tensor& x) override {
+        // All three calls dispatch through IBackend vtable:
+        Tensor neg_x  = B().neg(x);              // §A.3 — arithmetic
+        Tensor e      = B().exp(neg_x);           // §A.4 — math function
+        Tensor denom  = B().addScalar(e, 1.0f);  // §A.3 — scalar arithmetic
+        Tensor sig    = B().div_(x, denom);       // §A.3 — division (reuse x buffer)
+        return B().mul(x, sig);                   // §A.3 — Hadamard product
+    }
+
+    Tensor backward(const Tensor& x, const Tensor& grad) override {
+        // swish'(x) = swish(x) + sigmoid(x)(1 - swish(x))
+        Tensor sw     = forward(x);
+        Tensor neg_x  = B().neg(x);
+        Tensor e      = B().exp(neg_x);
+        Tensor denom  = B().addScalar(e, 1.0f);
+        Tensor sig    = B().div_(Tensor::ones_like(x), denom);  // σ(x)
+        Tensor one_sw = B().subScalar(B().mulScalar(sw, -1.0f), -1.0f); // 1 - sw(x)
+        Tensor dswish = B().add(sw, B().mul(sig, one_sw));
+        return B().mul(grad, dswish);
+    }
+};
+```
+
+Because every operation is a vtable call, this `SwishAct` is **fully backend-agnostic**. On `CpuBackend` it runs Eigen loops; on a future `CudaBackend` every call becomes a CUDA kernel with no code change in this file.
+
+---
+
+#### A.11.2 — Declaring the acceleration profile
+
+`IActivation` exposes an optional virtual method that plugins can override to tell the framework exactly which backend ops they rely on:
+
+```cpp
+// IActivation.h (planned v1.1 addition — Pattern 1: non-pure with default)
+struct BackendAccelerationProfile {
+    bool fullyVtableDispatched = false;    // true → 0 raw loops, 100% vtable
+    std::vector<std::string> vtableOps;    // list of IBackend methods called
+    std::vector<std::string> rawLoopPaths; // names of any remaining raw loops
+};
+
+class IActivation {
+public:
+    virtual BackendAccelerationProfile backendAccelerationProfile() const {
+        // Default: unknown — plugin did not declare
+        return {}; // fullyVtableDispatched=false, empty lists
+    }
+};
+```
+
+A fully vtable-dispatched plugin overrides this:
+
+```cpp
+BackendAccelerationProfile SwishAct::backendAccelerationProfile() const override {
+    return {
+        .fullyVtableDispatched = true,
+        .vtableOps = {"neg", "exp", "addScalar", "div_", "mul",
+                      "subScalar", "mulScalar", "add"},
+        .rawLoopPaths = {}
+    };
+}
+```
+
+The macro `NNSTUDIO_ACTIVATION_VTABLE_PROFILE(ops...)` is a convenience wrapper that generates this override automatically:
+
+```cpp
+// Example macro use (defined in plugin-api/Macros.h):
+NNSTUDIO_ACTIVATION_VTABLE_PROFILE(neg, exp, addScalar, div_, mul,
+                                    subScalar, mulScalar, add)
+```
+
+---
+
+#### A.11.3 — What the framework does with the profile
+
+At registration time (`ActivationRegistry::registerActivation`), the engine calls `backendAccelerationProfile()` and stores the result alongside the factory. It uses the profile for three purposes:
+
+**1. Studio UI badge (see TODO.md → Properties panel → Backend acceleration status badge)**
+
+| Profile result | Badge | Tooltip |
+|---|---|---|
+| `fullyVtableDispatched = true` | 🟢 **Fully accelerated** | "All ops route through IBackend vtable; will benefit from CUDA / future backends." |
+| `fullyVtableDispatched = false`, `rawLoopPaths` non-empty | 🟡 **Partial — CPU loops** | "Raw loop paths: `{list}`. Performance is CPU-bound regardless of backend." |
+| Default (no override) | ⚪ **Unknown — plugin** | "Plugin did not declare its backend profile. Assume CPU-only performance." |
+
+**2. Runtime log warning when backend mismatches profile**
+
+When the user switches to `CudaBackend` at training time, the dispatcher checks each activation in the `ComputeGraph`:
+
+```
+[BackendDispatch] WARN: activation "TanhAct" — raw loop paths present: ["forward flat(i) loop",
+  "backward mask-build loop"]. These paths will NOT benefit from CUDA acceleration.
+  Consider replacing with a vtable-only implementation. (See blueprints.md §A.11)
+```
+
+**3. Export manifest annotation**
+
+When exporting a `.nnsx` bundle, each activation's acceleration profile is written into `manifest.json`:
+
+```json
+"activations": [
+  {
+    "name": "SwishAct",
+    "fullyVtableDispatched": true,
+    "vtableOps": ["neg", "exp", "addScalar", "div_", "mul"]
+  }
+]
+```
+
+This lets a deployment tool (or CI check) refuse a build that depends on unaccelerated activations when targeting a high-throughput backend.
+
+---
+
+#### A.11.4 — CPU fallback: it is always there, no action needed
+
+The question for plugin authors is not "how do I provide a CPU fallback?" — the `CpuBackend` is the fallback. Every vtable call transparently becomes a CPU Eigen operation on `CpuBackend`. The only question is **whether the active backend can accelerate those calls beyond CPU speed**.
+
+The three-tier model:
+
+| Scenario | What happens |
+|---|---|
+| `CpuBackend` active, activation uses vtable only | ✅ CPU Eigen path — correct and fast for CPU |
+| `CudaBackend` active, activation uses vtable only | ✅ CUDA kernel path — automatically accelerated |
+| `CudaBackend` active, activation has raw `flat(i)` loops | 🟡 Loop runs on CPU-side data; effective backend speed = CPU; WARN logged |
+| No backend registered (impossible — `CpuBackend` is always the fallback) | N/A |
+
+The framework guarantees `B()` is always non-null; plugin authors do not need guard clauses.
+
+---
+
+#### A.11.5 — Porting an existing raw-loop activation to vtable
+
+The `/builtin/activations/` activations that currently have raw loops (§A.8) are the reference examples for this migration. The pattern:
+
+```
+BEFORE (raw loop — not accelerated):
+    void forward(Tensor& out, const Tensor& in) {
+        for (int i = 0; i < in.numel(); ++i)
+            out.flat(i) = std::tanh(in.flat(i));   // CPU-only, no vtable
+    }
+
+AFTER (vtable — automatically accelerated):
+    Tensor forward(const Tensor& x) override {
+        // tanh(x) = (exp(2x) - 1) / (exp(2x) + 1)
+        Tensor t2x = B().mulScalar(x, 2.0f);
+        Tensor e   = B().exp(t2x);
+        Tensor num = B().subScalar(e, 1.0f);
+        Tensor den = B().addScalar(e, 1.0f);
+        return B().div_(num, den);
+    }
+```
+
+Note: `tanh` can also be expressed as `1 - 2 / (exp(2x) + 1)`, which uses one fewer allocation. Both are numerically correct; the second is slightly more allocation-efficient. In practice, once `IBackend` gains a native `tanh` vtable entry (Phase 4), the whole body becomes `return B().tanh(x);`.
+
+---
+
+**Summary checklist for plugin activation authors:**
+
+- [ ] Implement `forward()` / `backward()` using only `B().someMethod(...)` calls (zero `flat(i)` loops).
+- [ ] Override `backendAccelerationProfile()` (or use `NNSTUDIO_ACTIVATION_VTABLE_PROFILE(ops...)`).
+- [ ] Do _not_ add a CPU fallback — `CpuBackend` is the framework's built-in fallback.
+- [ ] Test on `CpuBackend`; a future CI lane will test on `CudaBackend` (Phase 4).
+- [ ] If a raw loop is unavoidable (e.g. custom indexing), declare it in `rawLoopPaths` so the UI and export manifest reflect reality.

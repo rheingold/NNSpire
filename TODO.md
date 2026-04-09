@@ -873,6 +873,21 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] "?" button per parameter opens KB deep-link for that parameter
 - [ ] **Warning banner**: "every two consecutive Dense layers must have a non-linear
   activation between them" — educational, not a build block
+- [ ] **Backend acceleration status badge** — shown per layer _and_ per activation in the
+  Properties panel:
+  - Green badge **"Fully accelerated"** when all forward/backward operations are routed
+    exclusively through `IBackend` vtable calls (e.g. `Dense`, `Sigmoid`).
+  - Amber badge **"Partial — CPU loops"** when any path falls back to raw `flat(i)` scalar
+    loops (e.g. `TanhAct`, `GELU`, `Softmax`, `LeakyReLU`); shows a tooltip listing the
+    offending paths; links to `§A.8` of `blueprints.md` for remediation guidance.
+  - Grey badge **"Unknown / plugin"** for plugin-supplied layers or activations that do not
+    implement `isFullyVtableDispatched()`.
+  - Acceleration status re-evaluated when the backend selector in the Training Dashboard
+    changes (e.g. switching from `CPU` to `CUDA`), since a method's effective speedup only
+    exists if the active backend implements it.
+  - _Prerequisite_: `IActivation` and `ILayer` expose `backendAccelerationProfile()` →
+    returns a small struct: `{fullyVtable: bool, rawLoopOps: vector<string>}`.
+    See `blueprints.md §A.9` for the plugin API design.
 - [ ] **User note** field — free text stored in `view.json` sidecar (ADR-031); never
   emitted into source code
 
