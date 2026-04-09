@@ -313,7 +313,7 @@ C^T = B^T @ A^T   ✓  (mathematically identical to C = A @ B)
 ```
 `noalias()` tells Eigen the output buffer doesn't overlap any input — skips a defensive internal copy.
 
-> **Reference:** For a fully annotated specification of every `IBackend` virtual method — mathematical notation, numeric micro-examples, per-layer CUDA-readiness analysis, strategy for adding new methods without breaking existing backends, and a compatibility matrix across all planned backends — see [Appendix — IBackend Vtable Reference](#appendix--ibackend-vtable-reference) at the end of this document.
+> **Reference:** For a fully annotated specification of every `IBackend` virtual method — mathematical notation, numeric micro-examples, per-layer CUDA-readiness analysis, strategy for adding new methods without breaking existing backends, and a compatibility matrix across all planned backends — see [Appendix D — IBackend Vtable Reference](#appendix-d--ibackend-vtable-reference).
 
 ---
 
@@ -1231,791 +1231,6 @@ For each layer in the graph (Phase 3 Qt UI):
 
 ---
 
-## Appendix — File Map
-
-```
-nnstudio/
-├── core/
-│   ├── include/nnstudio/core/
-│   │   ├── Tensor.h          ← Ch.1  data model, shape, strides, grad
-│   │   ├── IBackend.h        ← Ch.2  compute interface
-│   │   ├── BackendRegistry.h ← Ch.2  singleton + backend() free function
-│   │   ├── Layer.h           ← Ch.3  ILayer lifecycle + Sequential
-│   │   ├── layers/Dense.h    ← Ch.3  fully-connected layer API
-│   │   ├── Activations.h     ← Ch.3  ReLU, Sigmoid, GELU, ...
-│   │   ├── Losses.h          ← Ch.5  MSE, BCE, CrossEntropy
-│   │   ├── Optimizers.h      ← Ch.6  SGD, Adam, AdamW
-│   │   └── Trainer.h         ← Ch.7  training loop API
-│   └── src/
-│       ├── tensor/Tensor.cpp
-│       ├── layers/Layer.cpp
-│       ├── layers/Dense.cpp  ← Ch.3  forward/backward with comments
-│       ├── activations/Activations.cpp
-│       ├── losses/Losses.cpp
-│       ├── optimizers/Optimizers.cpp
-│       └── training/Trainer.cpp ← Ch.7  trainStep with comments
-├── backends/
-│   └── cpu/CpuBackend.cpp    ← Ch.2  Eigen matmul, row/col-major trick
-└── tests/
-    └── core/
-        ├── test_tensor.cpp
-        ├── test_activations.cpp
-        └── test_trainer_xor.cpp ← Ch.8  XOR milestone with comments
-```
-
----
-
-## Appendix — Namespace Map and Naming Conventions
-
-> **TODO:** Expand this section into a standalone `NAMING-CONVENTIONS.md`.
-
----
-
-### The three-tier namespace design (target state)
-
-Three visibility tiers separate the stable public contract from engine internals from bundled implementations.
-
-#### Tier 1 — `nnstudio::core::` — the stable, versioned public contract
-
-Contains **only** abstract extension points and core data types.  
-**No concrete implementation ever lives here.**  
-Plugin authors include `<core/ILayer.h>` etc. and work entirely inside `nnstudio::core::`.  
-Breaking changes require a version bump and a transition period.
-
-```
-nnstudio::core::
-    ILayer          abstract layer contract (build/forward/backward/zeroGrad)
-    IBackend        abstract compute contract (matmul, transpose, elementwise...)
-    ILoss           abstract loss contract
-    IOptimizer      abstract optimizer contract
-    ILRScheduler    optional learning-rate schedule contract
-    Tensor          core data type (not NN-specific; used by all tiers)
-    Parameter       { name, Tensor, frozen } — the unit the optimizer reads
-    Result<T>       error-or-value return type
-    Shape           vector<int64_t> alias
-    Device          CPU | CUDA | QUANTUM enum
-    DType           float32 | float16 | int8 enum
-    BackendRegistry singleton registry + backend() free function
-    PluginDescriptor  C-ABI plugin descriptor (name, version, type tag, factory)
-    FeatureFlags    FREE | PRO | ENTERPRISE tier gating
-    Trainer         training loop (DataBatch, Dataset, TrainMetrics, TrainCallbacks)
-    Sequential      ordered container of ILayer instances
-```
-
-#### Tier 2 — `nnstudio::internal::` — engine guts, not for plugin authors
-
-Contains the engine's own machinery.  
-Documented as: *"do not use from plugins — may change in any release with no warning."*
-
-```
-nnstudio::internal::
-    graph::         ComputeGraph, autograd traversal, DAG node types
-    training::      Trainer step loop, callback dispatch, EvalTrace capture
-    formats::       .nnsp / .nnsx file I/O, ONNX serialisation
-    detail::        utility templates, helpers, type traits
-```
-
-#### Tier 2b — `nnstudio::ui::` — UI extension points (Phase 3+)
-
-Semi-stable; evolves with Qt version requirements.  
-Plugin authors use this only when registering a custom UI panel.
-
-```
-nnstudio::ui::
-    panels::        QML panel plugin registration interface
-    qml::           QML-side property/signal contract types
-```
-
-#### Tier 3 — `nnstudio::builtin::` — NNStudio's own implementations
-
-**NNStudio's default implementations are treated identically to third-party plugins.**  
-They happen to ship bundled with the installer, but they have no special namespace or access privilege.  
-A list of all loaded layer types will show `nnstudio::builtin::layers::Dense` alongside `myplugin::layers::MyLayer` — no VIP.
-
-```
-nnstudio::builtin::
-    layers::        Dense, ReLU, LeakyReLU, Sigmoid, Tanh, Softmax, GELU,
-                    Conv2D, BatchNorm, Dropout, Embedding, ...
-    backends::      CpuBackend, CudaBackend, QuantumBackend
-    losses::        MSE, CrossEntropy, BinaryCrossEntropy, HuberLoss
-    optimizers::    SGD, Adam, AdamW, RMSProp
-```
-
-A third-party plugin developer writes:
-```cpp
-eu::plachy::nnplugins::myplugin::layers::MyLayer : public nnstudio::core::ILayer { ... }
-```
-NNStudio itself writes:
-```cpp
-nnstudio::builtin::layers::Dense : public nnstudio::core::ILayer { ... }
-```
-Both are just implementations. The only allowed difference is that `builtin` ships by default and appears first in UI lists.
-
----
-
-### Current state vs target state
-
-~~The current code does not yet match the target. This is the known delta:~~
-
-**Migration complete.** All refactors below are applied to the on-disk source; all 16 `ctest` tests pass; `cmake --build` clean; old files deleted.
-
-#### Phase 1 — builtin namespaces
-
-| Symbol | Old namespace (deleted) | New namespace ✅ |
-|---|---|---|
-| `Dense` | `nnstudio::layers::` | `nnstudio::builtin::layers::` |
-| `ReLU`, `Sigmoid`, etc. | `nnstudio::activations::` | `nnstudio::builtin::layers::` (activations are layers) |
-| `MSE`, `BCE`, etc. | `nnstudio::losses::` | `nnstudio::builtin::losses::` |
-| `SGD`, `Adam`, `AdamW` | `nnstudio::optimizers::` | `nnstudio::builtin::optimizers::` |
-| `CpuBackend` | `nnstudio::` | `nnstudio::builtin::backends::` |
-| `ILoss` | bundled in `Losses.h` | extracted to `nnstudio::core::ILoss` in `ILoss.h` (Tier 1) |
-| `IOptimizer`, `ILRScheduler` | bundled in `Optimizers.h` | extracted to `nnstudio::core::IOptimizer` in `IOptimizer.h` (Tier 1) |
-
-#### Phase 2 — core namespace + Option B folder structure
-
-| Symbol | Old namespace (deleted) | New namespace ✅ |
-|---|---|---|
-| `Tensor`, `Parameter`, `Shape`, `Device`, `DType` | `nnstudio::` | `nnstudio::core::` |
-| `ILayer`, `Sequential`, `LayerPtr` | `nnstudio::` | `nnstudio::core::` |
-| `IBackend`, `BackendRegistry` | `nnstudio::` | `nnstudio::core::` |
-| `ILoss`, `IOptimizer`, `ILRScheduler` | `nnstudio::` | `nnstudio::core::` |
-| `Trainer`, `DataBatch`, `Dataset`, `TrainMetrics` | `nnstudio::` | `nnstudio::core::` |
-| `Result<T>`, `FeatureFlags` | `nnstudio::` | `nnstudio::core::` |
-| All files | `core/include/nnstudio/*.h` + `builtin/include/nnstudio/**/*.h` | `include/core/*.h` + `include/builtin/**/*.h` (Option B shared root) |
-
-Builtin `include/` and `src/` files gained `using namespace nnstudio::core;` inside (or just before) their namespace block so they reference Tier 1 types without qualification.
-
----
-
-### The path = namespace rule
-
-Every on-disk path segment translates directly to exactly one C++ namespace segment — with two exceptions that are **visibility boundaries only**, never namespace contributors: `include/` and `src/`.
-
-```
-Disk path segment          →   C++ namespace segment
-─────────────────────────────────────────────────────────────────
-nnstudio/                  →   nnstudio::           (repo root = outermost namespace)
-include/  or  src/         →   (SKIP — visibility boundary, not a namespace layer)
-core/                      →   core::
-builtin/                   →   builtin::
-layers/                    →   layers::
-backends/                  →   backends::
-losses/                    →   losses::
-optimizers/                →   optimizers::
-Tensor.h                   →   class/namespace Tensor  (contents of the file)
-─────────────────────────────────────────────────────────────────
-Rule:  EVERY segment except include/ and src/ maps 1-to-1 to a namespace segment.
-```
-
-Examples:
-
-```
-nnstudio / include / core    / Tensor.h
-    ↓       (skip)    ↓            ↓
-nnstudio::           core::      Tensor
-
-nnstudio / include / builtin / layers / Dense.h
-    ↓       (skip)     ↓          ↓         ↓
-nnstudio::            builtin:: layers::  Dense
-
-nnstudio / src     / core    / Tensor.cpp
-    ↓       (skip)    ↓            ↓
-nnstudio::           core::      (Tensor impl — same namespace, visibility-only boundary)
-```
-
-This is the convention enforced by the Option B shared-root layout. See the **Plugin exception** section below for the one deliberate reversal of this rule.
-
----
-
-### Folder structure (current state)
-
-The folder layout reflects namespace tiers, the one-directional mirror rule, and the colocated-headers-for-implementations principle.
-
-```
-nnstudio/
-    include/                           ← ONE CMake search root (all targets: core, builtin, …)
-        core/                          → namespace nnstudio::core::
-            Tensor.h                   → nnstudio::core::Tensor
-            Layer.h                    → nnstudio::core::ILayer, Sequential, LayerPtr, Parameter
-            IBackend.h                 → nnstudio::core::IBackend
-            BackendRegistry.h          → nnstudio::core::BackendRegistry
-            ILoss.h                    → nnstudio::core::ILoss
-            IOptimizer.h               → nnstudio::core::IOptimizer, ILRScheduler
-            Trainer.h                  → nnstudio::core::Trainer, DataBatch, Dataset, TrainMetrics
-            Result.h                   → nnstudio::core::Result<T>
-            Device.h  DType.h          → nnstudio::core::Device, DType
-            FeatureFlags.h             → nnstudio::core::FeatureFlags
-        builtin/                       → namespace nnstudio::builtin::
-            layers/                    → nnstudio::builtin::layers::
-                Dense.h
-                Activations.h
-            backends/                  → nnstudio::builtin::backends::
-                CpuBackend.h
-            losses/                    → nnstudio::builtin::losses::
-                Losses.h
-            optimizers/                → nnstudio::builtin::optimizers::
-                Optimizers.h
-
-    src/                               ← mirrors include/ exactly — build-only, never installed
-        core/
-            Tensor.cpp  BackendRegistry.cpp  Layer.cpp  Trainer.cpp
-        builtin/
-            layers/     Dense.cpp  Activations.cpp
-            backends/   CpuBackend.cpp
-            losses/     Losses.cpp
-            optimizers/ Optimizers.cpp
-
-    core/                              ← CMake target definition only
-        CMakeLists.txt                 ← target nnstudio-core; sources from ../src/core/
-        CONTRIBUTING.md
-
-    builtin/                           ← CMake target definition only
-        CMakeLists.txt                 ← targets nnstudio-builtin + nnstudio-backend-cpu
-        CONTRIBUTING.md
-
-    plugins/                           ← third-party and first-party plugin slots
-        README.md
-        CONTRIBUTING.md
-        (see Plugin exception below for layout rules inside this folder)
-
-    tests/
-        core/
-            test_tensor.cpp
-            test_activations.cpp
-            test_trainer_xor.cpp
-```
-
-**The mirror rule (one-directional):**  
-Every subfolder present in `include/` **must** have a corresponding subfolder in `src/`.  
-The reverse does not hold — `src/` may gain private subfolders (e.g. `src/graph/`, `src/training/`) that have no counterpart in `include/` when they are build-internal only.
-
-Plugin authors add `${nnstudio_SOURCE_DIR}/include` to their include search path. Nothing else.
-
-**Per-folder documentation files:**  
-Every folder that contains primarily subfolders (rather than files) carries two Markdown files:
-- `README.md` — what this folder contains in terms of *software concept* (what it does at runtime)
-- `CONTRIBUTING.md` — why this folder exists *here*, why it is structured this way, architectural decisions (the CUDA-linking argument, the curated-install argument, the intended reading order of subfolders as a numbered list under a `## Reading order` heading)
-
----
-
-### On `interfaces/` subfolders and why collocation with plural names is better
-
-The C++ community argument against a separate `interfaces/` folder: it mechanically separates every `IFoo.h` from every `FooImpl.h` into parallel trees — a separation that adds navigation work but communicates nothing the `I` prefix doesn't already convey.
-
-The `include/` tree above is different: it is the **publicly installed plugin SDK surface** — a boundary between what is stable and what is internal. The folder name is `include/` (universal tooling convention), not `api/` (which implies a REST or binding layer to most readers). Inside `include/`, plural subfolder names (`layers/`, `backends/`, …) mirror `src/` subfolders, making navigation predictable. This is what the Android NDK, LLVM, Qt, and virtually every major C++ SDK does: installed headers in a predictable include tree vs implementation files that never leave the build.
-
----
-
-### Naming rules summary
-
-| Element | Convention | Example |
-|---|---|---|
-| Interface / abstract base | `I` prefix | `ILayer`, `IBackend` |
-| Concrete implementation | Descriptive name only | `Dense`, `Adam`, `CpuBackend` |
-| Path → namespace | Every path segment (except `include/`/`src/`) maps 1-to-1 to a namespace segment | `include/core/Tensor.h` → `nnstudio::core::Tensor` |
-| Namespace for plugin implementations | Author's reverse-domain identity (**not** derived from `plugins/` folder position) | `eu::plachy::nnplugins::myplugin::layers::MyLayer` |
-| Plugin distribution ID (manifest) | reverse-domain dot-notation | `"id": "eu.plachy.nnplugins.myplugin"` |
-| Filename | PascalCase, no prefix/suffix | `Dense.h`, `CpuBackend.cpp` |
-| `_` prefix in filenames | **Do not use** — reserved/confusing in C++ | — |
-| Folder names (domain collections) | Plural by convention | `layers/`, `backends/`, `losses/` |
-| Folder names (single-concept roots) | Singular or plural as natural language dictates | `plugins/`, `formats/` |
-| `include/` subfolder → `src/` subfolder | One-directional mirror: every `include/X/` implies `src/X/` exists | `include/core/` ↔ `src/core/` |
-| `src/` private subfolder | May exist with no `include/` counterpart | `src/graph/`, `src/training/` |
-| `using namespace nnstudio::core;` in builtin | Placed after innermost namespace opening in `.h`; at file scope before namespace block in `.cpp` | `namespace nnstudio::builtin::layers { using namespace nnstudio::core; … }` |
-| Per-folder documentation | `README.md` (software concept) + `CONTRIBUTING.md` (repo structure rationale + `## Reading order` list) | — |
-
-The `I` prefix on the filename is the complete interface signal — no separate `interfaces/` subfolder is needed. The `include/` vs `src/` split already expresses the contract-vs-implementation distinction at the directory level.
-
----
-
-### Plugin exception — the rule is deliberately reversed for `plugins/`
-
-All rules above derive one direction: **folder path → C++ namespace**. Inside `plugins/` this direction is **inverted**: the author's namespace identity is the primary artifact, and the on-disk folder layout follows from it.
-
-**Why?**  
-The namespace of a plugin is owned by its author, not by NNStudio. It is based on the author's reverse-domain identity and must not change when the plugin moves between repositories, organizations, or deployment targets. Deriving it from the folder position inside `nnstudio/plugins/` would couple it to NNStudio's internal directory structure — the exact coupling the plugin system exists to avoid.
-
-**Layout inside `plugins/`:**
-
-```
-nnstudio/plugins/
-    <plugin-slug>/                    ← reverse-domain slug, e.g. eu.plachy.nnplugins.myplugin
-        include/                      ← visibility boundary (same semantics as everywhere else)
-            layers/                   → author-controlled namespace segment
-                MyLayer.h
-            backends/
-                MyBackend.h
-            ui/
-                MyPanel.h
-        src/                          ← build-only mirror of include/
-            layers/
-                MyLayer.cpp
-            backends/
-                MyBackend.cpp
-            ui/
-                MyPanel.cpp
-        CMakeLists.txt
-        README.md
-        CONTRIBUTING.md
-```
-
-**Namespace ownership:**  
-The `<plugin-slug>` folder name does **not** contribute a namespace segment. The plugin author decides the full namespace independently:
-
-```
-plugins / eu.plachy.nnplugins.myplugin / include / layers / MyLayer.h
- (skip)          (slug — skip)           (skip)      ↓          ↓
-                                               layers::      MyLayer
-```
-
-The segments above `layers/` are entirely the author's choice, e.g.:
-
-```cpp
-// Author chooses their own top-level namespace:
-namespace eu::plachy::nnplugins::myplugin::layers {
-    class MyLayer : public nnstudio::core::ILayer { … };
-}
-```
-
-**Matching table — core/builtin vs plugins:**
-
-| Aspect | `core/` and `builtin/` | `plugins/<slug>/` |
-|---|---|---|
-| Namespace derived from | folder path (forward rule) | author identity (reverse rule) |
-| Folder slug contributes namespace segment? | Yes — `core/` → `::core::`, `builtin/` → `::builtin::` | No — slug is an artifact identifier, not a namespace |
-| `include/` / `src/` are visibility boundaries? | Yes | Yes (same) |
-| Domain subfolders (`layers/`, `backends/`, …) contribute namespace? | Yes | Yes — same sub-segment rule applies *within* the plugin |
-| Inherits from | `nnstudio::core::ILayer`, etc. | `nnstudio::core::ILayer`, etc. (same) |
-
-> **Current status (documentation only):** The `plugins/` folder exists as a placeholder. Moving `builtin/` content into `plugins/builtin/` is a future option that requires no namespace changes — only file relocation and CMakeLists updates.
-
-
----
-
-## Appendix — Architecture Templates
-
-> 🥪 These are the "sandwich presets" in the UI. Each is a proven starting point, not a law.
-> The engine imposes no template; the only hard rule is: **no two consecutive Dense layers without a non-linear layer between them**.
-> See `blueprints.md §3.9` for the mathematical proof of why.
-
----
-
-### Template 1 — MLP (Multi-Layer Perceptron)
-
-**Use for:** tabular data, binary/multi-class classification, regression.
-
-```
-Input → Dense(n_hidden) → ReLU → [Dense(n_hidden) → ReLU]... → Dense(n_out) → output activation
-```
-
-Output activation by task:
-- Binary classification → Sigmoid + BCE loss
-- Multi-class → Softmax + CrossEntropy loss
-- Regression → none (linear output) + MSE loss
-
-**Typical sizes:**
-
-| Network | Layer widths | Params |
-|---|---|---|
-| XOR (our test) | 2→4→1 | 13 |
-| Small classifier (MNIST) | 784→512→256→10 | ~670 K |
-| Medium tabular | 64→256→256→128→1 | ~130 K |
-
-**Status in NNStudio:** fully operational. XOR is the proof.
-
----
-
-### Template 2 — Autoencoder
-
-**Use for:** compression, anomaly detection, denoising, unsupervised feature learning.
-
-```
-Input → Dense(512)→ReLU → Dense(256)→ReLU → Dense(bottleneck)→ReLU   ← encoder
-      → Dense(256)→ReLU → Dense(512)→ReLU → Dense(input_size)→Sigmoid  ← decoder
-```
-
-The loss is reconstruction: MSE or BCE between output and original input.
-`target = input` — self-supervised, no external labels needed.
-
-**Status in NNStudio:** engine supports it (all required layers and losses exist); ILoss contract uses an external `target` argument so you pass the input batch as both `inputs` and `targets` in `trainStep()`.
-
----
-
-### Template 3 — CNN (Convolutional Neural Network)
-
-**Use for:** images, audio spectrograms, any data with spatial locality.
-
-```
-Input → [Conv2D → ReLU → MaxPool]... → Flatten → Dense(256) → ReLU → Dense(n_classes) → Softmax
-```
-
-Conv2D layers detect local patterns (edges, textures) independent of position.
-MaxPool reduces spatial size. Flatten converts 2D feature maps to 1D for the Dense head.
-
-**Typical sizes:**
-
-| Network | Architecture | Params |
-|---|---|---|
-| LeNet-5 (1998) | 2×Conv + 2×Dense | ~60 K |
-| AlexNet (2012) | 5×Conv + 3×Dense | ~60 M |
-| ResNet-50 (2015) | 50 layers, skip connections | ~25 M |
-
-**Status in NNStudio:** `Conv2D` not yet implemented. `ILayer` interface supports it; Phase 1 TODO.
-
----
-
-### Template 4 — Transformer block (encoder or decoder)
-
-**Use for:** text, language understanding, generation, reasoning, long-range dependencies.
-
-One Transformer block (stacked N times):
-
-```
-x → LayerNorm → MultiHeadSelfAttention → + x   (residual / skip connection)
-  → LayerNorm → Dense(4×d_model)→GELU→Dense(d_model) → + x   (FFN block + residual)
-```
-
-The full GPT-style model:
-```
-Token embedding + positional encoding
-→ N × Transformer block
-→ LayerNorm
-→ Dense(d_model → vocab_size)   (the "language model head")
-```
-
----
-
-#### Layer-by-layer breakdown
-
-> All four layer types below are **not yet in NNStudio**. They are explained here so the design intent is clear when they are implemented.
-
----
-
-##### 4a. Embedding
-
-**What it is:** a learnable lookup table.
-
-Words (tokens) arrive as integers — indices into a vocabulary of size `V` (e.g. 50 257 for GPT-2). The network cannot process raw integers directly; it needs real-valued vectors it can do linear algebra on. An embedding layer is simply a weight matrix `E` of shape `[V, d_model]`. A forward pass for token index `i` returns row `i` of `E` — that is it.
-
-```
-token id = 42  →  E[42]  →  vector of shape [d_model]
-```
-
-No sigmoid, no dot product. Just a lookup. But because `E` is a weight matrix, backprop tunes it: after training, tokens with similar meaning end up with nearby vectors (this is where "word2vec-style geometry" comes from: `king − man + woman ≈ queen`).
-
-**Parameters:** `V × d_model` weights. For GPT-2 small: `50 257 × 768 ≈ 38.6 M` parameters — the embedding table alone is 33% of the model.
-
-**Status in NNStudio:** not implemented. `ILayer::build(Shape)` would need to accept a scalar integer index as input shape, which breaks the current Tensor contract (which expects float tensors). This needs a design decision before implementing.
-
----
-
-##### 4b. Positional encoding
-
-**Why it is needed:** attention (see §4c) treats the input as a *set* — it has no idea which token came first. Position must be injected explicitly.
-
-Two approaches exist:
-
-**Learned (GPT-2, BERT):** another embedding table `PE` of shape `[max_sequence_length, d_model]`. Position `p` maps to `PE[p]`. Added to the token embedding: `x = E[token] + PE[position]`.
-
-**Sinusoidal (original 2017 Transformer):** a fixed formula, no learned parameters:
-
-$$PE(pos, 2i) = \sin\!\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right), \quad PE(pos, 2i+1) = \cos\!\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right)$$
-
-Different frequency sine/cosine waves fill alternating dimensions. The result: each position has a unique vector, and nearby positions have similar vectors. Modern models (Llama) use **RoPE** (Rotary Position Embedding) instead — applied inside the attention computation rather than at input.
-
-**Status in NNStudio:** not implemented. Sinusoidal PE is parameter-free (just an `apply()` function on the input tensor) and could be implemented before the embedding layer.
-
----
-
-##### 4c. MultiHeadSelfAttention
-
-This is the core invention of the Transformer. It replaces recurrence entirely.
-
-**The problem attention solves:** in a sentence like "The animal didn't cross the street because *it* was too tired", deciding what "it" refers to requires comparing every token to every other token simultaneously. An RNN has to thread that information through a bottleneck hidden state. Attention makes all token-to-token comparisons in one step.
-
-**Single-head attention:**
-
-Each token vector `x_i` is projected into three roles through three learned weight matrices `W_Q`, `W_K`, `W_V` (all `[d_model, d_k]`):
-
-- **Query** Q: "what am I looking for?" — `Q = x W_Q`
-- **Key** K: "what do I contain?" — `K = x W_K`
-- **Value** V: "what do I contribute?" — `V = x W_V`
-
-The attention score between position `i` (query) and position `j` (key) is their dot product, scaled:
-
-$$A_{ij} = \frac{Q_i \cdot K_j}{\sqrt{d_k}}$$
-
-The $\sqrt{d_k}$ scaling prevents the dot products from growing large and pushing softmax into its flat saturation region (vanishing gradients). Softmax across all `j` makes the scores sum to 1 — they become mixing weights. The output for token `i` is a weighted sum of all value vectors:
-
-$$\text{out}_i = \sum_j \text{softmax}(A_{ij}) \cdot V_j$$
-
-In matrix form (all tokens at once):
-
-$$\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V$$
-
-**Multi-head:** instead of one set of (Q, K, V) matrices, run `n_heads` of them in parallel, each with `d_k = d_model / n_heads`. Each head can attend to different aspects (syntax, coreference, topic). Outputs are concatenated and projected back:
-
-$$\text{MultiHead}(x) = \text{concat}(\text{head}_1, \ldots, \text{head}_h) \; W_O$$
-
-**Parameters per attention block:** `4 × d_model²` — the four matrices W_Q, W_K, W_V, W_O. For `d_model=768`: `4 × 768² = 2.36 M` per block.
-
-**Causal mask (decoder only):** in a GPT-style model, position `i` must not attend to position `j > i` (future tokens). This is enforced by adding `-∞` to the attention scores before softmax for all future positions — they become 0 after softmax. This is a single mask operation, not a structural change.
-
-**Status in NNStudio:** not implemented. Requires:
-- The QKV projection (three Dense layers per head, or one fused Dense of `3×d_model`)
-- Scaled dot product (Tensor batch-matmul operation, not yet in the Tensor API)
-- Softmax over a variable-length dimension
-- Output projection Dense
-- Optional causal mask (Phase 3)
-
----
-
-##### 4d. LayerNorm
-
-**What it is:** normalization applied independently to each token's vector.
-
-After attention and FFN operations, activation magnitudes can drift — some vectors become very large, some very small. This destabilizes subsequent layers. Normalization is the fix.
-
-**Formula:** for a single vector `x` of length `d_model`:
-
-$$\hat{x}_i = \frac{x_i - \mu}{\sigma + \varepsilon}, \quad \mu = \frac{1}{d}\sum_i x_i, \quad \sigma = \sqrt{\frac{1}{d}\sum_i (x_i - \mu)^2}$$
-
-Then apply learned scale `γ` and shift `β` (both vectors of length `d_model`):
-
-$$y_i = \gamma_i \hat{x}_i + \beta_i$$
-
-`γ` and `β` are initialized to 1 and 0, meaning "do nothing initially". They are learned weights — the optimizer adjusts them so the normalization doesn't remove useful structure.
-
-**Why not BatchNorm?** BatchNorm normalizes across the batch dimension (per-feature statistics). For sequences this is unstable: batch size varies, sequences have different lengths, and during inference you might process one token at a time. LayerNorm normalizes within a single vector — no dependency on the rest of the batch.
-
-**Parameters:** `2 × d_model` (one `γ` and one `β` vector). Tiny — for `d_model=768` that is 1 536 floats.
-
-**Status in NNStudio:** not implemented. Forward pass is a pure tensor operation (mean, std, elementwise scale+shift). Backward requires the gradient through mean and variance — slightly involved but closed-form. A good early implementation target because it has no exotic topology requirements.
-
----
-
-##### 4e. GELU (activation)
-
-**What it is:** Gaussian Error Linear Unit — the standard activation in the FFN block of modern Transformers.
-
-$$\text{GELU}(x) = x \cdot \Phi(x)$$
-
-where $\Phi(x)$ is the standard Gaussian cumulative distribution function. Because computing $\Phi$ exactly requires numerical integration, a fast approximation is used in practice:
-
-$$\text{GELU}(x) \approx 0.5 \cdot x \cdot \left(1 + \tanh\!\left(\sqrt{\tfrac{2}{\pi}}\,(x + 0.044715\,x^3)\right)\right)$$
-
-**Compared to ReLU:**
-- ReLU: hard zero for `x < 0`, linear for `x > 0`. The sharp kink at 0 can cause neurons to "die" (stuck at zero gradient permanently).
-- GELU: smoothly tapers near zero instead of clipping. Slightly negative values still pass a fractional signal through. Gradient exists everywhere.
-
-Practically the difference is small in shallow networks. In very deep Transformers with 96+ layers (GPT-3) the accumulated smoothness advantage compounds.
-
-**Status in NNStudio:** GELU can be implemented as an `IActivation` right now — it is a pure elementwise operation, same contract as ReLU/Sigmoid. The only thing needed is the math in `apply()` and the derivative `Φ(x) + x·φ(x)` (where `φ` is the Gaussian PDF) in `gradient()`.
-
----
-
-#### Full data flow, annotated
-
-```
-Input: sequence of T token IDs  [T]  (integers)
-
-[Embedding]      x = E[token_ids]                    shape: [T, d_model]
-[+PE]            x = x + PE[0:T]                     shape: [T, d_model]
-
-For each of N blocks:
-  [LayerNorm]    x_norm = LN(x)                      shape: [T, d_model]
-  [Attention]    attn = MultiHead(Q=x_norm, K=x_norm, V=x_norm)  shape: [T, d_model]
-  [+ residual]   x = x + attn                        shape: [T, d_model]
-
-  [LayerNorm]    x_norm = LN(x)                      shape: [T, d_model]
-  [Dense→GELU]   h = GELU(x_norm @ W1 + b1)          shape: [T, 4×d_model]
-  [Dense]        ffn = h @ W2 + b2                   shape: [T, d_model]
-  [+ residual]   x = x + ffn                         shape: [T, d_model]
-
-[LayerNorm]      x = LN(x)                           shape: [T, d_model]
-[Dense head]     logits = x @ W_vocab + b_vocab       shape: [T, vocab_size]
-[Softmax]        probs = softmax(logits[-1])          shape: [vocab_size]
-                 → sample or argmax next token
-```
-
----
-
-**Key architectural choices:**
-- `d_model` = embedding dimension (width of every token vector throughout the network)
-- `n_heads` = number of parallel attention heads (each sees a `d_model/n_heads` subspace)
-- FFN hidden is always `4×d_model` wide (convention from the 2017 paper; still used unchanged)
-- GELU standard activation in FFN; ReLU also works
-- Every sub-block has a residual/skip connection — this is why stacking 96 blocks is stable
-
-**Typical sizes for text reasoning / QA:**
-
-| Model | d_model | Heads | Layers | Params | Context window |
-|---|---|---|---|---|---|
-| GPT-2 small | 768 | 12 | 12 | 117 M | 1 024 tokens |
-| GPT-2 medium | 1 024 | 16 | 24 | 345 M | 1 024 tokens |
-| GPT-2 XL | 1 600 | 25 | 48 | 1.5 B | 1 024 tokens |
-| GPT-3 | 12 288 | 96 | 96 | 175 B | 2 048 tokens |
-| Llama 2 7B | 4 096 | 32 | 32 | 7 B | 4 096 tokens |
-| Llama 2 70B | 8 192 | 64 | 80 | 70 B | 4 096 tokens |
-| GPT-4 (est.) | ~16 384 (MoE) | ~128 | ~120 | ~1.8 T (MoE) | 8 192+ tokens |
-
-**For NNStudio's text parsing / reasoning / QA use case:**  
-A Llama 2 7B-class model is the practical minimum for reliable open-domain reasoning. That is 7 billion floats × 4 bytes = **28 GB** just for weights in fp32; 14 GB in fp16. Training from scratch is not realistic — fine-tuning a pre-trained checkpoint (LoRA or full fine-tune) is the standard approach. NNStudio would load an existing `.onnx` or `.nns` checkpoint and run inference or fine-tuning on specific layers (`frozen = true` on base weights, `frozen = false` on LoRA adapters).
-
-**Status in NNStudio (updated — Phase 2 complete):**
-
-| Layer | Status | Notes |
-|---|---|---|
-| `Embedding` | ✅ implemented | Float-stored IDs; dedicated int DType is Phase 4 |
-| `LayerNorm` | ✅ implemented | Normalises over last dim; learnable γ, β |
-| `GELU` | ✅ implemented | `GELUFn` (`IActivation`) + `GELU : ActivationBase` |
-| `MultiHeadAttention` | ✅ implemented | Causal mask, 4 weight + bias pairs, full backward |
-| `ComputeGraph` (skip connections) | ❌ Phase 3 | `Sequential` is still strictly linear |
-| FFN (Dense→GELU→Dense) | ✅ | Both `Dense` and `GELU` ready; wire in `Sequential` |
-
-Overall: **all individual building blocks ready.** Residual connections (skip connections) require `ComputeGraph` (Phase 3).  See §10.10 for the full updated status table.
-
----
-
-### Template 5 — ResNet block (skip connection)
-
-**Use for:** deep networks where vanilla MLP would suffer vanishing gradients.
-
-```
-x → Dense(n) → ReLU → Dense(n) → + x  ← skip: add original x back
-                                     → ReLU
-```
-
-The skip connection (residual connection) routes the gradient directly around the block. Even if the block adds near-zero contribution, the gradient highway through the skip ensures early layers still receive a clean signal. This is why networks with hundreds of layers became trainable.
-
-**Status in NNStudio:** requires `ComputeGraph` for the branching topology. `Sequential` cannot express a skip connection (it is strictly linear). Phase 3.
-
----
-
-### On extending `ILayer` for genuinely new layer types
-
-Plugging in a new activation: straightforward (Phase 2 `IActivation`, ADR-020).
-
-Plugging in a new *structural* layer type (Conv2D, MultiHeadAttention, custom graph node): the `ILayer` interface itself is the extension point, but the downstream impact is non-trivial:
-
-| Component affected | Impact |
-|---|---||
-| `ILayer::forward/backward` | Must be implemented correctly including `lastInput_` / context management |
-| `ILayer::build(Shape)` | Must return correct output shape so the shape-relay chain works |
-| `ILayer::parameters()` | Must expose all learnable parameters for the Optimizer |
-| `ComputeGraph` | New layer must register its ops as graph nodes (Phase 3) |
-| `ONNX export` | Must map to an ONNX op-node or a custom op (Phase 4) |
-| Studio UI | Need a property form, a topology diagram node, KB help entry |
-| Plugin SDK | Must be distributable as a signed `.nnsp` plugin (Phase 2 ABI freeze) |
-
-This is not blocked — it is the intentional design. But it means adding a genuinely new structural layer type is a multi-phase commitment, not a weekend task. The engine is correctly designed for it; the scope is simply larger than adding an activation.
-
----
-
-## Appendix — Vocabulary
-
-All short-hand identifiers used in this document, grouped by category.
-
----
-
-### A — C++ field names (engine source code)
-
-Trailing `_` is the project convention for private member variables.
-
-| Symbol | Type | Lives in | Meaning |
-|---|---|---|---|
-| `data_` | `std::shared_ptr<float[]>` | `Tensor` | The flat heap array of floats that stores all values |
-| `shape_` | `std::vector<int64_t>` | `Tensor` | Logical dimensions, e.g. `{3, 2}` = 3 rows × 2 columns |
-| `strides_` | `std::vector<int64_t>` | `Tensor` | Navigation map: `strides_[k]` = how many floats to skip to move +1 in dimension k |
-| `numel_` | `int64_t` | `Tensor` | Cached product of all `shape_` dimensions = total element count |
-| `grad_` | `std::optional<Tensor>` | `Tensor` | Sibling tensor holding accumulated gradients; absent until first backward pass |
-| `W_` | `Parameter` | `Dense` | Weight matrix parameter; `W_.tensor` has shape `{outF, inF}` |
-| `b_` | `Parameter` | `Dense` | Bias parameter; `b_.tensor` has shape `{outF}` |
-| `lastInput_` | `Tensor` | `Dense`, `ReLU`, `LeakyReLU`, `GELU` | Input saved during `forward()` so `backward()` can compute `dW = gradOut^T @ lastInput_` (Dense), or the sign-mask derivative (ReLU group) |
-| `lastOutput_` | `Tensor` | `Sigmoid`, `TanhAct`, `Softmax` | Output saved during `forward()` because the derivative of these functions is expressible purely in terms of the output value — cheaper than recomputing from input |
-| `layers_` | `std::vector<LayerPtr>` | `Sequential` | Ordered list of owned child layers |
-| `training_` | `bool` | `ILayer` | True = train mode (Dropout active, BatchNorm uses batch stats); false = eval mode |
-| `built_` | `bool` | `ILayer` | True after `build()` has allocated weight matrices; guards against double-allocation |
-| `m_` | `std::unordered_map<…, Tensor>` | `Adam` | First-moment (mean gradient) running average per parameter |
-| `v_` | `std::unordered_map<…, Tensor>` | `Adam` | Second-moment (mean squared gradient) running average per parameter |
-| `t_` | `int64_t` | `Adam` | Step counter; used in bias-correction exponents |
-
----
-
-### B — Math notation (standard ML convention)
-
-| Symbol | Reads as | Meaning |
-|---|---|---|
-| `W` | "weights" | The weight matrix of a Dense layer; shape `[outF, inF]` |
-| `b` | "bias" | The bias vector of a Dense layer; shape `[outF]` |
-| `x` / `X` | "input" | Input to a layer; uppercase = batch `[B, inF]`, lowercase = single sample `[inF]` |
-| `y` / `Y` | "output" | Output of a layer; uppercase = batch `[B, outF]`, lowercase = single sample `[outF]` |
-| `@` | "matmul" | Matrix multiplication operator (NumPy/Python notation used in this document) |
-| `^T` | "transposed" | Matrix transpose; swaps rows and columns |
-| `L` | "loss" | Scalar loss value — a single float measuring total prediction error for one step |
-| `dW` | "delta W" | Shorthand for the gradient of W (dL/dW); same shape as W |
-| `db` | "delta b" | Shorthand for the gradient of b (dL/db); same shape as b |
-| `dX` | "delta X" | Gradient passed downward to the previous layer; same shape as X |
-| `g_t` | "gradient at step t" | Raw gradient value at Adam step t; input to the moment update equations |
-| `m_t` | "first moment" | Adam's running mean of gradients (momentum); smooths noisy gradient updates |
-| `v_t` | "second moment" | Adam's running mean of squared gradients; enables per-weight adaptive learning rates |
-| `beta_1` | "beta one" | Adam decay rate for first moment; typically 0.9 |
-| `beta_2` | "beta two" | Adam decay rate for second moment; typically 0.999 |
-| `alpha` | "alpha" / "learning rate" | Step size scalar; scales how far each update moves in parameter space |
-| `epsilon` | "epsilon" | Small constant (e.g. 1e-8) added to denominator to prevent division by zero |
-| `theta` | "theta" | Generic parameter symbol; stands for any W or b in the optimizer update rule |
-
----
-
-### C — Dimension shorthands (used in examples and diagrams)
-
-| Symbol | Expands to | Meaning |
-|---|---|---|
-| `B` | batch size | Number of samples processed simultaneously in one forward/backward call |
-| `inF` | `inFeatures` | Number of input values arriving at a layer per sample |
-| `outF` | `outFeatures` | Number of output values produced by a layer per sample |
-| `M`, `N`, `K` | matrix dims | Generic matrix dimension names used in GEMM descriptions: `C[M,N] = A[M,K] @ B[K,N]` |
-
----
-
-### D — Didactic shorthands (invented for this document)
-
-These identifiers appear only in explanatory examples, not in production source code.
-
-| Symbol | Context | Meaning |
-|---|---|---|
-| `h1` | ONNX node name example | Hypothetical node `"h1"` in an ONNX graph — represents a hidden-layer output |
-| `h1_biased` | ONNX node name example | Same node after the bias Add op; shows how `y = W*x + b` becomes two ONNX nodes |
-| `x1`, `x2` | Dense 2->3 example | First and second features of a 2-feature input sample |
-| `w00`, `w10`, ... | Dense 2->3 example | Individual weight entries: w_{neuron, input} |
-| `y0`, `y1`, `y2` | Dense 2->3 example | Individual neuron pre-activation outputs |
-| `b0`, `b1`, `b2` | Dense 2->3 example | Bias values for each neuron |
-| `x(0)`, `x(1)` | Batching example | Superscript = sample index within a batch |
-
----
-
-### E — Standard library and industry terms
-
-| Term | Meaning |
-|---|---|
-| `GEMM` | **GEneral Matrix Multiply** — the Level 3 BLAS routine name. Full form: $C \leftarrow \alpha \cdot \text{op}(A) \cdot \text{op}(B) + \beta C$, where `op ∈ {N, T, C}` (no-op / transpose / conjugate-transpose) and $\alpha, \beta$ are scalar multipliers. Plain matrix product is GEMM with $\alpha=1,\, \beta=0$. The `S` in `cublasSgemm` = single-precision float; `D` = double; `H` = half. In NNStudio dispatched via `IBackend::matmul`; underlies `Dense`, `Conv2D` (via im2col Phase 4), and every attention head in `MultiHeadAttention`. See §A.2 for the full spec. |
-| `noalias()` | Eigen hint: output buffer does not overlap any input — skips defensive internal allocation |
-| Row-major / C-order | Layout where the last index changes fastest; elements of one row are contiguous. Used by NNStudio `Tensor`. |
-| Col-major / Fortran-order | Layout where the first index changes fastest. Used internally by Eigen. |
-| `Result<T>` | Engine error-or-value return type. Holds either a `T` value or an error. Methods: `.value()`, `.error()`, `.hasValue()`. |
-| `LayerPtr` | `std::shared_ptr<ILayer>` — ownership handle for a layer inside `Sequential::layers_` |
-| `Shape` | `std::vector<int64_t>` — alias for tensor dimension lists throughout the engine |
-| `Parameter` | `struct { std::string name; Tensor tensor; bool frozen; }` — the unit the Optimizer reads and updates |
-| Bias-correction | Adam technique: dividing `m_t`/`v_t` by `(1 - beta^t)` counteracts near-zero initialisation at training start |
-| Weight pruning | Post-training zeroing or removal of near-zero weights to reduce inference cost — not yet implemented |
-| Transfer learning | Using a pre-trained model's weights as starting point, training only certain layers (the "head") |
-| `frozen` | Flag on a `Parameter`: Optimizer skips its update; layer still computes and backprops its gradient |
-| ONNX | Open Neural Network Exchange — standard format for exporting models as a flat graph of named op-nodes (MatMul, Add, Relu, ...) |
-| DAG | Directed Acyclic Graph — general model topology enabling skip connections and multi-head architectures (cf. `Sequential` which is linear) |
-| BCE | Binary Cross-Entropy loss. For one sample: `L = -[y*log(p) + (1-y)*log(1-p)]` |
-
----
-
 ## Chapter 10 — Phase 1 + 2 Complete: The Full Toolkit
 
 > **What changed since Chapters 1–8?**
@@ -2484,7 +1699,688 @@ Residual connections (Template 5) still require `ComputeGraph`.  All other indiv
 
 ---
 
-## Appendix — IBackend Vtable Reference
+## Appendix A — File Map
+
+```
+nnstudio/
+├── core/
+│   ├── include/nnstudio/core/
+│   │   ├── Tensor.h          ← Ch.1  data model, shape, strides, grad
+│   │   ├── IBackend.h        ← Ch.2  compute interface
+│   │   ├── BackendRegistry.h ← Ch.2  singleton + backend() free function
+│   │   ├── Layer.h           ← Ch.3  ILayer lifecycle + Sequential
+│   │   ├── layers/Dense.h    ← Ch.3  fully-connected layer API
+│   │   ├── Activations.h     ← Ch.3  ReLU, Sigmoid, GELU, ...
+│   │   ├── Losses.h          ← Ch.5  MSE, BCE, CrossEntropy
+│   │   ├── Optimizers.h      ← Ch.6  SGD, Adam, AdamW
+│   │   └── Trainer.h         ← Ch.7  training loop API
+│   └── src/
+│       ├── tensor/Tensor.cpp
+│       ├── layers/Layer.cpp
+│       ├── layers/Dense.cpp  ← Ch.3  forward/backward with comments
+│       ├── activations/Activations.cpp
+│       ├── losses/Losses.cpp
+│       ├── optimizers/Optimizers.cpp
+│       └── training/Trainer.cpp ← Ch.7  trainStep with comments
+├── backends/
+│   └── cpu/CpuBackend.cpp    ← Ch.2  Eigen matmul, row/col-major trick
+└── tests/
+    └── core/
+        ├── test_tensor.cpp
+        ├── test_activations.cpp
+        └── test_trainer_xor.cpp ← Ch.8  XOR milestone with comments
+```
+
+---
+
+## Appendix B — Namespace Map and Naming Conventions
+
+> **TODO:** Expand this section into a standalone `NAMING-CONVENTIONS.md`.
+
+---
+
+### The three-tier namespace design (target state)
+
+Three visibility tiers separate the stable public contract from engine internals from bundled implementations.
+
+#### Tier 1 — `nnstudio::core::` — the stable, versioned public contract
+
+Contains **only** abstract extension points and core data types.  
+**No concrete implementation ever lives here.**  
+Plugin authors include `<core/ILayer.h>` etc. and work entirely inside `nnstudio::core::`.  
+Breaking changes require a version bump and a transition period.
+
+```
+nnstudio::core::
+    ILayer          abstract layer contract (build/forward/backward/zeroGrad)
+    IBackend        abstract compute contract (matmul, transpose, elementwise...)
+    ILoss           abstract loss contract
+    IOptimizer      abstract optimizer contract
+    ILRScheduler    optional learning-rate schedule contract
+    Tensor          core data type (not NN-specific; used by all tiers)
+    Parameter       { name, Tensor, frozen } — the unit the optimizer reads
+    Result<T>       error-or-value return type
+    Shape           vector<int64_t> alias
+    Device          CPU | CUDA | QUANTUM enum
+    DType           float32 | float16 | int8 enum
+    BackendRegistry singleton registry + backend() free function
+    PluginDescriptor  C-ABI plugin descriptor (name, version, type tag, factory)
+    FeatureFlags    FREE | PRO | ENTERPRISE tier gating
+    Trainer         training loop (DataBatch, Dataset, TrainMetrics, TrainCallbacks)
+    Sequential      ordered container of ILayer instances
+```
+
+#### Tier 2 — `nnstudio::internal::` — engine guts, not for plugin authors
+
+Contains the engine's own machinery.  
+Documented as: *"do not use from plugins — may change in any release with no warning."*
+
+```
+nnstudio::internal::
+    graph::         ComputeGraph, autograd traversal, DAG node types
+    training::      Trainer step loop, callback dispatch, EvalTrace capture
+    formats::       .nnsp / .nnsx file I/O, ONNX serialisation
+    detail::        utility templates, helpers, type traits
+```
+
+#### Tier 2b — `nnstudio::ui::` — UI extension points (Phase 3+)
+
+Semi-stable; evolves with Qt version requirements.  
+Plugin authors use this only when registering a custom UI panel.
+
+```
+nnstudio::ui::
+    panels::        QML panel plugin registration interface
+    qml::           QML-side property/signal contract types
+```
+
+#### Tier 3 — `nnstudio::builtin::` — NNStudio's own implementations
+
+**NNStudio's default implementations are treated identically to third-party plugins.**  
+They happen to ship bundled with the installer, but they have no special namespace or access privilege.  
+A list of all loaded layer types will show `nnstudio::builtin::layers::Dense` alongside `myplugin::layers::MyLayer` — no VIP.
+
+```
+nnstudio::builtin::
+    layers::        Dense, ReLU, LeakyReLU, Sigmoid, Tanh, Softmax, GELU,
+                    Conv2D, BatchNorm, Dropout, Embedding, ...
+    backends::      CpuBackend, CudaBackend, QuantumBackend
+    losses::        MSE, CrossEntropy, BinaryCrossEntropy, HuberLoss
+    optimizers::    SGD, Adam, AdamW, RMSProp
+```
+
+A third-party plugin developer writes:
+```cpp
+eu::plachy::nnplugins::myplugin::layers::MyLayer : public nnstudio::core::ILayer { ... }
+```
+NNStudio itself writes:
+```cpp
+nnstudio::builtin::layers::Dense : public nnstudio::core::ILayer { ... }
+```
+Both are just implementations. The only allowed difference is that `builtin` ships by default and appears first in UI lists.
+
+---
+
+### Current state vs target state
+
+~~The current code does not yet match the target. This is the known delta:~~
+
+**Migration complete.** All refactors below are applied to the on-disk source; all 16 `ctest` tests pass; `cmake --build` clean; old files deleted.
+
+#### Phase 1 — builtin namespaces
+
+| Symbol | Old namespace (deleted) | New namespace ✅ |
+|---|---|---|
+| `Dense` | `nnstudio::layers::` | `nnstudio::builtin::layers::` |
+| `ReLU`, `Sigmoid`, etc. | `nnstudio::activations::` | `nnstudio::builtin::layers::` (activations are layers) |
+| `MSE`, `BCE`, etc. | `nnstudio::losses::` | `nnstudio::builtin::losses::` |
+| `SGD`, `Adam`, `AdamW` | `nnstudio::optimizers::` | `nnstudio::builtin::optimizers::` |
+| `CpuBackend` | `nnstudio::` | `nnstudio::builtin::backends::` |
+| `ILoss` | bundled in `Losses.h` | extracted to `nnstudio::core::ILoss` in `ILoss.h` (Tier 1) |
+| `IOptimizer`, `ILRScheduler` | bundled in `Optimizers.h` | extracted to `nnstudio::core::IOptimizer` in `IOptimizer.h` (Tier 1) |
+
+#### Phase 2 — core namespace + Option B folder structure
+
+| Symbol | Old namespace (deleted) | New namespace ✅ |
+|---|---|---|
+| `Tensor`, `Parameter`, `Shape`, `Device`, `DType` | `nnstudio::` | `nnstudio::core::` |
+| `ILayer`, `Sequential`, `LayerPtr` | `nnstudio::` | `nnstudio::core::` |
+| `IBackend`, `BackendRegistry` | `nnstudio::` | `nnstudio::core::` |
+| `ILoss`, `IOptimizer`, `ILRScheduler` | `nnstudio::` | `nnstudio::core::` |
+| `Trainer`, `DataBatch`, `Dataset`, `TrainMetrics` | `nnstudio::` | `nnstudio::core::` |
+| `Result<T>`, `FeatureFlags` | `nnstudio::` | `nnstudio::core::` |
+| All files | `core/include/nnstudio/*.h` + `builtin/include/nnstudio/**/*.h` | `include/core/*.h` + `include/builtin/**/*.h` (Option B shared root) |
+
+Builtin `include/` and `src/` files gained `using namespace nnstudio::core;` inside (or just before) their namespace block so they reference Tier 1 types without qualification.
+
+---
+
+### The path = namespace rule
+
+Every on-disk path segment translates directly to exactly one C++ namespace segment — with two exceptions that are **visibility boundaries only**, never namespace contributors: `include/` and `src/`.
+
+```
+Disk path segment          →   C++ namespace segment
+─────────────────────────────────────────────────────────────────
+nnstudio/                  →   nnstudio::           (repo root = outermost namespace)
+include/  or  src/         →   (SKIP — visibility boundary, not a namespace layer)
+core/                      →   core::
+builtin/                   →   builtin::
+layers/                    →   layers::
+backends/                  →   backends::
+losses/                    →   losses::
+optimizers/                →   optimizers::
+Tensor.h                   →   class/namespace Tensor  (contents of the file)
+─────────────────────────────────────────────────────────────────
+Rule:  EVERY segment except include/ and src/ maps 1-to-1 to a namespace segment.
+```
+
+Examples:
+
+```
+nnstudio / include / core    / Tensor.h
+    ↓       (skip)    ↓            ↓
+nnstudio::           core::      Tensor
+
+nnstudio / include / builtin / layers / Dense.h
+    ↓       (skip)     ↓          ↓         ↓
+nnstudio::            builtin:: layers::  Dense
+
+nnstudio / src     / core    / Tensor.cpp
+    ↓       (skip)    ↓            ↓
+nnstudio::           core::      (Tensor impl — same namespace, visibility-only boundary)
+```
+
+This is the convention enforced by the Option B shared-root layout. See the **Plugin exception** section below for the one deliberate reversal of this rule.
+
+---
+
+### Folder structure (current state)
+
+The folder layout reflects namespace tiers, the one-directional mirror rule, and the colocated-headers-for-implementations principle.
+
+```
+nnstudio/
+    include/                           ← ONE CMake search root (all targets: core, builtin, …)
+        core/                          → namespace nnstudio::core::
+            Tensor.h                   → nnstudio::core::Tensor
+            Layer.h                    → nnstudio::core::ILayer, Sequential, LayerPtr, Parameter
+            IBackend.h                 → nnstudio::core::IBackend
+            BackendRegistry.h          → nnstudio::core::BackendRegistry
+            ILoss.h                    → nnstudio::core::ILoss
+            IOptimizer.h               → nnstudio::core::IOptimizer, ILRScheduler
+            Trainer.h                  → nnstudio::core::Trainer, DataBatch, Dataset, TrainMetrics
+            Result.h                   → nnstudio::core::Result<T>
+            Device.h  DType.h          → nnstudio::core::Device, DType
+            FeatureFlags.h             → nnstudio::core::FeatureFlags
+        builtin/                       → namespace nnstudio::builtin::
+            layers/                    → nnstudio::builtin::layers::
+                Dense.h
+                Activations.h
+            backends/                  → nnstudio::builtin::backends::
+                CpuBackend.h
+            losses/                    → nnstudio::builtin::losses::
+                Losses.h
+            optimizers/                → nnstudio::builtin::optimizers::
+                Optimizers.h
+
+    src/                               ← mirrors include/ exactly — build-only, never installed
+        core/
+            Tensor.cpp  BackendRegistry.cpp  Layer.cpp  Trainer.cpp
+        builtin/
+            layers/     Dense.cpp  Activations.cpp
+            backends/   CpuBackend.cpp
+            losses/     Losses.cpp
+            optimizers/ Optimizers.cpp
+
+    core/                              ← CMake target definition only
+        CMakeLists.txt                 ← target nnstudio-core; sources from ../src/core/
+        CONTRIBUTING.md
+
+    builtin/                           ← CMake target definition only
+        CMakeLists.txt                 ← targets nnstudio-builtin + nnstudio-backend-cpu
+        CONTRIBUTING.md
+
+    plugins/                           ← third-party and first-party plugin slots
+        README.md
+        CONTRIBUTING.md
+        (see Plugin exception below for layout rules inside this folder)
+
+    tests/
+        core/
+            test_tensor.cpp
+            test_activations.cpp
+            test_trainer_xor.cpp
+```
+
+**The mirror rule (one-directional):**  
+Every subfolder present in `include/` **must** have a corresponding subfolder in `src/`.  
+The reverse does not hold — `src/` may gain private subfolders (e.g. `src/graph/`, `src/training/`) that have no counterpart in `include/` when they are build-internal only.
+
+Plugin authors add `${nnstudio_SOURCE_DIR}/include` to their include search path. Nothing else.
+
+**Per-folder documentation files:**  
+Every folder that contains primarily subfolders (rather than files) carries two Markdown files:
+- `README.md` — what this folder contains in terms of *software concept* (what it does at runtime)
+- `CONTRIBUTING.md` — why this folder exists *here*, why it is structured this way, architectural decisions (the CUDA-linking argument, the curated-install argument, the intended reading order of subfolders as a numbered list under a `## Reading order` heading)
+
+---
+
+### On `interfaces/` subfolders and why collocation with plural names is better
+
+The C++ community argument against a separate `interfaces/` folder: it mechanically separates every `IFoo.h` from every `FooImpl.h` into parallel trees — a separation that adds navigation work but communicates nothing the `I` prefix doesn't already convey.
+
+The `include/` tree above is different: it is the **publicly installed plugin SDK surface** — a boundary between what is stable and what is internal. The folder name is `include/` (universal tooling convention), not `api/` (which implies a REST or binding layer to most readers). Inside `include/`, plural subfolder names (`layers/`, `backends/`, …) mirror `src/` subfolders, making navigation predictable. This is what the Android NDK, LLVM, Qt, and virtually every major C++ SDK does: installed headers in a predictable include tree vs implementation files that never leave the build.
+
+---
+
+### Naming rules summary
+
+| Element | Convention | Example |
+|---|---|---|
+| Interface / abstract base | `I` prefix | `ILayer`, `IBackend` |
+| Concrete implementation | Descriptive name only | `Dense`, `Adam`, `CpuBackend` |
+| Path → namespace | Every path segment (except `include/`/`src/`) maps 1-to-1 to a namespace segment | `include/core/Tensor.h` → `nnstudio::core::Tensor` |
+| Namespace for plugin implementations | Author's reverse-domain identity (**not** derived from `plugins/` folder position) | `eu::plachy::nnplugins::myplugin::layers::MyLayer` |
+| Plugin distribution ID (manifest) | reverse-domain dot-notation | `"id": "eu.plachy.nnplugins.myplugin"` |
+| Filename | PascalCase, no prefix/suffix | `Dense.h`, `CpuBackend.cpp` |
+| `_` prefix in filenames | **Do not use** — reserved/confusing in C++ | — |
+| Folder names (domain collections) | Plural by convention | `layers/`, `backends/`, `losses/` |
+| Folder names (single-concept roots) | Singular or plural as natural language dictates | `plugins/`, `formats/` |
+| `include/` subfolder → `src/` subfolder | One-directional mirror: every `include/X/` implies `src/X/` exists | `include/core/` ↔ `src/core/` |
+| `src/` private subfolder | May exist with no `include/` counterpart | `src/graph/`, `src/training/` |
+| `using namespace nnstudio::core;` in builtin | Placed after innermost namespace opening in `.h`; at file scope before namespace block in `.cpp` | `namespace nnstudio::builtin::layers { using namespace nnstudio::core; … }` |
+| Per-folder documentation | `README.md` (software concept) + `CONTRIBUTING.md` (repo structure rationale + `## Reading order` list) | — |
+
+The `I` prefix on the filename is the complete interface signal — no separate `interfaces/` subfolder is needed. The `include/` vs `src/` split already expresses the contract-vs-implementation distinction at the directory level.
+
+---
+
+### Plugin exception — the rule is deliberately reversed for `plugins/`
+
+All rules above derive one direction: **folder path → C++ namespace**. Inside `plugins/` this direction is **inverted**: the author's namespace identity is the primary artifact, and the on-disk folder layout follows from it.
+
+**Why?**  
+The namespace of a plugin is owned by its author, not by NNStudio. It is based on the author's reverse-domain identity and must not change when the plugin moves between repositories, organizations, or deployment targets. Deriving it from the folder position inside `nnstudio/plugins/` would couple it to NNStudio's internal directory structure — the exact coupling the plugin system exists to avoid.
+
+**Layout inside `plugins/`:**
+
+```
+nnstudio/plugins/
+    <plugin-slug>/                    ← reverse-domain slug, e.g. eu.plachy.nnplugins.myplugin
+        include/                      ← visibility boundary (same semantics as everywhere else)
+            layers/                   → author-controlled namespace segment
+                MyLayer.h
+            backends/
+                MyBackend.h
+            ui/
+                MyPanel.h
+        src/                          ← build-only mirror of include/
+            layers/
+                MyLayer.cpp
+            backends/
+                MyBackend.cpp
+            ui/
+                MyPanel.cpp
+        CMakeLists.txt
+        README.md
+        CONTRIBUTING.md
+```
+
+**Namespace ownership:**  
+The `<plugin-slug>` folder name does **not** contribute a namespace segment. The plugin author decides the full namespace independently:
+
+```
+plugins / eu.plachy.nnplugins.myplugin / include / layers / MyLayer.h
+ (skip)          (slug — skip)           (skip)      ↓          ↓
+                                               layers::      MyLayer
+```
+
+The segments above `layers/` are entirely the author's choice, e.g.:
+
+```cpp
+// Author chooses their own top-level namespace:
+namespace eu::plachy::nnplugins::myplugin::layers {
+    class MyLayer : public nnstudio::core::ILayer { … };
+}
+```
+
+**Matching table — core/builtin vs plugins:**
+
+| Aspect | `core/` and `builtin/` | `plugins/<slug>/` |
+|---|---|---|
+| Namespace derived from | folder path (forward rule) | author identity (reverse rule) |
+| Folder slug contributes namespace segment? | Yes — `core/` → `::core::`, `builtin/` → `::builtin::` | No — slug is an artifact identifier, not a namespace |
+| `include/` / `src/` are visibility boundaries? | Yes | Yes (same) |
+| Domain subfolders (`layers/`, `backends/`, …) contribute namespace? | Yes | Yes — same sub-segment rule applies *within* the plugin |
+| Inherits from | `nnstudio::core::ILayer`, etc. | `nnstudio::core::ILayer`, etc. (same) |
+
+> **Current status (documentation only):** The `plugins/` folder exists as a placeholder. Moving `builtin/` content into `plugins/builtin/` is a future option that requires no namespace changes — only file relocation and CMakeLists updates.
+
+
+---
+
+## Appendix C — Architecture Templates
+
+> 🥪 These are the "sandwich presets" in the UI. Each is a proven starting point, not a law.
+> The engine imposes no template; the only hard rule is: **no two consecutive Dense layers without a non-linear layer between them**.
+> See `blueprints.md §3.9` for the mathematical proof of why.
+
+---
+
+### Template 1 — MLP (Multi-Layer Perceptron)
+
+**Use for:** tabular data, binary/multi-class classification, regression.
+
+```
+Input → Dense(n_hidden) → ReLU → [Dense(n_hidden) → ReLU]... → Dense(n_out) → output activation
+```
+
+Output activation by task:
+- Binary classification → Sigmoid + BCE loss
+- Multi-class → Softmax + CrossEntropy loss
+- Regression → none (linear output) + MSE loss
+
+**Typical sizes:**
+
+| Network | Layer widths | Params |
+|---|---|---|
+| XOR (our test) | 2→4→1 | 13 |
+| Small classifier (MNIST) | 784→512→256→10 | ~670 K |
+| Medium tabular | 64→256→256→128→1 | ~130 K |
+
+**Status in NNStudio:** fully operational. XOR is the proof.
+
+---
+
+### Template 2 — Autoencoder
+
+**Use for:** compression, anomaly detection, denoising, unsupervised feature learning.
+
+```
+Input → Dense(512)→ReLU → Dense(256)→ReLU → Dense(bottleneck)→ReLU   ← encoder
+      → Dense(256)→ReLU → Dense(512)→ReLU → Dense(input_size)→Sigmoid  ← decoder
+```
+
+The loss is reconstruction: MSE or BCE between output and original input.
+`target = input` — self-supervised, no external labels needed.
+
+**Status in NNStudio:** engine supports it (all required layers and losses exist); ILoss contract uses an external `target` argument so you pass the input batch as both `inputs` and `targets` in `trainStep()`.
+
+---
+
+### Template 3 — CNN (Convolutional Neural Network)
+
+**Use for:** images, audio spectrograms, any data with spatial locality.
+
+```
+Input → [Conv2D → ReLU → MaxPool]... → Flatten → Dense(256) → ReLU → Dense(n_classes) → Softmax
+```
+
+Conv2D layers detect local patterns (edges, textures) independent of position.
+MaxPool reduces spatial size. Flatten converts 2D feature maps to 1D for the Dense head.
+
+**Typical sizes:**
+
+| Network | Architecture | Params |
+|---|---|---|
+| LeNet-5 (1998) | 2×Conv + 2×Dense | ~60 K |
+| AlexNet (2012) | 5×Conv + 3×Dense | ~60 M |
+| ResNet-50 (2015) | 50 layers, skip connections | ~25 M |
+
+**Status in NNStudio:** `Conv2D` not yet implemented. `ILayer` interface supports it; Phase 1 TODO.
+
+---
+
+### Template 4 — Transformer block (encoder or decoder)
+
+**Use for:** text, language understanding, generation, reasoning, long-range dependencies.
+
+One Transformer block (stacked N times):
+
+```
+x → LayerNorm → MultiHeadSelfAttention → + x   (residual / skip connection)
+  → LayerNorm → Dense(4×d_model)→GELU→Dense(d_model) → + x   (FFN block + residual)
+```
+
+The full GPT-style model:
+```
+Token embedding + positional encoding
+→ N × Transformer block
+→ LayerNorm
+→ Dense(d_model → vocab_size)   (the "language model head")
+```
+
+---
+
+#### Layer-by-layer breakdown
+
+> All four layer types below are **not yet in NNStudio**. They are explained here so the design intent is clear when they are implemented.
+
+---
+
+##### 4a. Embedding
+
+**What it is:** a learnable lookup table.
+
+Words (tokens) arrive as integers — indices into a vocabulary of size `V` (e.g. 50 257 for GPT-2). The network cannot process raw integers directly; it needs real-valued vectors it can do linear algebra on. An embedding layer is simply a weight matrix `E` of shape `[V, d_model]`. A forward pass for token index `i` returns row `i` of `E` — that is it.
+
+```
+token id = 42  →  E[42]  →  vector of shape [d_model]
+```
+
+No sigmoid, no dot product. Just a lookup. But because `E` is a weight matrix, backprop tunes it: after training, tokens with similar meaning end up with nearby vectors (this is where "word2vec-style geometry" comes from: `king − man + woman ≈ queen`).
+
+**Parameters:** `V × d_model` weights. For GPT-2 small: `50 257 × 768 ≈ 38.6 M` parameters — the embedding table alone is 33% of the model.
+
+**Status in NNStudio:** not implemented. `ILayer::build(Shape)` would need to accept a scalar integer index as input shape, which breaks the current Tensor contract (which expects float tensors). This needs a design decision before implementing.
+
+---
+
+##### 4b. Positional encoding
+
+**Why it is needed:** attention (see §4c) treats the input as a *set* — it has no idea which token came first. Position must be injected explicitly.
+
+Two approaches exist:
+
+**Learned (GPT-2, BERT):** another embedding table `PE` of shape `[max_sequence_length, d_model]`. Position `p` maps to `PE[p]`. Added to the token embedding: `x = E[token] + PE[position]`.
+
+**Sinusoidal (original 2017 Transformer):** a fixed formula, no learned parameters:
+
+$$PE(pos, 2i) = \sin\!\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right), \quad PE(pos, 2i+1) = \cos\!\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right)$$
+
+Different frequency sine/cosine waves fill alternating dimensions. The result: each position has a unique vector, and nearby positions have similar vectors. Modern models (Llama) use **RoPE** (Rotary Position Embedding) instead — applied inside the attention computation rather than at input.
+
+**Status in NNStudio:** not implemented. Sinusoidal PE is parameter-free (just an `apply()` function on the input tensor) and could be implemented before the embedding layer.
+
+---
+
+##### 4c. MultiHeadSelfAttention
+
+This is the core invention of the Transformer. It replaces recurrence entirely.
+
+**The problem attention solves:** in a sentence like "The animal didn't cross the street because *it* was too tired", deciding what "it" refers to requires comparing every token to every other token simultaneously. An RNN has to thread that information through a bottleneck hidden state. Attention makes all token-to-token comparisons in one step.
+
+**Single-head attention:**
+
+Each token vector `x_i` is projected into three roles through three learned weight matrices `W_Q`, `W_K`, `W_V` (all `[d_model, d_k]`):
+
+- **Query** Q: "what am I looking for?" — `Q = x W_Q`
+- **Key** K: "what do I contain?" — `K = x W_K`
+- **Value** V: "what do I contribute?" — `V = x W_V`
+
+The attention score between position `i` (query) and position `j` (key) is their dot product, scaled:
+
+$$A_{ij} = \frac{Q_i \cdot K_j}{\sqrt{d_k}}$$
+
+The $\sqrt{d_k}$ scaling prevents the dot products from growing large and pushing softmax into its flat saturation region (vanishing gradients). Softmax across all `j` makes the scores sum to 1 — they become mixing weights. The output for token `i` is a weighted sum of all value vectors:
+
+$$\text{out}_i = \sum_j \text{softmax}(A_{ij}) \cdot V_j$$
+
+In matrix form (all tokens at once):
+
+$$\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V$$
+
+**Multi-head:** instead of one set of (Q, K, V) matrices, run `n_heads` of them in parallel, each with `d_k = d_model / n_heads`. Each head can attend to different aspects (syntax, coreference, topic). Outputs are concatenated and projected back:
+
+$$\text{MultiHead}(x) = \text{concat}(\text{head}_1, \ldots, \text{head}_h) \; W_O$$
+
+**Parameters per attention block:** `4 × d_model²` — the four matrices W_Q, W_K, W_V, W_O. For `d_model=768`: `4 × 768² = 2.36 M` per block.
+
+**Causal mask (decoder only):** in a GPT-style model, position `i` must not attend to position `j > i` (future tokens). This is enforced by adding `-∞` to the attention scores before softmax for all future positions — they become 0 after softmax. This is a single mask operation, not a structural change.
+
+**Status in NNStudio:** not implemented. Requires:
+- The QKV projection (three Dense layers per head, or one fused Dense of `3×d_model`)
+- Scaled dot product (Tensor batch-matmul operation, not yet in the Tensor API)
+- Softmax over a variable-length dimension
+- Output projection Dense
+- Optional causal mask (Phase 3)
+
+---
+
+##### 4d. LayerNorm
+
+**What it is:** normalization applied independently to each token's vector.
+
+After attention and FFN operations, activation magnitudes can drift — some vectors become very large, some very small. This destabilizes subsequent layers. Normalization is the fix.
+
+**Formula:** for a single vector `x` of length `d_model`:
+
+$$\hat{x}_i = \frac{x_i - \mu}{\sigma + \varepsilon}, \quad \mu = \frac{1}{d}\sum_i x_i, \quad \sigma = \sqrt{\frac{1}{d}\sum_i (x_i - \mu)^2}$$
+
+Then apply learned scale `γ` and shift `β` (both vectors of length `d_model`):
+
+$$y_i = \gamma_i \hat{x}_i + \beta_i$$
+
+`γ` and `β` are initialized to 1 and 0, meaning "do nothing initially". They are learned weights — the optimizer adjusts them so the normalization doesn't remove useful structure.
+
+**Why not BatchNorm?** BatchNorm normalizes across the batch dimension (per-feature statistics). For sequences this is unstable: batch size varies, sequences have different lengths, and during inference you might process one token at a time. LayerNorm normalizes within a single vector — no dependency on the rest of the batch.
+
+**Parameters:** `2 × d_model` (one `γ` and one `β` vector). Tiny — for `d_model=768` that is 1 536 floats.
+
+**Status in NNStudio:** not implemented. Forward pass is a pure tensor operation (mean, std, elementwise scale+shift). Backward requires the gradient through mean and variance — slightly involved but closed-form. A good early implementation target because it has no exotic topology requirements.
+
+---
+
+##### 4e. GELU (activation)
+
+**What it is:** Gaussian Error Linear Unit — the standard activation in the FFN block of modern Transformers.
+
+$$\text{GELU}(x) = x \cdot \Phi(x)$$
+
+where $\Phi(x)$ is the standard Gaussian cumulative distribution function. Because computing $\Phi$ exactly requires numerical integration, a fast approximation is used in practice:
+
+$$\text{GELU}(x) \approx 0.5 \cdot x \cdot \left(1 + \tanh\!\left(\sqrt{\tfrac{2}{\pi}}\,(x + 0.044715\,x^3)\right)\right)$$
+
+**Compared to ReLU:**
+- ReLU: hard zero for `x < 0`, linear for `x > 0`. The sharp kink at 0 can cause neurons to "die" (stuck at zero gradient permanently).
+- GELU: smoothly tapers near zero instead of clipping. Slightly negative values still pass a fractional signal through. Gradient exists everywhere.
+
+Practically the difference is small in shallow networks. In very deep Transformers with 96+ layers (GPT-3) the accumulated smoothness advantage compounds.
+
+**Status in NNStudio:** GELU can be implemented as an `IActivation` right now — it is a pure elementwise operation, same contract as ReLU/Sigmoid. The only thing needed is the math in `apply()` and the derivative `Φ(x) + x·φ(x)` (where `φ` is the Gaussian PDF) in `gradient()`.
+
+---
+
+#### Full data flow, annotated
+
+```
+Input: sequence of T token IDs  [T]  (integers)
+
+[Embedding]      x = E[token_ids]                    shape: [T, d_model]
+[+PE]            x = x + PE[0:T]                     shape: [T, d_model]
+
+For each of N blocks:
+  [LayerNorm]    x_norm = LN(x)                      shape: [T, d_model]
+  [Attention]    attn = MultiHead(Q=x_norm, K=x_norm, V=x_norm)  shape: [T, d_model]
+  [+ residual]   x = x + attn                        shape: [T, d_model]
+
+  [LayerNorm]    x_norm = LN(x)                      shape: [T, d_model]
+  [Dense→GELU]   h = GELU(x_norm @ W1 + b1)          shape: [T, 4×d_model]
+  [Dense]        ffn = h @ W2 + b2                   shape: [T, d_model]
+  [+ residual]   x = x + ffn                         shape: [T, d_model]
+
+[LayerNorm]      x = LN(x)                           shape: [T, d_model]
+[Dense head]     logits = x @ W_vocab + b_vocab       shape: [T, vocab_size]
+[Softmax]        probs = softmax(logits[-1])          shape: [vocab_size]
+                 → sample or argmax next token
+```
+
+---
+
+**Key architectural choices:**
+- `d_model` = embedding dimension (width of every token vector throughout the network)
+- `n_heads` = number of parallel attention heads (each sees a `d_model/n_heads` subspace)
+- FFN hidden is always `4×d_model` wide (convention from the 2017 paper; still used unchanged)
+- GELU standard activation in FFN; ReLU also works
+- Every sub-block has a residual/skip connection — this is why stacking 96 blocks is stable
+
+**Typical sizes for text reasoning / QA:**
+
+| Model | d_model | Heads | Layers | Params | Context window |
+|---|---|---|---|---|---|
+| GPT-2 small | 768 | 12 | 12 | 117 M | 1 024 tokens |
+| GPT-2 medium | 1 024 | 16 | 24 | 345 M | 1 024 tokens |
+| GPT-2 XL | 1 600 | 25 | 48 | 1.5 B | 1 024 tokens |
+| GPT-3 | 12 288 | 96 | 96 | 175 B | 2 048 tokens |
+| Llama 2 7B | 4 096 | 32 | 32 | 7 B | 4 096 tokens |
+| Llama 2 70B | 8 192 | 64 | 80 | 70 B | 4 096 tokens |
+| GPT-4 (est.) | ~16 384 (MoE) | ~128 | ~120 | ~1.8 T (MoE) | 8 192+ tokens |
+
+**For NNStudio's text parsing / reasoning / QA use case:**  
+A Llama 2 7B-class model is the practical minimum for reliable open-domain reasoning. That is 7 billion floats × 4 bytes = **28 GB** just for weights in fp32; 14 GB in fp16. Training from scratch is not realistic — fine-tuning a pre-trained checkpoint (LoRA or full fine-tune) is the standard approach. NNStudio would load an existing `.onnx` or `.nns` checkpoint and run inference or fine-tuning on specific layers (`frozen = true` on base weights, `frozen = false` on LoRA adapters).
+
+**Status in NNStudio (updated — Phase 2 complete):**
+
+| Layer | Status | Notes |
+|---|---|---|
+| `Embedding` | ✅ implemented | Float-stored IDs; dedicated int DType is Phase 4 |
+| `LayerNorm` | ✅ implemented | Normalises over last dim; learnable γ, β |
+| `GELU` | ✅ implemented | `GELUFn` (`IActivation`) + `GELU : ActivationBase` |
+| `MultiHeadAttention` | ✅ implemented | Causal mask, 4 weight + bias pairs, full backward |
+| `ComputeGraph` (skip connections) | ❌ Phase 3 | `Sequential` is still strictly linear |
+| FFN (Dense→GELU→Dense) | ✅ | Both `Dense` and `GELU` ready; wire in `Sequential` |
+
+Overall: **all individual building blocks ready.** Residual connections (skip connections) require `ComputeGraph` (Phase 3).  See §10.10 for the full updated status table.
+
+---
+
+### Template 5 — ResNet block (skip connection)
+
+**Use for:** deep networks where vanilla MLP would suffer vanishing gradients.
+
+```
+x → Dense(n) → ReLU → Dense(n) → + x  ← skip: add original x back
+                                     → ReLU
+```
+
+The skip connection (residual connection) routes the gradient directly around the block. Even if the block adds near-zero contribution, the gradient highway through the skip ensures early layers still receive a clean signal. This is why networks with hundreds of layers became trainable.
+
+**Status in NNStudio:** requires `ComputeGraph` for the branching topology. `Sequential` cannot express a skip connection (it is strictly linear). Phase 3.
+
+---
+
+### On extending `ILayer` for genuinely new layer types
+
+Plugging in a new activation: straightforward (Phase 2 `IActivation`, ADR-020).
+
+Plugging in a new *structural* layer type (Conv2D, MultiHeadAttention, custom graph node): the `ILayer` interface itself is the extension point, but the downstream impact is non-trivial:
+
+| Component affected | Impact |
+|---|---||
+| `ILayer::forward/backward` | Must be implemented correctly including `lastInput_` / context management |
+| `ILayer::build(Shape)` | Must return correct output shape so the shape-relay chain works |
+| `ILayer::parameters()` | Must expose all learnable parameters for the Optimizer |
+| `ComputeGraph` | New layer must register its ops as graph nodes (Phase 3) |
+| `ONNX export` | Must map to an ONNX op-node or a custom op (Phase 4) |
+| Studio UI | Need a property form, a topology diagram node, KB help entry |
+| Plugin SDK | Must be distributable as a signed `.nnsp` plugin (Phase 2 ABI freeze) |
+
+This is not blocked — it is the intentional design. But it means adding a genuinely new structural layer type is a multi-phase commitment, not a weekend task. The engine is correctly designed for it; the scope is simply larger than adding an activation.
+
+---
+
+## Appendix D — IBackend Vtable Reference
 
 > **Why this is an appendix and not in Chapter 2:**
 > Chapter 2 covers the *why* of `IBackend` — the Strategy pattern, the row/col-major trick, the single-call backend swap. This appendix covers the *what*: every virtual method with its full mathematical specification, a worked micro-example, and the practical question of which parts of the engine benefit from a CUDA backend. Most readers can skip this on first reading; it is the reference for backend implementors and for understanding ADR-034 step 2.
@@ -2495,7 +2391,7 @@ Every entry corresponds directly to a `virtual` method in [`include/core/IBacken
 
 ---
 
-### §A.1 — Identity and Memory Group
+### §D.1 — Identity and Memory Group
 
 These four methods are foundational plumbing that every backend — CPU, CUDA, remote, or quantum — must implement.
 
@@ -2518,7 +2414,7 @@ assert(b.data() == a.data());      // ← true on CpuBackend
 
 ---
 
-### §A.2 — BLAS Level: `matmul`
+### §D.2 — BLAS Level: `matmul`
 
 This is the single most important vtable function. The entire performance of `Dense`, `MultiHeadAttention`, and (eventually) `Conv2D` flows through this one call.
 
@@ -2554,7 +2450,7 @@ backward:  dW[outF,inF] = B().matmul( gT[outF,B],  x  [B,  inF]  )   // gT = gra
 
 ---
 
-### §A.3 — Element-wise Arithmetic Group
+### §D.3 — Element-wise Arithmetic Group
 
 All methods here operate **element-by-element** on identically shaped tensors, or on one tensor and a scalar constant. They are entirely independent on each element — perfectly parallelisable (one GPU thread per element).
 
@@ -2581,7 +2477,7 @@ All methods here operate **element-by-element** on identically shaped tensors, o
 > **Why does Hadamard require identical shapes?**
 > Because $c_{ij} = a_{ij} \cdot b_{ij}$ — there is no summation; every output element needs exactly one pair. If shapes differ there is no 1-to-1 correspondence. Broadcasting (allowing mismatched shapes provided one can be stretched) is a separate capability not currently in `IBackend`; it would require a `mulBroadcast` method.
 >
-> **Note on the scalar variants** (`addScalar`, `subScalar`, `mulScalar`, `divScalar`): these belong in the same Arithmetic group rather than the Math Functions group (§A.4) because they form natural paired families with their tensor-tensor counterparts (`add`/`addScalar`, `mul`/`mulScalar`, etc.). Operationally they are equally "element-wise" — the grouping is structural convention for readability, not a mathematical distinction. `mulScalar(a, 2.0)` and `sqrt(a)` are equally per-element; they just appear in different rows because of their pairing origin.
+> **Note on the scalar variants** (`addScalar`, `subScalar`, `mulScalar`, `divScalar`): these belong in the same Arithmetic group rather than the Math Functions group (§D.4) because they form natural paired families with their tensor-tensor counterparts (`add`/`addScalar`, `mul`/`mulScalar`, etc.). Operationally they are equally "element-wise" — the grouping is structural convention for readability, not a mathematical distinction. `mulScalar(a, 2.0)` and `sqrt(a)` are equally per-element; they just appear in different rows because of their pairing origin.
 
 | Method | Math | Concrete example (flat tensors for brevity) | Used by |
 |---|---|---|---|
@@ -2612,9 +2508,9 @@ Every step dispatches through `IBackend`. A CUDA backend would execute all four 
 
 ---
 
-### §A.4 — Element-wise Math Functions Group
+### §D.4 — Element-wise Math Functions Group
 
-Unary functions applied independently to each element. Like §A.3, they are trivially parallelisable.
+Unary functions applied independently to each element. Like §D.3, they are trivially parallelisable.
 
 | Method | Math | Example | Notes |
 |---|---|---|---|
@@ -2644,7 +2540,7 @@ A CUDA backend would not accelerate this. The vtable rewrite is a one-liner once
 
 ---
 
-### §A.5 — Reduction Group
+### §D.5 — Reduction Group
 
 Reductions collapse one dimension (or all dimensions for `dim = -1`) to a single value.
 
@@ -2697,7 +2593,7 @@ Subtracting $M$ shifts all exponents so the largest is always $e^0 = 1.0$ — no
 
 ---
 
-### §A.6 — Shape Operations Group
+### §D.6 — Shape Operations Group
 
 These do not move elements in memory on CPU; they manipulate the `strides_` and `shape_` metadata only. On CUDA, a backend may need to produce contiguous copies if post-op kernels require NCHW-contiguous layout.
 
@@ -2737,7 +2633,7 @@ cat([A, B], dim=1)  — append columns (more features):   shape [3, 4]
 
 ---
 
-### §A.7 — Synchronisation
+### §D.7 — Synchronisation
 
 | Method | Behaviour |
 |---|---|
@@ -2745,7 +2641,7 @@ cat([A, B], dim=1)  — append columns (more features):   shape [3, 4]
 
 ---
 
-### §A.8 — Layer Backend-Readiness Map
+### §D.8 — Layer Backend-Readiness Map
 
 **Practical question:** if `CudaBackend` were registered today via `setActive("cuda")`, which parts of the engine would actually accelerate — and which would silently stay on CPU?
 
@@ -2784,7 +2680,7 @@ Every layer's `forward()` and `backward()` path is analysed by whether it reache
 
 ---
 
-### §A.9 — Future-Proofing: Adding Methods Without Breaking Existing Backends
+### §D.9 — Future-Proofing: Adding Methods Without Breaking Existing Backends
 
 **The problem:** Every `virtual ... = 0` in `IBackend` is a pure-virtual function. Adding a new pure-virtual after the interface is published breaks every backend that does not implement it — including third-party plugin backends that have no knowledge of the change.
 
@@ -2869,7 +2765,7 @@ This mirrors `NNSTUDIO_PLUGIN_API_VERSION` in the plugin ABI (§10.7). Used for 
 
 ---
 
-### §A.10 — Backend Compatibility Matrix
+### §D.10 — Backend Compatibility Matrix
 
 **Legend:** ✅ implemented / fully accelerated on that device — not a fallback  
 🟡 works but no hardware acceleration — equivalent to CPU  
@@ -2916,15 +2812,15 @@ This mirrors `NNSTUDIO_PLUGIN_API_VERSION` in the plugin ABI (§10.7). Used for 
 
 ---
 
-### §A.11 — Writing Plugin Activations That Use Vtable Primitives
+### §D.11 — Writing Plugin Activations That Use Vtable Primitives
 
 This section is a practical guide for **plugin activation authors**: how to build an `IActivation` implementation that routes its compute through `IBackend` vtable calls so that a CUDA (or any future) backend accelerates it automatically, and how the framework surfaces acceleration warnings when the backend cannot honour those calls at hardware speed.
 
 ---
 
-#### A.11.1 — The `B()` accessor
+#### D.11.1 — The `B()` accessor
 
-Every `IActivation` subclass has access to the active backend through `B()` (documented in §A.1). Calling any vtable method through `B()` routes computation to whatever backend is registered at runtime:
+Every `IActivation` subclass has access to the active backend through `B()` (documented in §D.1). Calling any vtable method through `B()` routes computation to whatever backend is registered at runtime:
 
 ```cpp
 // Plugin file: my_activation.cpp
@@ -2935,11 +2831,11 @@ public:
     // forward(x) = x * sigmoid(x) = x / (1 + exp(-x))
     Tensor forward(const Tensor& x) override {
         // All three calls dispatch through IBackend vtable:
-        Tensor neg_x  = B().neg(x);              // §A.3 — arithmetic
-        Tensor e      = B().exp(neg_x);           // §A.4 — math function
-        Tensor denom  = B().addScalar(e, 1.0f);  // §A.3 — scalar arithmetic
-        Tensor sig    = B().div_(x, denom);       // §A.3 — division (reuse x buffer)
-        return B().mul(x, sig);                   // §A.3 — Hadamard product
+        Tensor neg_x  = B().neg(x);              // §D.3 — arithmetic
+        Tensor e      = B().exp(neg_x);           // §D.4 — math function
+        Tensor denom  = B().addScalar(e, 1.0f);  // §D.3 — scalar arithmetic
+        Tensor sig    = B().div_(x, denom);       // §D.3 — division (reuse x buffer)
+        return B().mul(x, sig);                   // §D.3 — Hadamard product
     }
 
     Tensor backward(const Tensor& x, const Tensor& grad) override {
@@ -2960,7 +2856,7 @@ Because every operation is a vtable call, this `SwishAct` is **fully backend-agn
 
 ---
 
-#### A.11.2 — Declaring the acceleration profile
+#### D.11.2 — Declaring the acceleration profile
 
 `IActivation` exposes an optional virtual method that plugins can override to tell the framework exactly which backend ops they rely on:
 
@@ -3004,7 +2900,7 @@ NNSTUDIO_ACTIVATION_VTABLE_PROFILE(neg, exp, addScalar, div_, mul,
 
 ---
 
-#### A.11.3 — What the framework does with the profile
+#### D.11.3 — What the framework does with the profile
 
 At registration time (`ActivationRegistry::registerActivation`), the engine calls `backendAccelerationProfile()` and stores the result alongside the factory. It uses the profile for three purposes:
 
@@ -3023,7 +2919,7 @@ When the user switches to `CudaBackend` at training time, the dispatcher checks 
 ```
 [BackendDispatch] WARN: activation "TanhAct" — raw loop paths present: ["forward flat(i) loop",
   "backward mask-build loop"]. These paths will NOT benefit from CUDA acceleration.
-  Consider replacing with a vtable-only implementation. (See blueprints.md §A.11)
+  Consider replacing with a vtable-only implementation. (See blueprints.md §D.11)
 ```
 
 **3. Export manifest annotation**
@@ -3044,7 +2940,7 @@ This lets a deployment tool (or CI check) refuse a build that depends on unaccel
 
 ---
 
-#### A.11.4 — CPU fallback: it is always there, no action needed
+#### D.11.4 — CPU fallback: it is always there, no action needed
 
 The question for plugin authors is not "how do I provide a CPU fallback?" — the `CpuBackend` is the fallback. Every vtable call transparently becomes a CPU Eigen operation on `CpuBackend`. The only question is **whether the active backend can accelerate those calls beyond CPU speed**.
 
@@ -3061,9 +2957,9 @@ The framework guarantees `B()` is always non-null; plugin authors do not need gu
 
 ---
 
-#### A.11.5 — Porting an existing raw-loop activation to vtable
+#### D.11.5 — Porting an existing raw-loop activation to vtable
 
-The `/builtin/activations/` activations that currently have raw loops (§A.8) are the reference examples for this migration. The pattern:
+The `/builtin/activations/` activations that currently have raw loops (§D.8) are the reference examples for this migration. The pattern:
 
 ```
 BEFORE (raw loop — not accelerated):
@@ -3094,3 +2990,107 @@ Note: `tanh` can also be expressed as `1 - 2 / (exp(2x) + 1)`, which uses one fe
 - [ ] Do _not_ add a CPU fallback — `CpuBackend` is the framework's built-in fallback.
 - [ ] Test on `CpuBackend`; a future CI lane will test on `CudaBackend` (Phase 4).
 - [ ] If a raw loop is unavoidable (e.g. custom indexing), declare it in `rawLoopPaths` so the UI and export manifest reflect reality.
+## Vocabulary
+
+All short-hand identifiers used in this document, grouped by category.
+
+---
+
+### A — C++ field names (engine source code)
+
+Trailing `_` is the project convention for private member variables.
+
+| Symbol | Type | Lives in | Meaning |
+|---|---|---|---|
+| `data_` | `std::shared_ptr<float[]>` | `Tensor` | The flat heap array of floats that stores all values |
+| `shape_` | `std::vector<int64_t>` | `Tensor` | Logical dimensions, e.g. `{3, 2}` = 3 rows × 2 columns |
+| `strides_` | `std::vector<int64_t>` | `Tensor` | Navigation map: `strides_[k]` = how many floats to skip to move +1 in dimension k |
+| `numel_` | `int64_t` | `Tensor` | Cached product of all `shape_` dimensions = total element count |
+| `grad_` | `std::optional<Tensor>` | `Tensor` | Sibling tensor holding accumulated gradients; absent until first backward pass |
+| `W_` | `Parameter` | `Dense` | Weight matrix parameter; `W_.tensor` has shape `{outF, inF}` |
+| `b_` | `Parameter` | `Dense` | Bias parameter; `b_.tensor` has shape `{outF}` |
+| `lastInput_` | `Tensor` | `Dense`, `ReLU`, `LeakyReLU`, `GELU` | Input saved during `forward()` so `backward()` can compute `dW = gradOut^T @ lastInput_` (Dense), or the sign-mask derivative (ReLU group) |
+| `lastOutput_` | `Tensor` | `Sigmoid`, `TanhAct`, `Softmax` | Output saved during `forward()` because the derivative of these functions is expressible purely in terms of the output value — cheaper than recomputing from input |
+| `layers_` | `std::vector<LayerPtr>` | `Sequential` | Ordered list of owned child layers |
+| `training_` | `bool` | `ILayer` | True = train mode (Dropout active, BatchNorm uses batch stats); false = eval mode |
+| `built_` | `bool` | `ILayer` | True after `build()` has allocated weight matrices; guards against double-allocation |
+| `m_` | `std::unordered_map<…, Tensor>` | `Adam` | First-moment (mean gradient) running average per parameter |
+| `v_` | `std::unordered_map<…, Tensor>` | `Adam` | Second-moment (mean squared gradient) running average per parameter |
+| `t_` | `int64_t` | `Adam` | Step counter; used in bias-correction exponents |
+
+---
+
+### B — Math notation (standard ML convention)
+
+| Symbol | Reads as | Meaning |
+|---|---|---|
+| `W` | "weights" | The weight matrix of a Dense layer; shape `[outF, inF]` |
+| `b` | "bias" | The bias vector of a Dense layer; shape `[outF]` |
+| `x` / `X` | "input" | Input to a layer; uppercase = batch `[B, inF]`, lowercase = single sample `[inF]` |
+| `y` / `Y` | "output" | Output of a layer; uppercase = batch `[B, outF]`, lowercase = single sample `[outF]` |
+| `@` | "matmul" | Matrix multiplication operator (NumPy/Python notation used in this document) |
+| `^T` | "transposed" | Matrix transpose; swaps rows and columns |
+| `L` | "loss" | Scalar loss value — a single float measuring total prediction error for one step |
+| `dW` | "delta W" | Shorthand for the gradient of W (dL/dW); same shape as W |
+| `db` | "delta b" | Shorthand for the gradient of b (dL/db); same shape as b |
+| `dX` | "delta X" | Gradient passed downward to the previous layer; same shape as X |
+| `g_t` | "gradient at step t" | Raw gradient value at Adam step t; input to the moment update equations |
+| `m_t` | "first moment" | Adam's running mean of gradients (momentum); smooths noisy gradient updates |
+| `v_t` | "second moment" | Adam's running mean of squared gradients; enables per-weight adaptive learning rates |
+| `beta_1` | "beta one" | Adam decay rate for first moment; typically 0.9 |
+| `beta_2` | "beta two" | Adam decay rate for second moment; typically 0.999 |
+| `alpha` | "alpha" / "learning rate" | Step size scalar; scales how far each update moves in parameter space |
+| `epsilon` | "epsilon" | Small constant (e.g. 1e-8) added to denominator to prevent division by zero |
+| `theta` | "theta" | Generic parameter symbol; stands for any W or b in the optimizer update rule |
+
+---
+
+### C — Dimension shorthands (used in examples and diagrams)
+
+| Symbol | Expands to | Meaning |
+|---|---|---|
+| `B` | batch size | Number of samples processed simultaneously in one forward/backward call |
+| `inF` | `inFeatures` | Number of input values arriving at a layer per sample |
+| `outF` | `outFeatures` | Number of output values produced by a layer per sample |
+| `M`, `N`, `K` | matrix dims | Generic matrix dimension names used in GEMM descriptions: `C[M,N] = A[M,K] @ B[K,N]` |
+
+---
+
+### D — Didactic shorthands (invented for this document)
+
+These identifiers appear only in explanatory examples, not in production source code.
+
+| Symbol | Context | Meaning |
+|---|---|---|
+| `h1` | ONNX node name example | Hypothetical node `"h1"` in an ONNX graph — represents a hidden-layer output |
+| `h1_biased` | ONNX node name example | Same node after the bias Add op; shows how `y = W*x + b` becomes two ONNX nodes |
+| `x1`, `x2` | Dense 2->3 example | First and second features of a 2-feature input sample |
+| `w00`, `w10`, ... | Dense 2->3 example | Individual weight entries: w_{neuron, input} |
+| `y0`, `y1`, `y2` | Dense 2->3 example | Individual neuron pre-activation outputs |
+| `b0`, `b1`, `b2` | Dense 2->3 example | Bias values for each neuron |
+| `x(0)`, `x(1)` | Batching example | Superscript = sample index within a batch |
+
+---
+
+### E — Standard library and industry terms
+
+| Term | Meaning |
+|---|---|
+| `GEMM` | **GEneral Matrix Multiply** — the Level 3 BLAS routine name. Full form: $C \leftarrow \alpha \cdot \text{op}(A) \cdot \text{op}(B) + \beta C$, where `op ∈ {N, T, C}` (no-op / transpose / conjugate-transpose) and $\alpha, \beta$ are scalar multipliers. Plain matrix product is GEMM with $\alpha=1,\, \beta=0$. The `S` in `cublasSgemm` = single-precision float; `D` = double; `H` = half. In NNStudio dispatched via `IBackend::matmul`; underlies `Dense`, `Conv2D` (via im2col Phase 4), and every attention head in `MultiHeadAttention`. See §D.2 for the full spec. |
+| `noalias()` | Eigen hint: output buffer does not overlap any input — skips defensive internal allocation |
+| Row-major / C-order | Layout where the last index changes fastest; elements of one row are contiguous. Used by NNStudio `Tensor`. |
+| Col-major / Fortran-order | Layout where the first index changes fastest. Used internally by Eigen. |
+| `Result<T>` | Engine error-or-value return type. Holds either a `T` value or an error. Methods: `.value()`, `.error()`, `.hasValue()`. |
+| `LayerPtr` | `std::shared_ptr<ILayer>` — ownership handle for a layer inside `Sequential::layers_` |
+| `Shape` | `std::vector<int64_t>` — alias for tensor dimension lists throughout the engine |
+| `Parameter` | `struct { std::string name; Tensor tensor; bool frozen; }` — the unit the Optimizer reads and updates |
+| Bias-correction | Adam technique: dividing `m_t`/`v_t` by `(1 - beta^t)` counteracts near-zero initialisation at training start |
+| Weight pruning | Post-training zeroing or removal of near-zero weights to reduce inference cost — not yet implemented |
+| Transfer learning | Using a pre-trained model's weights as starting point, training only certain layers (the "head") |
+| `frozen` | Flag on a `Parameter`: Optimizer skips its update; layer still computes and backprops its gradient |
+| ONNX | Open Neural Network Exchange — standard format for exporting models as a flat graph of named op-nodes (MatMul, Add, Relu, ...) |
+| DAG | Directed Acyclic Graph — general model topology enabling skip connections and multi-head architectures (cf. `Sequential` which is linear) |
+| BCE | Binary Cross-Entropy loss. For one sample: `L = -[y*log(p) + (1-y)*log(1-p)]` |
+
+---
+

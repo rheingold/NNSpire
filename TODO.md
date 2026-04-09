@@ -879,7 +879,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
     exclusively through `IBackend` vtable calls (e.g. `Dense`, `Sigmoid`).
   - Amber badge **"Partial — CPU loops"** when any path falls back to raw `flat(i)` scalar
     loops (e.g. `TanhAct`, `GELU`, `Softmax`, `LeakyReLU`); shows a tooltip listing the
-    offending paths; links to `§A.8` of `blueprints.md` for remediation guidance.
+    offending paths; links to `§D.8` of `blueprints.md` for remediation guidance.
   - Grey badge **"Unknown / plugin"** for plugin-supplied layers or activations that do not
     implement `isFullyVtableDispatched()`.
   - Acceleration status re-evaluated when the backend selector in the Training Dashboard
@@ -887,7 +887,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
     exists if the active backend implements it.
   - _Prerequisite_: `IActivation` and `ILayer` expose `backendAccelerationProfile()` →
     returns a small struct: `{fullyVtable: bool, rawLoopOps: vector<string>}`.
-    See `blueprints.md §A.9` for the plugin API design.
+    See `blueprints.md §D.9` for the plugin API design.
 - [ ] **User note** field — free text stored in `view.json` sidecar (ADR-031); never
   emitted into source code
 
