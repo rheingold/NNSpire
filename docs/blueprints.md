@@ -313,6 +313,8 @@ C^T = B^T @ A^T   ✓  (mathematically identical to C = A @ B)
 ```
 `noalias()` tells Eigen the output buffer doesn't overlap any input — skips a defensive internal copy.
 
+> **Reference:** For a fully annotated specification of every `IBackend` virtual method — mathematical notation, numeric micro-examples, per-layer CUDA-readiness analysis, strategy for adding new methods without breaking existing backends, and a compatibility matrix across all planned backends — see [Appendix — IBackend Vtable Reference](#appendix--ibackend-vtable-reference) at the end of this document.
+
 ---
 
 ## Chapter 3 — A Layer's Contract (`ILayer` + `Dense`)
@@ -2479,3 +2481,354 @@ Residual connections (Template 5) still require `ComputeGraph`.  All other indiv
 
 > **The engine is now fully equipped to build any standard architecture from scratch.**
 > The next step is Phase 3: the `NN_ENABLE_APP=ON` CMake preset, tree-sitter integration for the code parser, and the two-way WYSIWYG model editor (ADRs 030–033).
+
+---
+
+## Appendix — IBackend Vtable Reference
+
+> **Why this is an appendix and not in Chapter 2:**
+> Chapter 2 covers the *why* of `IBackend` — the Strategy pattern, the row/col-major trick, the single-call backend swap. This appendix covers the *what*: every virtual method with its full mathematical specification, a worked micro-example, and the practical question of which parts of the engine benefit from a CUDA backend. Most readers can skip this on first reading; it is the reference for backend implementors and for understanding ADR-034 step 2.
+
+### How this list was obtained
+
+Every entry corresponds directly to a `virtual` method in [`include/core/IBackend.h`](nnstudio/include/core/IBackend.h) — the canonical ABI contract. The file was read in full; nothing is inferred from documentation elsewhere. When `IBackend.h` changes (new method added, signature changed), this appendix must be updated to match.
+
+---
+
+### §A.1 — Identity and Memory Group
+
+These four methods are foundational plumbing that every backend — CPU, CUDA, remote, or quantum — must implement.
+
+| Method | Signature (simplified) | Purpose |
+|---|---|---|
+| `name` | `() → string_view` | Returns the registration key, e.g. `"cpu"`, `"cuda"`. This string is the argument to `BackendRegistry::setActive(name)`. |
+| `device` | `() → Device` | Returns `Device::CPU`, `Device::CUDA`, or `Device::QUANTUM`. Tensors compare their device tag to avoid redundant copies in `to()`. |
+| `alloc` | `(count: int64) → shared_ptr<float[]>` | Allocates a flat float buffer of `count` elements on the backend's native device. CPU: `new float[count]`. CUDA: `cudaMallocManaged`. Remote: allocates a handle on the remote node whose lifetime is tied to the returned shared_ptr. |
+| `to` | `(tensor) → Tensor` | Copies or moves a tensor to this backend's device. CPU→CPU: may return the same buffer via reference counting (effectively free). CPU→CUDA: schedules a `cudaMemcpy H→D`. CUDA→CPU: `cudaMemcpy D→H` + `sync`. |
+
+**Micro-example:**
+
+```cpp
+// CpuBackend active.  All on CPU, so `to` is a no-op:
+auto buf = B().alloc(6);           // float[6] on the heap
+Tensor a({2, 3}, buf);             // 2×3 matrix, shares buf
+Tensor b = B().to(a);              // no-op: already CPU — same data pointer
+assert(b.data() == a.data());      // ← true on CpuBackend
+```
+
+---
+
+### §A.2 — BLAS Level: `matmul`
+
+This is the single most important vtable function. The entire performance of `Dense`, `MultiHeadAttention`, and (eventually) `Conv2D` flows through this one call.
+
+**Signature:** `matmul(a: Tensor, b: Tensor) → Tensor`
+
+**Mathematical specification — 2-D case:**
+
+$$C_{[M,N]} = A_{[M,K]} \cdot B_{[K,N]}, \quad C_{ij} = \sum_{k=0}^{K-1} A_{ik} \cdot B_{kj}$$
+
+The result shape is always `[M, N]`. Dimension $K$ is the contracted (inner) dimension and must match between `a` and `b`.
+
+**3-D batched case:**
+
+$$C_{[B,M,N]} = A_{[B,M,K]} \cdot B_{[B,K,N]}, \quad C_{b,i,j} = \sum_{k=0}^{K-1} A_{b,i,k} \cdot B_{b,k,j}$$
+
+Each slice along the batch dimension is an independent GEMM.
+
+**Numeric micro-example:**
+
+$$A = \begin{pmatrix}1 & 2 \\ 3 & 4\end{pmatrix}, \quad B = \begin{pmatrix}5 & 6 \\ 7 & 8\end{pmatrix}$$
+
+$$A \cdot B = \begin{pmatrix}1{\cdot}5+2{\cdot}7 & 1{\cdot}6+2{\cdot}8 \\ 3{\cdot}5+4{\cdot}7 & 3{\cdot}6+4{\cdot}8\end{pmatrix} = \begin{pmatrix}19 & 22 \\ 43 & 50\end{pmatrix}$$
+
+**How `Dense` uses it:**
+
+```
+forward:   y [B, outF] = B().matmul( x [B, inF],  Wt [inF, outF] )   // Wt = W^T
+backward:  dW[outF,inF] = B().matmul( gT[outF,B],  x  [B,  inF]  )   // gT = gradOut^T
+           dX[B,  inF ] = B().matmul( g [B, outF], W  [outF,inF]  )
+```
+
+**CpuBackend implementation note:** Uses the row/col-major transposition trick from Chapter 2. The `Eigen::Map` views are constructed in reversed argument order so Eigen's column-major SGEMM produces the correct row-major result without any data copy or transposition of the underlying buffer.
+
+---
+
+### §A.3 — Element-wise Arithmetic Group
+
+All methods here operate **element-by-element** on identically shaped tensors, or on one tensor and a scalar constant. They are entirely independent on each element — perfectly parallelisable (one GPU thread per element).
+
+> **Critical distinction:** `mul(a, b)` is the **Hadamard product** ($A \odot B$) — element $i$ of `a` multiplied by element $i$ of `b`. This is **not** matrix multiplication. When activation backward code writes `B().mul(gradOut, mask)`, it applies a per-element binary mask, not a GEMM.
+
+| Method | Math | Concrete example (flat tensors for brevity) | Used by |
+|---|---|---|---|
+| `add(a, b)` | $c_i = a_i + b_i$ | `{1,2,3} + {4,5,6}` → `{5,7,9}` | Bias column-broadcast in `Dense`; residual skip connections (Phase 3) |
+| `sub(a, b)` | $c_i = a_i - b_i$ | `{5,7,9} - {3,2,1}` → `{2,5,8}` | Loss gradients: `pred - target`; BatchNorm centering |
+| `mul(a, b)` | $c_i = a_i \cdot b_i$ (Hadamard) | `{2,4,6} * {1,0,1}` → `{2,0,6}` | Dropout mask application; ReLU/LeakyReLU backward gradient masking; attention weight × value |
+| `div_(a, b)` | $c_i = a_i / b_i$ (name avoids C++ `div` keyword) | `{6,8,4} / {2,4,2}` → `{3,2,2}` | Sigmoid forward: `ones / (ones + exp(-x))`; LayerNorm normalisation |
+| `addScalar(a, s)` | $c_i = a_i + s$ | `{1,2,3} + 1.0` → `{2,3,4}` | Sigmoid: `exp(-x) + 1.0`; Adam bias-correction denominators `1 - β^t` |
+| `subScalar(a, s)` | $c_i = a_i - s$ | `{5,6,7} − 2.0` → `{3,4,5}` | BatchNorm/LayerNorm: subtract mean |
+| `mulScalar(a, s)` | $c_i = a_i \cdot s$ | `{2,4,8} * 0.5` → `{1,2,4}` | Sigmoid derivative: `mulScalar(sq, -1)` for `1 - tanh²`; dropout inverted scale `1/(1-p)` |
+| `divScalar(a, s)` | $c_i = a_i / s$ | `{6,8,4} / 2.0` → `{3,4,2}` | Attention scale $1/\sqrt{d_k}$; MSE: divide sum by N |
+| `neg(a)` | $c_i = -a_i$ | `{1,-2,3}` → `{-1,2,-3}` | Sigmoid: `neg(x)` to get $-x$ before `exp`; BCE gradient sign flip |
+
+**Anatomy of Sigmoid via vtable calls:**
+
+$$\sigma(x) = \frac{1}{1+e^{-x}}$$
+
+```cpp
+// SigmoidFn::forward — entirely composed of IBackend methods:
+Tensor neg_x   = B().neg(x);                    // step 1: -x
+Tensor exp_neg = B().exp(neg_x);                 // step 2: e^{-x}
+Tensor denom   = B().addScalar(exp_neg, 1.0f);   // step 3: 1 + e^{-x}
+Tensor ones    = Tensor::ones(x.shape());
+Tensor out     = B().div_(ones, denom);           // step 4: 1 / (…)
+```
+
+Every step dispatches through `IBackend`. A CUDA backend would execute all four operations as GPU kernels — no CPU involvement.
+
+---
+
+### §A.4 — Element-wise Math Functions Group
+
+Unary functions applied independently to each element. Like §A.3, they are trivially parallelisable.
+
+| Method | Math | Example | Notes |
+|---|---|---|---|
+| `exp(a)` | $c_i = e^{a_i}$ | `exp({0, 1, 2})` → `{1.0, 2.718, 7.389}` | Sigmoid, Softmax, GELU. Overflow for $a_i \gg 80$; Softmax always applies max-subtraction first: $e^{x_i - \max_j x_j}$ |
+| `log(a)` | $c_i = \ln(a_i)$ | `log({1.0, e, e²})` → `{0, 1, 2}` | CrossEntropy, BCE. **$\ln(0) = -\infty$ silently produces NaN.** All loss code clamps inputs: `clamp(p, 1e-7, 1-1e-7)` before calling `log` |
+| `sqrt(a)` | $c_i = \sqrt{a_i}$ | `sqrt({4.0, 9.0, 16.0})` → `{2, 3, 4}` | Adam update denominator $\sqrt{\hat{v}_t} + \varepsilon$; prevents division by zero when gradients are very small |
+| `abs(a)` | $c_i = \|a_i\|$ | `abs({-3, 4, -0.5})` → `{3, 4, 0.5}` | HuberLoss: compares $\|p - t\|$ against the threshold $\delta$ to choose the quadratic vs. linear branch |
+| `clamp(a, lo, hi)` | $c_i = \min(\max(a_i, \text{lo}), \text{hi})$ | `clamp({-2, 0.5, 3}, 0, 1)` → `{0, 0.5, 1}` | ReLU forward: `clamp(x, 0, +∞)` (most elegant use — entire ReLU is one vtable call); `kEps` loss guard: `clamp(p, 1e-7, 1-1e-7)` |
+
+**TanhAct: the raw-loop counter-example.**
+
+`tanh` could be expressed as $\tanh(x) = 2\sigma(2x) - 1 = 2/(1+e^{-2x}) - 1$ — entirely via vtable ops. Instead it currently uses a raw C loop:
+
+```cpp
+// TanhActFn::forward — NOT through IBackend:
+for (int64_t i = 0; i < x.numel(); ++i)
+    out.flat(i) = std::tanh(x.flat(i));   // CPU-only std::tanh
+```
+
+A CUDA backend would not accelerate this. The vtable rewrite is a one-liner once `IBackend` has `exp` (which it already does). This is an identified Phase 4 improvement.
+
+---
+
+### §A.5 — Reduction Group
+
+Reductions collapse one dimension (or all dimensions for `dim = -1`) to a single value.
+
+| Method | Math | Shape example | Notes |
+|---|---|---|---|
+| `sum(a, dim, keepdim)` | $c_j = \sum_i a_{ij}$ along `dim` | `sum([32×10], dim=0, false)` → `[10]` | `dim=-1` = global sum → scalar `[1]`. Bias gradient in `Dense::backward`: `sum(gradOut, dim=0)` accumulates all batch rows |
+| `mean(a, dim, keepdim)` | $c_j = \frac{1}{N}\sum_i a_{ij}$ | `mean([32×1], dim=-1, false)` → scalar `[1]` | MSE loss output (one mean over all elements). `keepdim=true` retains the collapsed dim as size 1 — necessary for broadcasting: |
+| `max(a, dim, keepdim)` | $c_j = \max_i a_{ij}$ | `max([4×8], dim=1, true)` → `[4×1]` | Numerically stable Softmax: subtract per-row max before exp, so the largest pre-exp value is `exp(0)=1.0`, preventing overflow |
+
+**Why `keepdim` matters:**
+
+```python
+a: shape [4, 3]
+sum(a, dim=0, keepdim=False) → shape [3]     # cannot subtract from a without reshape
+sum(a, dim=0, keepdim=True)  → shape [1, 3]  # broadcasts: a − sum gives zero-mean rows
+```
+
+**Softmax numerical stability via `max` + `sum`:**
+
+$$\text{softmax}_i = \frac{e^{a_i - M}}{\sum_k e^{a_k - M}}, \quad M = \max_j a_j$$
+
+Subtracting $M$ shifts all exponents so the largest is $e^0 = 1.0$ — no overflow risk regardless of the input magnitude. The result is mathematically identical (the $e^{-M}$ factors cancel).
+
+---
+
+### §A.6 — Shape Operations Group
+
+These do not move elements in memory on CPU; they manipulate the `strides_` and `shape_` metadata only. On CUDA, a backend may need to produce contiguous copies if post-op kernels require NCHW-contiguous layout.
+
+| Method | What it does | Example | Notes |
+|---|---|---|---|
+| `reshape(a, newShape)` | Reinterpret memory as a different shape, preserving total element count (`numel`) | `reshape([6], {2,3})` — a flat vector becomes a 2×3 matrix | Strides-only alias if data is contiguous. Used by `Embedding` to pack batch output; MHA head split/merge |
+| `transpose(a, dim0, dim1)` | Swap two dimensions — strides swap only, no data copy on CPU | `transpose([3,4], 0, 1)` → logical shape `[4,3]`, same memory | `Dense::forward` uses this to compute $W^T$ without any allocation: `B().transpose(weights_.tensor, 0, 1)` |
+| `cat(tensors, dim)` | Concatenate a list of tensors along one dimension — **does** allocate a new buffer | `cat([{2,3}, {4,3}], dim=0)` → `{6,3}` | MHA uses `cat` to merge attention heads after the per-head computation back into `[B, L, d_model]` |
+
+**Transpose layout note.** The CPU stride-swap trick means `B().transpose(W, 0, 1)` is O(1) — it creates a new `Tensor` header pointing to the same `data_` buffer but with `strides_` reversed. `CpuBackend::matmul` then handles the col/row-major identity described in Chapter 2. A naïve CUDA backend that assumes contiguous row-major layout before calling `cublasSgemm` would need to materialise a copy here — which is why the cuBLAS wrapper must accept leading-dimension arguments rather than transposing physically.
+
+---
+
+### §A.7 — Synchronisation
+
+| Method | Behaviour |
+|---|---|
+| `sync()` | Block the calling thread until all pending operations on this backend's device are complete. **CpuBackend:** no-op — all CPU operations are synchronous by definition. **CudaBackend (planned):** `cudaDeviceSynchronize()`. **RemoteBackend (planned):** flush the gRPC stream and wait for the last server acknowledgement. Call `sync()` before reading a CUDA tensor on the CPU side, or before checkpointing mid-training. |
+
+---
+
+### §A.8 — Layer Backend-Readiness Map
+
+**Practical question:** if `CudaBackend` were registered today via `setActive("cuda")`, which parts of the engine would actually accelerate — and which would silently stay on CPU?
+
+Every layer's `forward()` and `backward()` path is analysed by whether it reaches the metal via `B()` or bypasses it with `flat(i)` loops.
+
+| Layer / component | Vtable coverage | Raw CPU bypasses | Net CUDA benefit if plugged in today |
+|---|---|---|---|
+| `Dense::forward` | `matmul`, `transpose` | Bias `flat(i)` loop (tiny) | ~100% — GEMM paid for; bias loop negligible |
+| `Dense::backward` | `matmul`, `transpose` | Same bias loop | ~100% |
+| `MultiHeadAttention::forward` | `matmul`, `transpose`, `divScalar`, `mulScalar`, `addScalar` | Softmax and causal-mask inner loops | Projections (dominant) fully accelerated; attention softmax stays CPU |
+| `SigmoidFn::forward + backward` | `neg`, `exp`, `addScalar`, `div_`, `mul`, `subScalar`, `mulScalar` | None | Fully accelerated |
+| `ReLUFn::forward` | `clamp` | None | Accelerated |
+| `ReLUFn::backward` | `mul` | Mask-build `flat(i)` loop | `mul` accelerated; mask build stays CPU |
+| `TanhActFn::forward` | None | Full `std::tanh` loop | **Not accelerated** |
+| `TanhActFn::backward` | `mul`, `mulScalar`, `subScalar` | None | Backward accelerated; forward still CPU |
+| `SoftmaxFn::forward` | None | Full max/exp/sum loop | **Not accelerated** |
+| `SoftmaxFn::backward` | None | Full dot-product loop | **Not accelerated** |
+| `GELUFn::forward + backward` | None | Full tanh-polynomial loop | **Not accelerated** |
+| `LeakyReLUFn::forward + backward` | None | Full `flat(i)` loops | **Not accelerated** |
+| `MSE / BCE / CrossEntropy / Huber` | `sub`, `mul`, `mulScalar`, `mean`, `log`, `clamp`, `div_` | None | Fully accelerated |
+| `BatchNorm1d` | `mul`, `mulScalar`, `addScalar` | Mean/variance `flat(i)` loops | Partially accelerated |
+| `LayerNorm` | `mul`, `addScalar`, `mulScalar` | Per-row mean/rstd loops | Partially accelerated |
+| `Dropout::forward` | None | Bernoulli + scale loop | **Not acceleratable** (CPU PRNG; GPU would need a cuRand kernel) |
+| `Adam::step` | None | Per-parameter `flat(i)` loops | **Not accelerated** (could be rewritten as vtable calls) |
+| `Embedding::forward` | None | Row-copy `flat(i)` loop | **Not accelerated** (needs `gatherRows` — not yet in vtable) |
+| `Embedding::backward` | None | Scatter-accumulate `flat(i)` loop | **Not accelerated** (needs `scatterAddRows`) |
+
+**Phase 4 vtable additions that would unlock the ❌/⚠️ rows:**
+
+| Planned method | Unlocks |
+|---|---|
+| `gatherRows(table, indices)` | `Embedding::forward` |
+| `scatterAddRows(dest, indices, src)` | `Embedding::backward` |
+| `applyFunctor1D(tensor, fn)` | `TanhAct`, `GELU`, `LeakyReLU`, `Softmax` forwards (ADR-034 step 2) |
+| `bernoulliMask(shape, p)` | `Dropout` GPU sampling |
+
+---
+
+### §A.9 — Future-Proofing: Adding Methods Without Breaking Existing Backends
+
+**The problem:** Every `virtual ... = 0` in `IBackend` is a pure-virtual function. Adding a new pure-virtual after the interface is published breaks every backend that does not implement it — including third-party plugin backends that have no knowledge of the change.
+
+Three patterns are available; NNStudio will use all three for different categories of new functionality.
+
+---
+
+**Pattern 1 — Non-pure virtual with CPU fallback (recommended for new accelerations)**
+
+```cpp
+// IBackend.h — new method, not pure-virtual:
+virtual Tensor gatherRows(const Tensor& table, const Tensor& indices) {
+    // Default impl: CPU loop — old backends keep working
+    Tensor out({indices.numel(), table.shape()[1]});
+    for (int64_t i = 0; i < indices.numel(); ++i) {
+        int64_t row = static_cast<int64_t>(indices.flat(i));
+        for (int64_t c = 0; c < table.shape()[1]; ++c)
+            out.flat(i * table.shape()[1] + c) =
+                table.flat(row * table.shape()[1] + c);
+    }
+    return out;
+}
+```
+
+Old backends keep working at CPU speed. A CUDA backend overrides with a `cub::DeviceGather` call. The caller does not need any conditional logic — it just calls `B().gatherRows(...)`. This is the pattern for the Phase 4 additions (`gatherRows`, `scatterAddRows`, `applyFunctor1D`).
+
+---
+
+**Pattern 2 — Capability query flags (for hardware-specific or optional ops)**
+
+```cpp
+enum class BackendCap : uint32_t {
+    GatherScatter = 1 << 0,   // gatherRows + scatterAddRows available as GPU kernels
+    Functor1D     = 1 << 1,   // applyFunctor1D available (KAN/SIREN, ADR-034 step 2)
+    HalfPrecision = 1 << 2,   // float16 arithmetic supported natively
+    QuantumGEMM   = 1 << 3,   // quantum-accelerated matrix multiply (Phase 6+)
+};
+
+// In IBackend.h — default: no capabilities
+virtual uint32_t capabilities() const noexcept { return 0; }
+```
+
+Callers check before using the fast path:
+
+```cpp
+if (B().capabilities() & static_cast<uint32_t>(BackendCap::GatherScatter))
+    out = B().gatherRows(table, indices);    // fast GPU kernel
+else
+    out = gatherRowsFallback(table, indices); // CPU reference path
+```
+
+This is how the CUDA driver itself works — `cudaDeviceGetAttribute` fills a capability struct before any kernel is launched.
+
+---
+
+**Pattern 3 — API version gate on the backend descriptor (for mandatory new ops)**
+
+```cpp
+// In IBackend.h
+virtual uint32_t apiVersion() const noexcept { return 1; }
+```
+
+`BackendRegistry::registerBackend()` checks `apiVersion()`. If a loaded plugin backend reports version 1 but the engine requires version 2 (because a new pure-virtual was added), the backend is rejected with a clear diagnostic:
+
+```
+[BackendRegistry] WARN: backend "mycuda" api_version=1, required=2 — reject
+```
+
+This mirrors `NNSTUDIO_PLUGIN_API_VERSION` in the plugin ABI (§10.7). Used for mandatory interface evolution only — prefer Pattern 1 for optional accelerations.
+
+---
+
+**Adopted strategy for NNStudio (in line with ADR-034):**
+
+| Class of change | Pattern | Target version |
+|---|---|---|
+| Current arithmetic primitives | mandatory pure-virtual | v1 (current) |
+| `gatherRows` / `scatterAddRows` | non-pure + CPU fallback (Pattern 1) | v1.1 (Phase 4) |
+| `applyFunctor1D` for KAN/SIREN | non-pure + CPU fallback (Pattern 1) | v2 (Phase 4, ADR-034 step 2) |
+| `bernoulliMask` for GPU Dropout | non-pure + CPU fallback (Pattern 1) | v1.1 (Phase 4) |
+| Any breaking mandatory change | version bump (Pattern 3) | v2+ |
+
+---
+
+### §A.10 — Backend Compatibility Matrix
+
+**Legend:** ✅ implemented / fully accelerated on that device — not a fallback  
+🟡 works but no hardware acceleration — equivalent to CPU  
+❌ not supported / not applicable  
+🔮 speculative / requires active hardware research  
+*(planned)* — method does not yet exist in `IBackend.h`
+
+> `CudaBackend`, `RemoteBackend`, and `QuantumBackend` do not yet exist in the codebase. Entries for those columns document design intent and expected implementation complexity, not current reality.
+
+| `IBackend` method | `CpuBackend` *(Phase 1)* | `CudaBackend` *(Phase 4 plan)* | `RemoteBackend` *(Phase 5 plan)* | `QuantumBackend` *(Phase 6+)* |
+|---|---|---|---|---|
+| `name()` / `device()` | ✅ `"cpu"` / `CPU` | ✅ `"cuda"` / `CUDA` | ✅ `"remote"` / `CPU` | ✅ `"quantum"` / `QUANTUM` |
+| `alloc(count)` | ✅ `new float[]` | ✅ `cudaMallocManaged` | 🟡 remote buffer handle | 🔮 quantum memory register |
+| `to(tensor)` | 🟡 ref-count no-op if same device | ✅ `cudaMemcpy H→D / D→H` | ✅ gRPC tensor serialisation | 🟡 classical copy to/from device |
+| `matmul(a, b)` | ✅ Eigen row/col-major trick | ✅ `cublasSgemm` / `cublasGemmEx` | ✅ gRPC dispatch → remote CUDA | 🔮 quantum GEMM (research 2024+) |
+| `add(a, b)` | ✅ Eigen element-wise | ✅ element-wise CUDA kernel | ✅ remote dispatch | 🟡 classical fallback |
+| `sub(a, b)` | ✅ Eigen | ✅ CUDA kernel | ✅ remote | 🟡 |
+| `mul(a, b)` | ✅ Eigen (Hadamard) | ✅ CUDA kernel | ✅ remote | 🟡 |
+| `div_(a, b)` | ✅ loop | ✅ CUDA kernel | ✅ remote | 🟡 |
+| `addScalar` / `subScalar` / `mulScalar` / `divScalar` | ✅ loop | ✅ `cublasSaxpy` / Thrust | ✅ remote | 🟡 |
+| `neg(a)` | ✅ `mulScalar(-1)` | ✅ fused into any element-wise kernel | ✅ remote | 🟡 |
+| `exp(a)` | ✅ `std::exp` loop | ✅ `cuDNN` / Thrust `exp` | ✅ remote | 🔮 |
+| `log(a)` | ✅ `std::log` loop | ✅ `cuDNN` / Thrust `log` | ✅ remote | 🔮 |
+| `sqrt(a)` | ✅ `std::sqrt` loop | ✅ Thrust `sqrt` | ✅ remote | 🔮 |
+| `abs(a)` | ✅ loop | ✅ Thrust `abs` | ✅ remote | 🟡 |
+| `clamp(a, lo, hi)` | ✅ loop | ✅ Thrust `clamp` | ✅ remote | 🟡 |
+| `sum(a, dim, keepdim)` | ✅ Eigen reduce | ✅ `cub::DeviceReduce::Sum` | ✅ remote | 🟡 |
+| `mean(a, dim, keepdim)` | ✅ Eigen reduce | ✅ `cub` + scale | ✅ remote | 🟡 |
+| `max(a, dim, keepdim)` | ✅ loop | ✅ `cub::DeviceReduce::Max` | ✅ remote | 🟡 |
+| `reshape(a, shape)` | ✅ zero-copy strides | ✅ zero-copy if contiguous; copy if strided | ✅ shape metadata only | 🟡 |
+| `transpose(a, d0, d1)` | ✅ strides swap, O(1) | 🟡 may need contiguous copy for `cublasSgemm` leading-dim | ✅ remote | 🟡 |
+| `cat(tensors, dim)` | ✅ allocate + copy | ✅ `cudaMemcpy` segments | ✅ remote | 🟡 |
+| `sync()` | 🟡 no-op (CPU is synchronous) | ✅ `cudaDeviceSynchronize()` | ✅ gRPC stream flush | 🟡 no-op |
+| `gatherRows` *(planned v1.1)* | 🟡 Pattern 1 CPU fallback | ✅ `cub::DeviceGather` / `cudaMemcpy` scatter | ✅ remote | 🟡 |
+| `scatterAddRows` *(planned v1.1)* | 🟡 Pattern 1 CPU fallback | ✅ atomic `scatter_add` kernel | ✅ remote | 🟡 |
+| `bernoulliMask` *(planned v1.1)* | 🟡 Pattern 1 CPU fallback (std PRNG) | ✅ `cuRAND` device kernel | ✅ remote | ❌ not applicable |
+| `applyFunctor1D` *(planned v2, ADR-034 step 2)* | 🟡 Pattern 1 CPU lambda call | 🔮 JIT PTX / NVRTC kernel (research) | ✅ remote | ❌ not applicable |
+
+**Reading the table:**
+- Every ✅ in `CudaBackend` is a place where `setActive("cuda")` gives a net speedup with **zero layer code change**.
+- Every 🟡 in `CudaBackend` is a missed acceleration — layers using those methods would stay on CPU even with CUDA registered.
+- The `transpose` 🟡 for CUDA is a known trade-off: CPU transpose is free (strides swap); CUDA cuBLAS expects contiguous row-major input, so a physical transpose copy may be needed unless the caller passes `CUBLAS_OP_T` directly — a `CudaBackend::matmul` implementation should absorb this internally via `ld` (leading dimension) arguments rather than materialising the copy.
+- `applyFunctor1D` 🔮 in CUDA reflects that applying arbitrary C++ lambdas on the GPU requires JIT compilation (NVRTC / PTX). This is solvable but non-trivial, and is intentionally deferred to ADR-034 step 2.
+
