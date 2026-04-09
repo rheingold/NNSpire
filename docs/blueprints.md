@@ -1998,7 +1998,7 @@ These identifiers appear only in explanatory examples, not in production source 
 
 | Term | Meaning |
 |---|---|
-| `GEMM` | General Matrix Multiply — the fundamental operation underlying Dense, Conv2D, and attention. Dispatched via `IBackend::matmul`. |
+| `GEMM` | **GEneral Matrix Multiply** — the Level 3 BLAS routine name. Full form: $C \leftarrow \alpha \cdot \text{op}(A) \cdot \text{op}(B) + \beta C$, where `op ∈ {N, T, C}` (no-op / transpose / conjugate-transpose) and $\alpha, \beta$ are scalar multipliers. Plain matrix product is GEMM with $\alpha=1,\, \beta=0$. The `S` in `cublasSgemm` = single-precision float; `D` = double; `H` = half. In NNStudio dispatched via `IBackend::matmul`; underlies `Dense`, `Conv2D` (via im2col Phase 4), and every attention head in `MultiHeadAttention`. See §A.2 for the full spec. |
 | `noalias()` | Eigen hint: output buffer does not overlap any input — skips defensive internal allocation |
 | Row-major / C-order | Layout where the last index changes fastest; elements of one row are contiguous. Used by NNStudio `Tensor`. |
 | Col-major / Fortran-order | Layout where the first index changes fastest. Used internally by Eigen. |
@@ -2562,10 +2562,18 @@ All methods here operate **element-by-element** on identically shaped tensors, o
 >
 > `mul(a, b)` is the **Hadamard product** (denoted $A \odot B$) — each element at position $i$ of `a` is multiplied by the element at the *same position* $i$ of `b`. **Both operands must have exactly the same shape.** This is entirely different from `matmul`, which contracts an inner dimension and requires `A: [M,K]` and `B: [K,N]` (the rule "columns of A = rows of B"):
 >
-> | Operation | Shape rule | Concrete 2×2 example | Result shape |
-> |---|---|---|---|
-> | `matmul(A, B)` | A is `[M,K]`, B is `[K,N]` — inner dims must match | A=`[[1,2],[3,4]]`, B=`[[5,6],[7,8]]` → `[[19,22],[43,50]]` | `[M,N]` = `[2,2]` |
-> | `mul(A, B)` Hadamard | A and B must be **the same shape** | A=`[[1,2],[3,4]]` ⊙ B=`[[5,6],[7,8]]` → `[[5,12],[21,32]]` | `[2,2]` (same) |
+> | Operation | Shape rule | Result shape |
+> |---|---|---|
+> | `matmul(A, B)` | A is `[M,K]`, B is `[K,N]` — inner (K) dims must match | `[M,N]` = `[2,2]` |
+> | `mul(A, B)` Hadamard | A and B must be **the same shape** | `[2,2]` (same) |
+>
+> **matmul — weighted sums across K connections:**
+>
+> $$\begin{pmatrix}1 & 2 \\ 3 & 4\end{pmatrix} \cdot \begin{pmatrix}5 & 6 \\ 7 & 8\end{pmatrix} = \begin{pmatrix}1{\cdot}5+2{\cdot}7 & 1{\cdot}6+2{\cdot}8 \\ 3{\cdot}5+4{\cdot}7 & 3{\cdot}6+4{\cdot}8\end{pmatrix} = \begin{pmatrix}19 & 22 \\ 43 & 50\end{pmatrix}$$
+>
+> **Hadamard $\odot$ — per-position scaling, no summation:**
+>
+> $$\begin{pmatrix}1 & 2 \\ 3 & 4\end{pmatrix} \odot \begin{pmatrix}5 & 6 \\ 7 & 8\end{pmatrix} = \begin{pmatrix}1{\cdot}5 & 2{\cdot}6 \\ 3{\cdot}7 & 4{\cdot}8\end{pmatrix} = \begin{pmatrix}5 & 12 \\ 21 & 32\end{pmatrix}$$
 >
 > `matmul` says "take a weighted sum across all K connections" — the neuron's summing rule.
 > `mul` says "scale each position independently" — the dropout mask, the activation gradient gate.
@@ -2655,17 +2663,22 @@ The two axes are: `dim=0` = the row axis (collapse 3 rows → 1), `dim=1` = the 
 **Why `keepdim` matters — illustrated:**
 
 ```
-A:  shape [3, 2]           A:  shape [3, 2]
-    [[1, 2],                   [[1, 2],
-     [3, 4],                    [3, 4],
-     [5, 6]]                    [5, 6]]
+A:  shape [3, 2]
+    | 1  2 |
+    | 3  4 |
+    | 5  6 |
 
-mean(A, dim=0, keepdim=False) → [3.0, 4.0]   shape [2]
-                                  ↕  can't subtract from A: [2] vs [3,2] — shapes incompatible
+mean(A, dim=0, keepdim=False) →  | 3.0  4.0 |   shape [2]   ← 1-D, no outer dimension kept
+                                        ↕
+                                  can't broadcast against A [3,2]: rank mismatch
 
-mean(A, dim=0, keepdim=True)  → [[3.0, 4.0]]  shape [1,2]
-                                  ↕  broadcasts against [3,2]: each row gets centred
-A - mean → [[-2.0,-2.0],[-0.0,-0.0],[2.0,2.0]]
+mean(A, dim=0, keepdim=True)  →  | 3.0  4.0 |   shape [1, 2]   ← dim 0 kept as size-1
+                                        ↕
+                                  broadcasts against A [3, 2]: each row gets centred
+                                        ↓
+        A - mean(keepdim=True):  | -2.0  -2.0 |
+                                 |  0.0   0.0 |
+                                 |  2.0   2.0 |
 ```
 
 **Softmax numerical stability via `max` + `sum`:**
@@ -2697,21 +2710,25 @@ These do not move elements in memory on CPU; they manipulate the `strides_` and 
 **`cat` concrete example (two 3×2 matrices):**
 
 ```
-A = [[1, 2],          B = [[7, 8],
-     [3, 4],               [9, 10],
-     [5, 6]]               [11,12]]
-  shape [3, 2]            shape [3, 2]
+A:  |  1   2 |      B:  |  7   8 |
+    |  3   4 |          |  9  10 |
+    |  5   6 |          | 11  12 |
+    shape [3, 2]        shape [3, 2]
 
-cat([A, B], dim=0)  →  [[1, 2],       shape [6, 2]
-                         [3, 4],       (stacked vertically — more rows)
-                         [5, 6],
-                         [7, 8],
-                         [9,10],
-                         [11,12]]
+cat([A, B], dim=0)  — append rows (more samples):       shape [6, 2]
 
-cat([A, B], dim=1)  →  [[1, 2, 7, 8], shape [3, 4]
-                         [3, 4, 9,10], (stacked horizontally — more columns)
-                         [5, 6,11,12]]
+    |  1   2 |
+    |  3   4 |
+    |  5   6 |
+    |  7   8 |
+    |  9  10 |
+    | 11  12 |
+
+cat([A, B], dim=1)  — append columns (more features):   shape [3, 4]
+
+    |  1   2   7   8 |
+    |  3   4   9  10 |
+    |  5   6  11  12 |
 ```
 
 `cat` along `dim=0` = "append more samples." `cat` along `dim=1` = "append more features." MHA uses `dim=1` on the head axis: after computing all $h$ heads independently as `[B, L, d_k]` each, `cat(heads, dim=2)` along the feature axis reassembles them into `[B, L, h*d_k] = [B, L, d_model]`.
