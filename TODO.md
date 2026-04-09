@@ -593,6 +593,181 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 >   and call from C++ (recommended — no runtime dependency, statically linkable),
 >   or use the WASM build inside Monaco (only applicable if Monaco is chosen)
 > - [ ] Define the fuzz-test harness for round-trip fidelity (runs at every CI build)
+>
+> ---
+>
+> #### ADR-034 — `ParametricLayer<Fn>`: Generic Parametric Layer + KAN-Style Non-Linear Synapses  `[! decision needed — Phase 4]`
+>
+> **Background**
+>
+> Standard MLP layers (e.g. `Dense`) compute an affine map:
+>
+> ```
+> y = x @ W^T + b      (linear synapse)
+> ```
+>
+> The linear synapse is a *computational convenience* — BLAS GEMM is fast — not a
+> mathematical requirement. The Universal Approximation Theorem (Cybenko 1989,
+> Hornik et al. 1991) places no constraint on the synapse transform; only the
+> activation function is required to be non-constant and bounded. This motivates
+> two interlinked questions:
+>
+> 1. **Architecture**: Should `Dense` be refactored into `ParametricLayer<Fn>`, a
+>    generic base where `Fn` describes both the forward computation and which tensors
+>    it requires as learnable parameters?
+> 2. **Research**: If we lift the linear synapse assumption, what alternatives are
+>    known and useful?
+>
+> **Proposed architecture**
+>
+> ```cpp
+> template<typename Fn>
+> class ParametricLayer : public ILayer {
+>     std::vector<Parameter> params_;   // W, b, spline control points, …
+>     Fn fn_;
+> public:
+>     Result<Shape>  build   (const Shape& s) override { return fn_.build(s, params_); }
+>     Result<Tensor> forward (const Tensor& x, ...) override { return fn_.forward(x, params_); }
+>     Result<Tensor> backward(const Tensor& g, ...) override {
+>         auto [dX, dP] = fn_.backward(g, params_, lastInput_);
+>         for (int i = 0; i < (int)params_.size(); ++i)
+>             params_[i].tensor.accumulateGrad(dP[i]);
+>         return dX;
+>     }
+>     std::vector<Parameter*> parameters() override { /* expose params_ */ }
+> };
+>
+> // Dense becomes a type alias — ZERO caller breakage, identical public interface
+> using Dense = ParametricLayer<LinearFn>;
+>
+> // KAN layer (Liu et al. 2024) — per-synapse learnable B-spline
+> using KANLayer = ParametricLayer<SplineFn>;
+>
+> // SIREN layer (Sitzmann et al. 2020) — sinusoidal synapses
+> using SIRENLayer = ParametricLayer<SinusoidalFn>;
+> ```
+>
+> `torch_compat.h` needs zero changes. All existing tests continue to pass.
+>
+> **Known non-linear synapse functions from the literature**
+>
+> | Name | Synapse fn | Params / synapse | Reference | Status |
+> |---|---|---|---|---|
+> | Linear (current) | w*x + b | 2 | — | ✅ `Dense` |
+> | B-spline (KAN) | spline(x; control_points) | k+1 (order k) | Liu et al., *KAN: Kolmogorov-Arnold Networks*, arXiv:2404.19756, MIT/CalTech (Apr 2024) | 📖 Research |
+> | Sinusoidal (SIREN) | sin(w * omega * x + phi) | 3 | Sitzmann et al., *Implicit Neural Representations with Periodic Activation Functions*, NeurIPS 2020 | 📖 Research |
+> | Log-bilinear | exp(w * log(x)) — multiplicative in linear space | 1 | Mikolov et al., word2vec (2013); neural matrix factorisation | 📖 Established |
+> | Quadratic | w1*x^2 + w2*x + b | 3 | Various (1990s–2010s) | 📖 Established |
+>
+> The theoretical foundation for KANs is the **Kolmogorov-Arnold Representation
+> Theorem** (Kolmogorov 1957, Arnold 1957): any multivariate continuous function
+> f:[0,1]^n -> R decomposes as a finite composition of univariate continuous
+> functions. The outer sum corresponds to node activations (as in a standard MLP);
+> the inner functions phi_{q,p}(x_p) are per-synapse — the KAN novelty.
+>
+> ---
+>
+> **Advocatus Diaboli I — Software Engineer: "The costs are very high. Design elegance is not runtime feasibility."**
+>
+> 1. **GEMM is sacred.** `cuBLAS`, `Eigen`, `MKL`, `Metal Performance Shaders` all
+>    reduce `y = xW^T` to a single hardware-optimal kernel call. A B-spline per
+>    synapse on a 4096×4096 layer = 16,777,216 non-linear evaluations, none fuseable
+>    into a cuBLAS call without custom CUDA kernels. Expected throughput loss:
+>    **100×–1000×** vs. cuBLAS SGEMM.
+>
+> 2. **`IBackend` vtable does not support per-element functors.** Adding
+>    `applyFunctor1D` to `IBackend` is a breaking API change (plugin minor-version
+>    bump) before any `KANLayer` can accelerate on CUDA or non-CPU backends.
+>
+> 3. **Checkpoint format must be extended.** `NNSC` currently encodes `WS`/`OS`/`TC`/`EN`
+>    sections. `ParametricLayer<SplineFn>` needs a new `FN` section: functor type tag +
+>    hyperparameters (spline order, knot vector, frequency scale). Checkpoints without
+>    this section cannot be resumed.
+>
+> 4. **Autograd complexity.** The gradient of a B-spline w.r.t. its control points is
+>    itself a spline evaluation. The backward pass returns dX plus k+1 gradient tensors
+>    per synapse; memory use grows with spline order.
+>
+> 5. **Debugging surface explosion.** "My loss isn't converging" now has many new
+>    causes: knot placement, spline order, per-synapse vs. global learning rates,
+>    frequency initialisation. Standard MLPs are already hard to debug; per-synapse
+>    parametric functions multiply the degrees of freedom.
+>
+> **Mitigation**: `ParametricLayer<LinearFn>` (pure internal refactor, identical
+> behaviour to current `Dense`) has **none** of these problems. All issues above apply
+> only to non-linear `Fn` variants. Build in order: (0) refactor, (1) CPU-only KAN,
+> (2) accelerated backend extension.
+>
+> ---
+>
+> **Advocatus Diaboli II — Mathematical Theory of NNs: "The theory is deliberately silent here — and that silence is the interesting part."**
+>
+> 1. **The UAT does not constrain synapse form.** Cybenko (1989) and Hornik et al.
+>    (1991) require only a non-constant, bounded, monotone *activation* on neurons.
+>    The synapse transform appears nowhere in the theorem's statement or proof.
+>    Linearity was chosen because it maps to available hardware, not because it is
+>    theoretically optimal.
+>
+> 2. **The Kolmogorov-Arnold Representation Theorem** (Kolmogorov 1957, Arnold 1957)
+>    guarantees the same expressiveness class as the UAT, but via a path where the
+>    non-linearity lives on the *edges* (synapses) rather than the *nodes* (neurons).
+>    Both families span the same function class; they trade parameters for compute
+>    differently depending on the problem geometry.
+>
+> 3. **SIREN** (Sitzmann et al., NeurIPS 2020) demonstrates that sinusoidal synapses
+>    sin(omega * W*x + phi) are provably superior for targets with periodic structure
+>    (audio, images, physics PDE solutions): every derivative of a sinusoid is again
+>    a sinusoid, so SIREN networks can match arbitrarily many derivatives of the
+>    target function — a capability ReLU networks cannot replicate without drastically
+>    increasing depth.
+>
+> 4. **Log-bilinear / multiplicative synapses** are well-established, not exotic:
+>    word2vec skip-gram, neural matrix factorisation, and physics-informed NNs for
+>    multiplicative PDEs all use them. They emerged naturally from task structure.
+>
+> 5. **What is mathematically forbidden?** Nothing categorically. Constraints are:
+>    - Gradient or sub-gradient must exist (non-differentiability on a measure-zero
+>      set is fine — ReLU being the canonical example)
+>    - The Jacobian chain must not collapse pathologically beyond known issues
+>      (residual connections and normalisation mitigate this for any reasonable Fn)
+>    - Training dynamics must be stable (engineering constraint, not a theorem)
+>    None of these exclude B-splines, sinusoids, or log-linear transforms.
+>
+> 6. **The deep open question (2024–2026 research frontier):** Is there a synapse
+>    function that is simultaneously (a) GPU-fuseable, (b) stably trainable at scale,
+>    and (c) provably more expressive per-FLOP than the linear synapse?
+>    KANs (Liu et al. 2024) claim a parameter-efficiency advantage for *scientific*
+>    tasks (symbolic regression, physics PDE fitting). Follow-up 2024–2025 benchmarks
+>    on ImageNet and GPT-class language models have not reproduced a consistent
+>    advantage for standard ML tasks. **The question is genuinely open.**
+>
+> ---
+>
+> **Recommendation: three-step opt-in rollout**
+>
+> | Step | What | Phase | Risk |
+> |---|---|---|---|
+> | 0 | Refactor `Dense` → `ParametricLayer<LinearFn>` · `using Dense = ParametricLayer<LinearFn>;` | Phase 4 | Zero — identical behaviour, no API change |
+> | 1 | Add CPU-only `KANLayer` + `SIRENLayer`; mark `nnstudio_extension` in `CompatibilityChecker`; expose `torch::nn::KANLinear` alias in `torch_compat.h` | Phase 4 | Low — isolated, off by default |
+> | 2 | Add optional `IBackend::applyFunctor1D` (backend minor-version bump); GPU backends may fuse custom kernels | Phase 5 | Medium — vtable change, all backend plugins must update |
+>
+> This preserves the **didactic aim**: `ParametricLayer<LinearFn>` reads as a textbook
+> definition of a parametric affine layer. KAN/SIREN variants then demonstrate
+> exactly what changes when you swap the synapse function — one template parameter,
+> everything else identical. NNStudio becomes both technically state-of-the-art *and*
+> maximally transparent about what the difference actually is.
+>
+> **Decision gate items:**
+> - [ ] Confirm Phase 4 step 0: refactor `Dense` → `ParametricLayer<LinearFn>` (pure,
+>   no behaviour change) — record decision in `ARCHITECTURE.md §ADR-034`
+> - [ ] Confirm Phase 4 step 1: add experimental `KANLayer` (CPU-only, `nnstudio_extension`
+>   scope; `torch::nn::KANLinear` alias in `torch_compat.h`)
+> - [ ] Confirm backend vtable extension strategy for GPU-accelerated functor dispatch
+>   (step 2; requires IBackend minor-version bump)
+> - [ ] Design `NNSC` `FN` section format for non-linear synapse hyperparameter
+>   persistence (spline order, knot vector, frequency initialisation)
+> - [ ] Track research: re-evaluate KAN FLOP-efficiency claim on standard ML tasks
+>   at Phase 4 start; adjust step 1 priority accordingly
 
 ### App shell (`nnstudio/app/`)
 - [ ] `main.cpp` — Qt app init, backend detection, plugin loader, dependency check, QML engine setup
@@ -1314,3 +1489,29 @@ Best for: production-scale training with guaranteed capacity. Enterprise contrac
 - [ ] **Plugin SDK distribution** — once the Plugin SDK ABI is frozen (post-Phase 2), evaluate packaging `core/include/` as a standalone installable SDK (vcpkg port, Conan recipe, or plain zip). Linked to the namespace migration ticket.
 - [ ] **ADR folder (`decisions/`)** — Architecture Decision Records: one short document per major architectural decision (namespace tier design, `backends/`-as-sibling-of-`core/`, Plugin SDK ABI plan, colocated-headers convention, etc.). These decisions are currently scattered in `blueprints.md`; ADRs make each "why" individually discoverable without reading the full document. Also the primary human-continuity mechanism if the AI session that made the decision is no longer available. See `docs/ai-standards-kb/CODE-ONBOARDING-ESSAY.md` for rationale.
 - [ ] **C4 diagram (Level 1 + Level 2)** — one Mermaid diagram in `README.md` showing system context (Level 1) and major components/targets (Level 2). Serves all non-developer stakeholders without requiring code knowledge. Low maintenance: only update on major structural change.
+
+- [ ] **`ParametricLayer<Fn>` / KAN-style non-linear synapses** — generic parametric
+  layer template where `Dense = ParametricLayer<LinearFn>` (pure refactor, zero
+  breakage) unlocks KAN (B-spline synapses, Liu et al. arXiv:2404.19756 2024),
+  SIREN (sinusoidal synapses, Sitzmann et al. NeurIPS 2020), and log-bilinear
+  variants (Mikolov et al. word2vec 2013) as first-class opt-in layer types.
+  See **ADR-034** for full design rationale, both advocatus diaboli arguments,
+  reference papers, and the recommended three-step Phase 4 rollout.
+  Low priority until Phase 3 UI is stable; high strategic value —
+  NNStudio becomes a transparent didactic bridge from standard linear layers
+  to cutting-edge research architectures with a single template parameter change.
+
+- [ ] **Primitivistic educational `nnprimitive` engine** — a small, fully isolated
+  sub-project: its own CMake target, include tree (`include/nnprimitive/`), source
+  tree (`src/nnprimitive/`), and C++ namespace `nnprimitive`. No dependency on
+  `nnstudio-core`, no `Tensor`, no `IBackend`, no BLAS, no template metaprogramming.
+  Implements the identical NN concepts (neuron, layer, forward pass, backward pass,
+  gradient descent) as explicit `for`-loops over `std::vector<float>` — exactly
+  how a motivated beginner encountering NNs for the first time would write them.
+  **Purpose: purely educational.** Acts as the missing stepping-stone between
+  "NN mathematical theory" and the matrix-optimised production implementation in
+  `nnstudio`: a learner who finds the leap from textbook equations to `Dense::forward()`
+  too large can read `nnprimitive` first, then see the same computation generalised
+  and optimised in `nnstudio`. A dedicated blueprints.md chapter (to be written)
+  will explain every generalisation step and why it was made.
+  **Low priority** — implement only once the main engine and Phase 3 UI are stable.
