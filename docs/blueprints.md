@@ -141,6 +141,31 @@ Or as a class diagram:
 
 ---
 
+### Chapter → Source Navigator
+
+Every concept in this document maps to a specific file. Use this table as a quick entry point before reading a chapter; use Appendix A for the full annotated tree.
+
+| Chapter / Section | Concept | Interface header(s) | Default implementation | Tests |
+|---|---|---|---|---|
+| **Ch.1** | Tensor memory model | `include/core/Tensor.h` | `src/core/Tensor.cpp` | `tests/core/test_tensor.cpp` |
+| **Ch.2** | Backend / compute dispatch | `include/core/IBackend.h` · `BackendRegistry.h` | `src/builtin/backends/CpuBackend.cpp` | — |
+| **Ch.3** | Layer contract · Dense · Activations | `include/core/Layer.h` · `IActivation.h` · `include/builtin/layers/Dense.h` · `include/builtin/activations/` | `src/builtin/layers/Dense.cpp` · `src/builtin/activations/` | `tests/builtin/test_layers.cpp` · `test_activations.cpp` |
+| **Ch.4** | Sequential pipeline · ComputeGraph | `include/core/Layer.h` · `ComputeGraph.h` | `src/core/Layer.cpp` · `src/core/ComputeGraph.cpp` | `tests/core/test_compute_graph.cpp` |
+| **Ch.5** | Loss functions | `include/core/ILoss.h` · `include/builtin/losses/Losses.h` | `src/builtin/losses/Losses.cpp` | `tests/builtin/test_losses.cpp` |
+| **Ch.6** | Optimizers | `include/core/IOptimizer.h` · `include/builtin/optimizers/Optimizers.h` | `src/builtin/optimizers/Optimizers.cpp` | `tests/builtin/test_optimizers.cpp` |
+| **Ch.7** | Trainer loop | `include/core/Trainer.h` | `src/core/Trainer.cpp` | — |
+| **Ch.8** | XOR milestone | — | — | `tests/core/test_trainer_xor.cpp` |
+| **§10.1** | Activation ADR-020 (functors + adapter) | `include/builtin/activations/Functors.h` · `FnLayer.h` | `src/builtin/activations/Functors.cpp` | `tests/builtin/test_activations.cpp` |
+| **§10.2** | Full layer suite (Norm · Embedding · MHA · Conv2D) | `include/builtin/layers/` | `src/builtin/layers/` | `tests/builtin/test_layers.cpp` · `test_conv2d.cpp` · `test_embedding.cpp` |
+| **§10.3–4** | Full loss + optimizer suites | same as Ch.5–6 | same | same |
+| **§10.5** | Checkpoint · EarlyStopping | `include/core/Checkpoint.h` · `EarlyStopping.h` | `src/core/Checkpoint.cpp` | `tests/core/test_checkpoint.cpp` · `test_early_stopping.cpp` |
+| **§10.6** | `torch_compat` · CompatibilityChecker | `include/torch_compat.h` · `include/core/CompatibilityChecker.h` | `src/core/CompatibilityChecker.cpp` | `tests/compat/test_torch_compat.cpp` · `tests/core/test_compat.cpp` |
+| **§10.7** | Plugin SDK · Trust architecture | `include/plugin-api/nnstudio_plugin.h` · `include/plugin-api/trust/` · `plugin-api/` | `src/plugin-api/` | `tests/plugin-api/test_plugin_loader.cpp` · `test_trust_store.cpp` · `test_trust_verifier.cpp` |
+| **§10.8** | Reference plugins (BPE · ExampleActivation) | `plugins/bpe_tokenizer/` · `plugins/example_activation/` | same | `tests/plugin-api/test_bpe_tokenizer.cpp` |
+| **§10.9** | Python bridge · Keras façade · runners | `python-bridge/bindings/module.cpp` · `python-bridge/nnstudio/` | same | — |
+
+---
+
 ## Chapter 1 — The Memory Model (`Tensor`)
 
 **File:** [`core/include/nnstudio/core/Tensor.h`](nnstudio/core/include/nnstudio/core/Tensor.h)
@@ -1701,34 +1726,155 @@ Residual connections (Template 5) still require `ComputeGraph`.  All other indiv
 
 ## Appendix A — File Map
 
+Full annotated source tree. Chapter and section tags match the body of this document. The compact chapter-by-chapter navigator appears at the end of the intro (just before Chapter 1) for quick lookup.
+
 ```
 nnstudio/
-├── core/
-│   ├── include/nnstudio/core/
-│   │   ├── Tensor.h          ← Ch.1  data model, shape, strides, grad
-│   │   ├── IBackend.h        ← Ch.2  compute interface
-│   │   ├── BackendRegistry.h ← Ch.2  singleton + backend() free function
-│   │   ├── Layer.h           ← Ch.3  ILayer lifecycle + Sequential
-│   │   ├── layers/Dense.h    ← Ch.3  fully-connected layer API
-│   │   ├── Activations.h     ← Ch.3  ReLU, Sigmoid, GELU, ...
-│   │   ├── Losses.h          ← Ch.5  MSE, BCE, CrossEntropy
-│   │   ├── Optimizers.h      ← Ch.6  SGD, Adam, AdamW
-│   │   └── Trainer.h         ← Ch.7  training loop API
-│   └── src/
-│       ├── tensor/Tensor.cpp
-│       ├── layers/Layer.cpp
-│       ├── layers/Dense.cpp  ← Ch.3  forward/backward with comments
-│       ├── activations/Activations.cpp
-│       ├── losses/Losses.cpp
-│       ├── optimizers/Optimizers.cpp
-│       └── training/Trainer.cpp ← Ch.7  trainStep with comments
-├── backends/
-│   └── cpu/CpuBackend.cpp    ← Ch.2  Eigen matmul, row/col-major trick
+│
+├── include/                            ← all public headers (no .cpp here)
+│   │
+│   ├── core/                           ← stable plugin-facing API
+│   │   ├── Tensor.h                    Ch.1   data model: shape, strides, grad
+│   │   ├── IBackend.h                  Ch.2   compute vtable (§D.1–§D.11)
+│   │   ├── BackendRegistry.h           Ch.2   singleton + backend() free fn
+│   │   ├── Layer.h                     Ch.3,4 ILayer lifecycle + Sequential
+│   │   ├── IActivation.h              Ch.3   stateless activation functor contract
+│   │   ├── ILoss.h                     Ch.5   loss function contract
+│   │   ├── IOptimizer.h                Ch.6   optimizer contract
+│   │   ├── Trainer.h                   Ch.7   training loop API
+│   │   ├── Result.h                    §1.x   Result<T> error-or-value type
+│   │   ├── Device.h                    §1.x   CPU | CUDA | QUANTUM enum
+│   │   ├── DType.h                     §1.x   float32 | float16 | int8 enum
+│   │   ├── ComputeGraph.h              Ch.4   DAG autograd (Phase 3)
+│   │   ├── Checkpoint.h                §10.5  save/load weights + metadata
+│   │   ├── EarlyStopping.h             §10.5  patience-based stopping
+│   │   ├── FeatureFlags.h              §10.6  FREE | PRO | ENTERPRISE tier gating
+│   │   └── CompatibilityChecker.h      §10.6  standard_torch vs nnstudio_extension
+│   │
+│   ├── builtin/                        ← NNStudio's own implementations
+│   │   ├── activations/
+│   │   │   ├── Activations.h           Ch.3 §10.1  layer types (ReLU, Sigmoid, …)
+│   │   │   ├── Functors.h             Ch.3 §10.1  IActivation stateless functors
+│   │   │   └── FnLayer.h             Ch.3 §10.1  ActivationFnLayer<Fn> adapter
+│   │   ├── backends/
+│   │   │   ├── CpuBackend.h            Ch.2   Eigen SGEMM, row/col-major trick
+│   │   │   ├── CudaBackend.h           §D.10  Phase 4 — cuBLAS/cuDNN plan
+│   │   │   └── QuantumBackend.h        §D.10  Phase 6 — stub, all methods trap
+│   │   ├── layers/
+│   │   │   ├── Dense.h                 Ch.3   fully-connected layer API
+│   │   │   ├── NormLayers.h            §10.2  BatchNorm1d + LayerNorm
+│   │   │   ├── Embedding.h             §10.2  token → vector lookup
+│   │   │   ├── MultiHeadAttention.h    §10.2  scaled dot-product + heads
+│   │   │   └── Conv2D.h               §10.2  2-D convolution (loop impl Phase 1)
+│   │   ├── losses/
+│   │   │   └── Losses.h               Ch.5 §10.3  MSE, BCE, CrossEntropy, Huber
+│   │   └── optimizers/
+│   │       └── Optimizers.h            Ch.6 §10.4  SGD, Adam, AdamW
+│   │
+│   ├── plugin-api/                     ← SDK headers (also in plugin-api/ below)
+│   │   ├── nnstudio_plugin.h           §10.7  C ABI: vtable structs, entry points
+│   │   ├── PluginLoader.h              §10.7  load / verify / register .nnsp
+│   │   └── trust/
+│   │       ├── TrustStore.h            §10.7  certificate pin store
+│   │       ├── TrustVerifier.h         §10.7  signature verification
+│   │       └── TrustUpdateHandler.h    §10.7  TUP: trust update protocol
+│   │
+│   └── torch_compat.h                  §10.6  API shims: Linear→Dense, etc.
+│
+├── src/                                ← all implementation (.cpp)
+│   ├── core/
+│   │   ├── Tensor.cpp                  Ch.1
+│   │   ├── Layer.cpp                   Ch.3,4  ILayer lifecycle + Sequential impl
+│   │   ├── Trainer.cpp                 Ch.7    trainStep — the 6-step loop
+│   │   ├── BackendRegistry.cpp         Ch.2
+│   │   ├── ComputeGraph.cpp            Ch.4
+│   │   ├── Checkpoint.cpp              §10.5
+│   │   └── CompatibilityChecker.cpp    §10.6
+│   ├── builtin/
+│   │   ├── activations/
+│   │   │   ├── Activations.cpp         Ch.3 §10.1  forward/backward per activation
+│   │   │   └── Functors.cpp            Ch.3 §10.1  IActivation functor bodies
+│   │   ├── backends/
+│   │   │   ├── CpuBackend.cpp          Ch.2   Eigen matmul + all vtable impls
+│   │   │   ├── CudaBackend.cpp         Phase 4 stub
+│   │   │   └── QuantumBackend.cpp      Phase 6 stub
+│   │   ├── layers/
+│   │   │   ├── Dense.cpp               Ch.3   forward/backward (annotated)
+│   │   │   ├── NormLayers.cpp          §10.2
+│   │   │   ├── Embedding.cpp           §10.2
+│   │   │   ├── MultiHeadAttention.cpp  §10.2
+│   │   │   └── Conv2D.cpp             §10.2
+│   │   ├── losses/
+│   │   │   └── Losses.cpp              Ch.5
+│   │   └── optimizers/
+│   │       └── Optimizers.cpp          Ch.6   SGD momentum + Adam update rule
+│   └── plugin-api/
+│       ├── PluginLoader.cpp            §10.7
+│       ├── tools/sign/main.cpp         §10.7  nnstudio-sign CLI tool
+│       └── trust/
+│           ├── TrustStore.cpp
+│           ├── TrustVerifier.cpp
+│           └── TrustUpdateHandler.cpp
+│
+├── plugin-api/                         ← Distributable SDK (not part of engine lib)
+│   ├── nnstudio_plugin.h               §10.7  canonical C ABI header for plugin authors
+│   ├── schemas/
+│   │   ├── plugin.manifest.schema.json §10.7  plugin manifest JSON schema
+│   │   └── tup.manifest.schema.json    §10.7  Trust Update Protocol manifest schema
+│   ├── seed_roots/root_ca.pem          §10.7  root CA for trust chain bootstrap
+│   └── templates/                      §10.7  starter scaffolds for new plugins
+│       ├── cpp/layer/                  C++ layer plugin template
+│       ├── python/layer/               Python layer plugin template
+│       └── generate_manifest.py        manifest generation helper
+│
+├── plugins/                            ← Reference / built-in plugin implementations
+│   ├── bpe_tokenizer/                  §10.8  BpeTokenizerPlugin.cpp + manifest
+│   └── example_activation/            §10.8  ExampleActivationPlugin.cpp + manifest
+│
+├── python-bridge/                      §10.9
+│   ├── bindings/module.cpp             pybind11 C++ extension module entry point
+│   ├── pyproject.toml
+│   └── nnstudio/                       Python package (torch-style import)
+│       ├── __init__.py
+│       ├── torch_compat.py             Python-side torch shims
+│       ├── plugin_manifest.py
+│       ├── keras/                      §10.9  Keras façade (Sequential, compile, fit)
+│       │   ├── __init__.py
+│       │   ├── _model.py
+│       │   ├── layers.py
+│       │   ├── losses.py
+│       │   ├── optimizers.py
+│       │   └── callbacks.py
+│       └── runners/                    §10.9  inference clients
+│           ├── base.py                 RunnerBase contract
+│           ├── onnx_runtime.py
+│           ├── tf_serving.py
+│           ├── triton.py
+│           ├── kserve.py
+│           └── openai.py
+│
 └── tests/
-    └── core/
-        ├── test_tensor.cpp
-        ├── test_activations.cpp
-        └── test_trainer_xor.cpp ← Ch.8  XOR milestone with comments
+    ├── core/
+    │   ├── test_tensor.cpp             Ch.1,8
+    │   ├── test_trainer_xor.cpp        Ch.8   XOR milestone (annotated)
+    │   ├── test_compute_graph.cpp      Ch.4
+    │   ├── test_checkpoint.cpp         §10.5
+    │   ├── test_early_stopping.cpp     §10.5
+    │   └── test_compat.cpp             §10.6
+    ├── builtin/
+    │   ├── test_activations.cpp        Ch.3 §10.1
+    │   ├── test_layers.cpp             Ch.3 §10.2
+    │   ├── test_conv2d.cpp             §10.2
+    │   ├── test_embedding.cpp          §10.2
+    │   ├── test_losses.cpp             Ch.5
+    │   └── test_optimizers.cpp         Ch.6
+    ├── compat/
+    │   └── test_torch_compat.cpp       §10.6
+    └── plugin-api/
+        ├── test_plugin_loader.cpp      §10.7
+        ├── test_bpe_tokenizer.cpp      §10.8
+        ├── test_trust_store.cpp        §10.7
+        └── test_trust_verifier.cpp     §10.7
 ```
 
 ---
