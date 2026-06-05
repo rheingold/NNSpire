@@ -781,6 +781,17 @@ None of these is the "only" valid architecture. They are solutions that happened
 
 So: NNStudio is currently a full MLP workbench, with the architecture to become a Transformer workbench once Phase 2/3 are complete. The stacking variability goal is structurally intact — the engine imposes no template. The limitation is which layer *types* are implemented, not how they can be combined.
 
+> **Forward reference — semantic composition (Phase 5.7).** The templates in this
+> section (MLP, CNN, Transformer, …) are *micro*-level patterns over Tier A primitives.
+> Phase 5.7 adds three higher tiers on top of them — **Tier B** named layer groups
+> (`TransformerEncoderBlock`, `TokenEmbeddingBlock`, `DenoiserBlock`, …), **Tier C**
+> model roles (`InferenceAssistantLLM`, `TextEmbeddingModel`, `LatentDiffuser`, …), and
+> **Tier D** macro-architectures (`LLMPipeline`, `DiffusionPipeline`, `RAGPipeline`) —
+> all expressed in a single ComfyUI-style node graph where "an LLM is a preset, not a
+> type". See [`ARCHITECTURE.md` §12](ARCHITECTURE.md), the
+> [`modern_ai_systems_ontology.md`](modern_ai_systems_ontology.md), and
+> [`TODO.md` Phase 5.7](../TODO.md#phase-57--semantic-composition--macro-architecture-studio).
+
 ---
 
 ## Chapter 4 — The Ordered Pipeline (`Sequential`)

@@ -456,6 +456,25 @@ Synchronisation between training worker and UI thread is done exclusively throug
 | Old macOS / Linux | Qt 5.15 LTS CMake config (`-DNN_QT_VERSION=5`) |
 | Compiler portability | C++17 only; no compiler-specific extensions except `__has_builtin` guards |
 
+### 7.1 UI frontend portability (desktop-first, web/mobile-ready)
+
+> **Planned guard — Phase 5.7 / ADR-043.** NNStudio ships as a desktop app, but the
+> **UI must stay convertible** to Android / iOS / Web (Qt for WebAssembly, `QtWebEngine`)
+> without a rewrite. **This applies to the UI only — runners are always a HW/VM/host
+> concern and stay native.** A phone or browser front-end would drive a *remote* engine
+> through the existing `RemoteBackend` / `ServiceConnector` transports, never run CUDA or
+> load native plugins locally.
+
+The enabling design rules (already mostly satisfied by the inside-out architecture):
+
+| Rule | Why it preserves portability |
+|---|---|
+| QML for the UI (ADR-018) | Qt Quick already targets WebAssembly, Android, and iOS |
+| Strict UI ↔ engine façade | QML/controllers call the engine through a transport-abstractable façade (in-process today; gRPC/WebSocket-capable tomorrow) so a WASM/mobile UI can drive a remote engine unchanged |
+| No desktop-only assumptions in QML | filesystem access via a `FileService` abstraction (no raw paths), no blocking calls on the UI thread, no hard dependency on multi-window/dock features WASM/mobile lack |
+| Native-only work behind the engine | plugin loading, trust store, CUDA, embedded Python live in the engine — exactly the parts a WASM build drops; surfaced to the UI via capability flags so it degrades gracefully |
+| `app-wasm` CMake preset stub | a standing (not-yet-built) reminder the target must keep compiling in principle; revisited post-v1.0 |
+
 ---
 
 ## 8. FeatureFlags
@@ -521,3 +540,129 @@ OpenSSL 3.x is required for `TrustVerifier`. On Windows it is bundled (Apache 2.
 | Core app binary | < 20 MB |
 | CUDA backend plugin | ~10 MB (user installed CUDA separately) |
 | **Total base install** | **< 200 MB** |
+
+---
+
+## 12. Semantic composition layer (macro / micro architectures)
+
+> **Planned — Phase 5.7.** Full task breakdown and inline decision records (ADR-035…040)
+> live in [`TODO.md`](../TODO.md#phase-57--semantic-composition--macro-architecture-studio).
+> Conceptual grounding is in [`modern_ai_systems_ontology.md`](modern_ai_systems_ontology.md).
+
+NNStudio edits **one model graph at two zoom levels**:
+
+- **Micro** (Phase 3 model editor) — the graph of *primitive* layers (`Dense`, `ReLU`,
+  `GELU`, `Conv2D`, `MultiHeadAttention`). This is the `ILayer` / `IActivation` world
+  described in §3.2 and in `blueprints.md`.
+- **Macro** (Phase 5.7) — the graph of *semantic* blocks and model roles
+  ("token recognition", "positional awareness", "transformer block", "denoiser",
+  "text-embedding model", "inference-assistant LLM", "latent diffuser"). Double-clicking
+  a macro node drills down to its micro definition.
+
+The organising claim (see the ontology document, §0 and chapters 1–2): **an LLM is not a
+distinct kind of object from a diffuser — both are typed semantic message-passing graphs
+over tensors.** The autoregressive decode loop and the diffusion denoise loop are the same
+"learned transform inside a controller loop" pattern with different typed messages. Hence
+NNStudio represents every architecture family as a **preset** of one node-graph editor,
+the way ComfyUI represents diffusion workflows — generalised across all families and
+across wrapping formats (`.onnx`, `.safetensors`, GGUF, `.nnsx`).
+
+The generalisation goes further: **every semantic concept is a *canvas template*, and
+canvases nest recursively.** A concept that is a single network renders as a one-slot
+canvas; a composite renders as a many-slot graph; and any canvas can be wrapped by an
+outer **`landscape`** canvas (a running/deployment scene) to arbitrary depth. This
+recursive nesting has no external-format equivalent, so it is persisted **only** in
+NNStudio project files (`.nnsp`/`.nnsx`); export to ONNX/GGUF flattens or extracts the
+runnable leaf. See ADR-041 in `TODO.md`.
+
+### 12.1 Four composition tiers
+
+| Tier | Name | Example members | Status |
+|---|---|---|---|
+| **A** | Primitives | `Dense`, `ReLU`, `GELU`, `Conv2D`, `LayerNorm`, `MultiHeadAttention` | Implemented (Phase 1) |
+| **B** | Layer groups / semantic blocks | `TokenEmbeddingBlock`, `PositionalEncodingBlock`, `SelfAttentionBlock`, `FeedForwardBlock`, `TransformerEncoderBlock`, `DenoiserBlock`, `LMHead` | Planned (Phase 5.7) |
+| **C** | Model roles | `TextEmbeddingModel`, `InferenceAssistantLLM`, `QueryRewriteModel`, `Reranker`, `LatentDiffuser`, `MultimodalPerceptionModel`, `VAE`, `CLIPEncoder` | Planned (Phase 5.7) |
+| **D** | Macro-architectures / pipelines | `LLMPipeline`, `DiffusionPipeline`, `RAGPipeline`, `AgenticPipeline` | Planned (Phase 5.7 / 4 / 5.5) |
+
+Each Tier B/C/D member is a typed, versioned, signable **template** with semantic input
+and output ports drawn from ontology Level 5 (`TEXT`, `TOKENS`, `EMBEDDING[dim]`,
+`LATENT`, `CONDITIONING`, `IMAGE`, `TAGS`, `DOCS`, …). The same `CompatibilityChecker`
+that gates the cross-framework layer classifies each template as `torch_standard`,
+`keras_standard`, or `nnstudio_extended`.
+
+The `NN_bricks_overview.md` inventory maps onto these tiers (ADR-042): its **20 `Prim.X`
+primitives are Tier A**, each realised through one of three channels — **builtin**
+(`nnstudio::builtin::*`), a **native compiled plugin**, or a **script** (Python plugin,
+including deliberate builtin-duplicates that exercise the scripting engine). Its **21
+`Beh.X` behaviours are emergent functions, not single ops, and are realised as Tier B/C
+templates** (e.g. "Token Recognition" → `TokenEmbeddingBlock`).
+
+### 12.2 Backing models and federated execution
+
+A Tier B/C node is backed by exactly one of: **(a)** a native NNStudio subgraph (drills
+down to Tier A primitives, trainable in-engine), **(b)** imported weights
+(`.safetensors` / ONNX / GGUF / `.nnsx`, run or fine-tune where the format allows), or
+**(c)** a remote endpoint via a `ServiceConnector` plugin.
+
+Every node additionally carries an **`ExecutionBinding`**: `local-cpu`, `local-cuda`,
+`remote-grpc` (`RemoteBackend`, §4), `remote-job` (`RemoteTrainer`), or `api-service`
+(`ServiceConnector`). A single project may therefore split a workload — train one head
+locally, offload a fine-tune to a rented GPU job, run a diffusion step on a hosted API —
+with all endpoints and key-references (never secrets) recorded in the `.nnsp` project
+file. The `ExecutionPlan` scheduler walks the macro graph and dispatches each node to its
+bound runner. See the **External Compute Services** annex in `TODO.md` and
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+### 12.3 Universal client
+
+The encoder/decoder/dataset nodes that feed Tier C/D models (the role ComfyUI gives its
+text-input, CLIP-encode, and VAE-decode nodes) are instances of **one** `UniversalClient`
+component whose editor UI is chosen by its declared port type — a `TEXT` port renders a
+text editor, a `TAGS` port a chip editor, an `IMAGE` port a picker, a dataset port a
+CSV/Arrow/image-folder loader. It wraps the Phase 4 pipeline input/output adapters and
+the dataset loaders behind a single draggable node. See [`PIPELINE.md`](PIPELINE.md).
+
+### 12.4 One navigable tree, three orthogonal axes
+
+The entire composition is **one tree** the user navigates from the outermost running
+landscape down to the lowest primitive op / functoid. The namespaces (path = namespace,
+ADR-021) and the `.nnsp` internal layout mirror that tree (ADR-047). Three concerns that
+*look* like layers are deliberately modelled as **orthogonal attributes** of a node or
+subtree rather than levels of the tree:
+
+| Axis | Ontology | What it decorates | Values |
+|---|---|---|---|
+| **Execution** | L0 / L1 | any node | `local-cpu` · `local-cuda` · `local-qpu` (Phase 6) · `remote-grpc` · `api-service` |
+| **Packaging** | L2 | any subtree | `.onnx` · GGUF · `.safetensors` · `.nnsx` (export wrapper) |
+| **Process** | — | a model scaffold | `train` · `fine-tune` · `infer` · `evaluate` · `distil` · `rlhf` (ADR-046) |
+
+This resolves the "is packaging above or below orchestration?" question: **semantic
+orchestration (L3 / Tier D) is the parent of a packaged model (L2)** — an orchestration
+wires *many* packaged models — but the packaging *format* is not a tree level at all; it
+is an export attribute (ADR-045). The structural containment tree is only **landscape →
+pipeline (D) → model role (C) → block (B) → primitive (A) → functoid**.
+
+In the UI the tree is oriented **root = outermost canvas, leaves = primitive ops /
+functoids** (hardware / runtime is an attribute, never a leaf) — the inverse of the
+ontology's L0→L6 numbering, which is retained only in this conceptual documentation. Each
+axis may optionally be *surfaced* as a navigable node without ceasing to be an attribute:
+a **packaging-typed canvas** is a virtual lens that greys the parts of a subtree a chosen
+format cannot represent (constrain-early rather than resolve-at-export, ADR-045), and a
+**procedural canvas** instantiates a structural canvas to run it under one procedure
+(ADR-046). Execution bindings reference entries in a **project-scoped Runner Repository**
+(seedable from the app's global runner repo; URLs / driver paths / key-refs are project
+parameters, secrets in the OS keychain only, ADR-038).
+
+Canvas kinds form **four families**: `generic` (recursive container / folder),
+`structural` (NN structure — sub-kind `orchestration` wires multiple models: diffusion /
+LLM / RAG), `procedural` (instantiates a structural / orchestration canvas to run it under
+one procedure), and `packaging` (the virtual format lens). All visible surfaces are
+themeable via a declarative `ThemeDescriptor` using Qt-native styling only (ADR-049).
+
+Two **cross-cutting views** re-slice the same graph without owning new data: a
+**Repository view** (definitions/classes vs. instances/references — multi-use across
+canvases shares one definition, ADR-047) and a **Message inventory** (the Level-5 typed
+messages flowing on edges, per-canvas or suite-wide, ADR-048). The user-facing
+"Client / Foundry / Agents" tier is ontology **L6**, lives in the separate `nnagent`
+project *outside* this tree, and appears only as a typed orchestration-boundary node
+(ADR-044).
