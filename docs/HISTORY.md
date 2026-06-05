@@ -1,8 +1,8 @@
 # A Brief History of Neural Network Activations and Their Biological Origins
 
-> This document traces how each layer type used in NNStudio came into existence —
+> This document traces how each layer type used in NNSpire came into existence —
 > whether from direct neuroscience observation, mathematical necessity, or pure engineering.
-> At the end, a reference table maps each NNStudio layer/activation to its historical context.
+> At the end, a reference table maps each NNSpire layer/activation to its historical context.
 
 ---
 
@@ -128,9 +128,9 @@ and practically tractable, not because it models biology.
 
 ---
 
-## Reference table — NNStudio layers and their historical origin
+## Reference table — NNSpire layers and their historical origin
 
-| NNStudio layer / activation | Biological basis | Historical origin | Era |
+| NNSpire layer / activation | Biological basis | Historical origin | Era |
 |---|---|---|---|
 | `Dense` (fully-connected) | None | Mathematical generalization of the perceptron | 1958 (Rosenblatt) |
 | Step / threshold | ✅ Direct — all-or-nothing action potential | McCulloch-Pitts unit | 1943 |

@@ -8,7 +8,7 @@
 
 ## Context
 
-The NNStudio engine core (`nnstudio-core`) must be:
+The NNSpire engine core (`NNSpire-core`) must be:
 - High-performance (SIMD, cache-friendly tensor operations).
 - Portable across Windows / macOS / Linux with MSVC, Clang, and GCC.
 - Readily bridgeable to Python via pybind11 (see ADR-005).
@@ -21,15 +21,15 @@ Qt 6.5's minimum supported compilers is still uneven as of 2026.
 
 ## Decision
 
-C++17 is the minimum language standard for all code in `nnstudio-core`,
-`nnstudio-backends/`, and `nnstudio-plugin-api/`.
+C++17 is the minimum language standard for all code in `NNSpire-core`,
+`NNSpire-backends/`, and `NNSpire-plugin-api/`.
 
 - C++20 features may be used **only** behind `#if __cplusplus >= 202002L` guards,
   providing a C++17 fallback wherever used.
 - RTTI is **disabled** in the engine core (`-fno-rtti` / `/GR-`).
   Dynamic dispatch uses explicit vtable structs (see ADR-003), not `dynamic_cast`.
 - Exceptions are **disabled** in the engine core (see ADR-011).
-- The Qt application layer (`nnstudio/app/`) may use whatever C++ standard Qt 6 requires (currently C++17, may move to C++20 at a Qt upgrade).
+- The Qt application layer (`NNSpire/app/`) may use whatever C++ standard Qt 6 requires (currently C++17, may move to C++20 at a Qt upgrade).
 
 ### Naming conventions
 
@@ -40,7 +40,7 @@ C++17 is the minimum language standard for all code in `nnstudio-core`,
 | Local variables, parameters | `snake_case` |
 | Constants, macros | `SCREAMING_SNAKE_CASE` |
 | Header files | `.h` extension, `#pragma once` |
-| Public API headers | `include/nnstudio/<module>/` — no implementation in public headers except templates |
+| Public API headers | `include/NNSpire/<module>/` — no implementation in public headers except templates |
 
 ---
 

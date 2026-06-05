@@ -8,28 +8,28 @@
 
 ## Context
 
-NNStudio serves two distinct audiences:
+NNSpire serves two distinct audiences:
 1. **C++ practitioners** who want maximum performance and ABI-level control.
 2. **Python ML practitioners** who expect a `pip`-installable, NumPy-compatible workflow.
 
 Without a dual-language commitment, the project risks becoming C++-only (alienating the
 larger ML community) or Python-first (sacrificing performance and embedding capability).
 
-Additionally, the learning and educational mandate of NNStudio requires that every concept
+Additionally, the learning and educational mandate of NNSpire requires that every concept
 be demonstrable in the language the learner already knows.
 
 ---
 
 ## Decision
 
-Every *computable artefact* in NNStudio ships **both** a C++ implementation and a Python
+Every *computable artefact* in NNSpire ships **both** a C++ implementation and a Python
 implementation exhibiting **identical external behaviour**:
 
 | Artefact type | C++ form | Python form |
 |---|---|---|
 | Plugin | `.dll`/`.so` with C ABI descriptor | `.pyd`/`.so` via pybind11 bridge |
 | Runner client | `IRunnerClient` C++ class | Python class with same interface |
-| Export script | `OnnxIO::export()` method | `nnstudio.export.onnx()` function |
+| Export script | `OnnxIO::export()` method | `NNSpire.export.onnx()` function |
 | Training sample | `examples/cpp/` | `examples/python/` |
 | Layer implementation | `Layer` subclass in `core/layers/` | Exposed via pybind11 + Python subclassing |
 
@@ -54,7 +54,7 @@ and behaviourally equivalent before a signing certificate is issued.
 - Plugin signing registry enforces dual-language compliance — single-language plugins will not receive a signing certificate.
 
 **Follow-on**
-- pybind11 binding files live in `nnstudio/python-bridge/`.
-- Test suite (`nnstudio/tests/`) must include cross-language equivalence tests
+- pybind11 binding files live in `NNSpire/python-bridge/`.
+- Test suite (`NNSpire/tests/`) must include cross-language equivalence tests
   (run the same operation in C++ and Python, compare results numerically).
 - See ADR-005 for the choice of pybind11 over alternatives.

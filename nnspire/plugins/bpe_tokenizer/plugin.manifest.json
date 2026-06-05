@@ -1,0 +1,17 @@
+{
+  "$schema": "https://NNSpire.io/schemas/plugin-manifest/v1",
+  "id": "io.NNSpire.builtin.bpe-tokenizer",
+  "name": "BPE Tokenizer (built-in reference)",
+  "version": "0.1.0",
+  "type": "tokenizer",
+  "author": "NNSpire Authors",
+  "license": "MIT",
+  "description": "Byte-pair encoding tokenizer with a compact built-in merge table. For production use, replace the vocabulary via a custom merge list.",
+  "minHostVersion": "0.1.0",
+  "capabilities": {
+    "encode": true,
+    "decode": true,
+    "vocabSize": 319
+  },
+  "kb": "ai-standards-kb/annexes/A06-Tokenization-Deep-Dive.md#byte-pair-encoding"
+}

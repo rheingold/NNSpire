@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio must export trained models in a format that:
+NNSpire must export trained models in a format that:
 - Is accepted by all major inference runtimes (Triton, TF Serving, ONNX Runtime, TensorRT).
 - Is hardware-agnostic at the description level.
 - Is supported by standard tools for validation, optimisation, and profiling.
@@ -28,17 +28,17 @@ Candidate export formats:
 
 ## Decision
 
-**ONNX is the primary model export format** for NNStudio.
+**ONNX is the primary model export format** for NNSpire.
 
-The export procedure (implemented in `nnstudio-core/formats/OnnxIO`):
+The export procedure (implemented in `NNSpire-core/formats/OnnxIO`):
 1. Trace the `ComputeGraph` with a sample input to resolve all dynamic shapes.
 2. Map each `Layer` to the closest ONNX standard operator.
-3. Register custom layers that have no ONNX equivalent under the `com.nnstudio` custom operator domain.
+3. Register custom layers that have no ONNX equivalent under the `com.NNSpire` custom operator domain.
 4. Serialise to `ModelProto` protobuf.
 5. Validate with the ONNX checker.
 6. Write the `.onnx` file.
 
-NNStudio ships an ONNX Runtime custom-op shared library for `com.nnstudio` operators,
+NNSpire ships an ONNX Runtime custom-op shared library for `com.NNSpire` operators,
 enabling the custom ops to run on any ONNX Runtime deployment.
 
 Secondary export formats (TorchScript, TFLite) are provided in later phases via the
@@ -56,10 +56,10 @@ Python bridge, and are **optional** — ONNX remains the canonical interchange f
 
 **Negative / constraints**
 - ONNX opset versions evolve; `OnnxIO` must track opset compatibility.
-- Custom operators (`com.nnstudio.*`) require the custom-op library to be bundled with every deployment.
+- Custom operators (`com.NNSpire.*`) require the custom-op library to be bundled with every deployment.
 - Dynamic shapes require a representative sample input at export time.
 
 **Follow-on**
-- `nnstudio-core/formats/OnnxIO` (C++) + `nnstudio.formats.onnx` (Python) per ADR-004.
-- Custom-op library built as a separate CMake target: `nnstudio-onnxrt-custom-ops`.
+- `NNSpire-core/formats/OnnxIO` (C++) + `NNSpire.formats.onnx` (Python) per ADR-004.
+- Custom-op library built as a separate CMake target: `NNSpire-onnxrt-custom-ops`.
 - TorchScript and TFLite stubs planned for Phase 5.

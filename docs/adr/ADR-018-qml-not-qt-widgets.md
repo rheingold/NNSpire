@@ -15,7 +15,7 @@ Qt provides two distinct UI toolkits:
 | **Qt Widgets** | Native painter / software | Mature, accessible, native look | Limited GPU acceleration; hard to animate; complex custom drawing |
 | **Qt Quick / QML** | Scene graph, GPU-accelerated (OpenGL/Vulkan/Metal via RHI) | Fluid animations, data-driven UI, GPU rendering, declarative | Less native feel on some platforms; steeper initial learning curve |
 
-NNStudio requires:
+NNSpire requires:
 - Real-time animated visualisations: training loss curves updating every batch,
   neuron activation heatmaps, weight magnitude plots.
 - Interactive graph editor: drag-and-drop layer topology with animated connections.
@@ -29,7 +29,7 @@ are significantly harder to sandbox than QML components.
 
 ## Decision
 
-The NNStudio UI is built with **QML and Qt Quick**. Qt Widgets are not used in `nnstudio/app/`.
+The NNSpire UI is built with **QML and Qt Quick**. Qt Widgets are not used in `NNSpire/app/`.
 
 - All panels, dialogs, and custom controls are QML (`.qml` files).
 - C++ controllers (`ModelCtrl`, `TrainingCtrl`, `BackendCtrl`, `PluginCtrl`, `HelpCtrl`)
@@ -39,7 +39,7 @@ The NNStudio UI is built with **QML and Qt Quick**. Qt Widgets are not used in `
   dynamically by `QQmlEngine` into the panel system. Plugin QML communicates only through
   the controller interface — it has no direct access to the engine C++ objects.
 - Qt Quick Controls 2 (Material or Fusion style) provides the base widget set.
-  A custom NNStudio style is applied on top for branding.
+  A custom NNSpire style is applied on top for branding.
 - `QQuickPaintedItem` or `QSGGeometryNode` is used for the high-frequency visualisation
   panels (loss chart, neuron heatmap) where scene-graph-level drawing gives the necessary
   performance.
@@ -57,11 +57,11 @@ The NNStudio UI is built with **QML and Qt Quick**. Qt Widgets are not used in `
 **Negative / constraints**
 - Accessibility (screen reader) support in Qt Quick is less mature than Qt Widgets as of 2026.
   Flag for review if accessibility is a hard requirement.
-- Platform-native look is not guaranteed; NNStudio will have a consistent but non-native appearance.
+- Platform-native look is not guaranteed; NNSpire will have a consistent but non-native appearance.
 - QML debugging tooling (Qt Quick Inspector) must be available in developer builds.
 
 **Follow-on**
-- All `.qml` files live under `nnstudio/app/qml/`.
-- Controller C++ classes in `nnstudio/app/controllers/`.
+- All `.qml` files live under `NNSpire/app/qml/`.
+- Controller C++ classes in `NNSpire/app/controllers/`.
 - Plugin QML component loading tested in the plugin system integration tests.
 - Enable `QML_DISABLE_DISK_CACHE=1` in debug builds for faster QML reload cycle.

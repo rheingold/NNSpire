@@ -1,4 +1,4 @@
-# NNStudio — Master Project Checklist
+# NNSpire — Master Project Checklist
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/decision needed
 
@@ -22,31 +22,31 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Verify no non-.md files exist at project root (except .gitignore) — `.gitattributes` is standard git infrastructure
 
 ### Source tree skeleton (empty dirs + placeholder CMakeLists)
-- [x] Create `nnstudio/` top-level `CMakeLists.txt`
-- [x] Create `nnstudio/core/` directory structure
-- [x] Create `nnstudio/backends/` directory structure
-- [x] Create `nnstudio/plugin-api/` directory structure
-- [x] Create `nnstudio/plugins/` directory structure
-- [x] Create `nnstudio/pipeline/` directory structure
-- [x] Create `nnstudio/deployment/` directory structure
-- [x] Create `nnstudio/python-bridge/` directory structure
-- [x] Create `nnstudio/app/` directory structure
-- [x] Create `nnstudio/tests/` directory structure
+- [x] Create `NNSpire/` top-level `CMakeLists.txt`
+- [x] Create `NNSpire/core/` directory structure
+- [x] Create `NNSpire/backends/` directory structure
+- [x] Create `NNSpire/plugin-api/` directory structure
+- [x] Create `NNSpire/plugins/` directory structure
+- [x] Create `NNSpire/pipeline/` directory structure
+- [x] Create `NNSpire/deployment/` directory structure
+- [x] Create `NNSpire/python-bridge/` directory structure
+- [x] Create `NNSpire/app/` directory structure
+- [x] Create `NNSpire/tests/` directory structure
 - [x] Create `docs/` directory with Doxygen `Doxyfile` stub
 
 ### Third-party / dependency setup
 - [x] Copy/fetch Eigen headers — resolved via CMake FetchContent (3.4.0); no manual copy needed
 - [x] Copy/fetch GoogleTest — resolved via CMake FetchContent (1.14.0); no manual copy needed
-- [x] Copy/fetch pybind11 into `nnstudio/third-party/pybind11/` — resolved via pip site-packages (3.0.3) → FetchContent fallback; no manual copy needed
-- [ ] Copy/fetch ONNX protobuf into `nnstudio/third-party/onnx/` — deferred to Format I/O phase
+- [x] Copy/fetch pybind11 into `NNSpire/third-party/pybind11/` — resolved via pip site-packages (3.0.3) → FetchContent fallback; no manual copy needed
+- [ ] Copy/fetch ONNX protobuf into `NNSpire/third-party/onnx/` — deferred to Format I/O phase
 - [x] Confirm OpenSSL 3.x available — OpenSSL 3.6.0 at `C:\Program Files\OpenSSL-Win64`; MSYS2 also has 3.1.4
 - [x] Verify Qt 6.5+ installation and record path in `ai_priv/ai_priv.md` — Qt 6.10.1 recorded
 
 ---
 
-## Phase 1 — NN Engine Core (C++ library `nnstudio-core`)
+## Phase 1 — NN Engine Core (C++ library `NNSpire-core`)
 
-### Tensor subsystem (`nnstudio/core/tensor/`)
+### Tensor subsystem (`NNSpire/core/tensor/`)
 - [x] `Tensor<T>` class: shape, strides, dtype enum (float32/float16/int8/int32)
 - [x] Device tag: `CPU | CUDA | QUANTUM`
 - [x] Basic ops: element-wise add/mul, reshape, slice, transpose, broadcast
@@ -55,7 +55,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Python binding via pybind11
 - [x] Unit tests: shape arithmetic, op correctness vs NumPy reference values
 
-### Layer subsystem (`nnstudio/core/layers/`)
+### Layer subsystem (`NNSpire/core/layers/`)
 - [x] Abstract `Layer` base: `forward()`, `backward()`, `parameters()`, `serialize()`, `docRef()`
 - [x] `Dense` (fully connected)
 - [x] `Conv2D`
@@ -68,13 +68,13 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] C++ export template for each layer type
 - [x] Unit tests: forward pass vs reference, backward pass gradient check
 
-### Activations (`nnstudio/core/activations/`)
+### Activations (`NNSpire/core/activations/`)
 
 > ⚠️ **HIGH PRIORITY — complete before Phase 2 Plugin SDK ABI freeze**  
 > ADR-020 mandates that `IActivation` (not `ActivationBase`) is the published plugin extension point.  
 > The current `ActivationBase : ILayer` design is correct for internal use but **must not** be shipped as the SDK contract — it is stateful between `forward()`/`backward()` and therefore not reentrant (see Invariant I-1, I-2 in `blueprints.md`).  
 > **Work required:**
-> - [x] Add `core/include/nnstudio/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
+> - [x] Add `core/include/NNSpire/core/IActivation.h` with `ActivationForward` struct and `IActivation` interface (Option C: functional pair — see ADR-020)
 > - [x] Add `ActivationsFnLayer.h` adapter wrapping `IActivation` into a full `ILayer` (`ActivationsFnLayer<Fn>` owning + `ActivationsFnLayerPtr` non-owning)
 > - [x] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to implement `IActivation` (remove `lastInput_`/`lastOutput_`; return as `ctx` in `ActivationForward`)
   - [x] Update `blueprints.md §3.8` to reflect the new interface (IActivation / ActivationForward / ActivationsFnLayer)
@@ -90,7 +90,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Python bindings
 - [x] Unit tests
 
-### Loss functions (`nnstudio/core/losses/`)
+### Loss functions (`NNSpire/core/losses/`)
 - [x] `MSE` + gradient
 - [x] `CrossEntropy` + gradient
 - [x] `BinaryCrossEntropy` + gradient
@@ -98,7 +98,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Python bindings
 - [x] Unit tests (11 tests: MSE×3, BCE×3, CrossEntropy×2, Huber×4)
 
-### Optimizers (`nnstudio/core/optimizers/`)
+### Optimizers (`NNSpire/core/optimizers/`)
 - [x] `SGD` (with momentum)
 - [x] `Adam`
 - [x] `AdamW`
@@ -107,7 +107,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Python bindings
 - [x] Unit tests: parameter update step correctness (14 tests: SGD×5, Adam×3, AdamW×2, RMSProp×3, StepDecay×1)
 
-### Compute graph (`nnstudio/core/graph/`)
+### Compute graph (`NNSpire/core/graph/`)
 - [x] `ComputeGraph` DAG: node registration during forward pass
 - [x] Autograd: `backward()` traversal, gradient accumulation
 - [x] Graph serialization (JSON)
@@ -118,7 +118,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `Trainer::setTraceMode(bool)` — delegates to `ComputeGraph::setTraceMode()`; traces accessible via `ComputeGraph::traces()`
 - [x] Python bindings
 
-### Training loop (`nnstudio/core/training/`)
+### Training loop (`NNSpire/core/training/`)
 - [x] `Trainer` class: graph + optimizer + loss + dataset
 - [x] Callback interface: `onEpochStart/End`, `onBatchStart/End`, `onMetric`
 - [x] Checkpoint save/load to `.nns` format
@@ -129,18 +129,18 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - [x] Raw gradients are intentionally NOT saved — they are zeroed at the start of every step
         and recomputed by one forward+backward pass; losing them costs at most one step
 - [x] Early stopping callback → `EarlyStoppingCallback` in `EarlyStopping.h`
-- [x] Python bindings (`nnstudio.keras.Model.fit/predict/evaluate`, pure-Python training loop)
+- [x] Python bindings (`NNSpire.keras.Model.fit/predict/evaluate`, pure-Python training loop)
 
-### Format I/O (`nnstudio/core/formats/`)
+### Format I/O (`NNSpire/core/formats/`)
 - [ ] `OnnxIO::import()` — ONNX protobuf → ComputeGraph
 - [ ] `OnnxIO::export()` — ComputeGraph → ONNX protobuf
 - [ ] `NNSFormat` — `.nns` project file (JSON/MessagePack): weights + metadata + plugin refs + UI hints
 - [ ] Python bindings
 
-### Feature flags (`nnstudio/core/features/`)
+### Feature flags (`NNSpire/core/features/`)
 - [x] `FeatureFlags.h` — `inline constexpr FeatureFlag` pattern; all flags declared `FREE`; `isEnabled()` returns true for all FREE flags
 
-### Backend abstraction (`nnstudio/backends/`)
+### Backend abstraction (`NNSpire/backends/`)
 - [x] `IBackend` interface: `matmul()`, `elementWise()`, `memAlloc()`, `memFree()`, `sync()`
 - [x] `CpuBackend` — Eigen-based matmul reference implementation (reference + didactical; retained permanently)
 - [ ] `CudaBackend` — our own cuBLAS/cuDNN implementation; didactical, makes every CUDA op visible; conditional compile (`NN_ENABLE_CUDA=ON`); disabled if CUDA toolkit not found
@@ -167,7 +167,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Phase 1 milestone verification
 - [x] `cmake --build && ctest` passes all unit tests — **63/63 green** (15 new LayerTest + 48 prior)
 - [x] Can construct 3-layer MLP in C++, run forward pass on XOR dataset, verify output shape ← `test_trainer_xor.cpp`
-- [x] Same via Python bindings: `import nnstudio; ...` works in embedded Python
+- [x] Same via Python bindings: `import NNSpire; ...` works in embedded Python
 
 ---
 
@@ -177,11 +177,11 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 >
 > ### Goal
 > A user who writes code using only the *standard* PyTorch or Keras API signatures and names
-> must be able to swap the include/import between NNStudio and the real framework with no code changes:
+> must be able to swap the include/import between NNSpire and the real framework with no code changes:
 >
 > ```cpp
 > // C++ — swap this include to switch underlying framework
-> #include <nnstudio/torch_compat.h>   // uses NNStudio engine
+> #include <NNSpire/torch_compat.h>   // uses NNSpire engine
 > // #include <torch/torch.h>          // uses LibTorch
 >
 > auto model = torch::nn::Sequential(torch::nn::Linear(4, 8), torch::nn::ReLU());
@@ -189,15 +189,15 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 >
 > ```python
 > # Python — swap this import to switch underlying framework
-> import nnstudio.torch_compat as torch   # uses NNStudio engine
+> import NNSpire.torch_compat as torch   # uses NNSpire engine
 > # import torch                           # uses real PyTorch
 >
 > layer = torch.nn.Linear(4, 8)
 > x = layer(torch.zeros(2, 4))
 > ```
 >
-> Any use of an **NNStudio extension** (beyond the torch/keras standard surface) triggers
-> a UI/CLI warning: *"This project uses NNStudio-only features: [list]. Export to PyTorch
+> Any use of an **NNSpire extension** (beyond the torch/keras standard surface) triggers
+> a UI/CLI warning: *"This project uses NNSpire-only features: [list]. Export to PyTorch
 > will require adapters."*
 >
 > ### Framework evaluation
@@ -221,16 +221,16 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Unit tests: `Itemsize_Float32`, `Itemsize_Int8`, `Itemsize_Int32`, `RawData_NonNull`, `Dtype_RoundTrip` (5 new tests)
 - [x] Unit tests: dtype mismatch returns `Result::error()` in CpuBackend dispatch
 
-### C++ PyTorch-compatible shim (`include/nnstudio/torch_compat.h`)
+### C++ PyTorch-compatible shim (`include/NNSpire/torch_compat.h`)
 
-- [x] `namespace torch` → alias block mapping to `nnstudio::*`:
-  - `torch::Tensor` → `nnstudio::core::Tensor`
+- [x] `namespace torch` → alias block mapping to `NNSpire::*`:
+  - `torch::Tensor` → `NNSpire::core::Tensor`
   - `torch::zeros / torch::ones / torch::rand` → our factory functions
-  - `torch::nn::Module` → `nnstudio::core::Layer`
-  - `torch::nn::Linear` → `nnstudio::builtin::layers::Dense`
-  - `torch::nn::Conv2d` → `nnstudio::builtin::layers::Conv2D`
-  - `torch::nn::Embedding` → `nnstudio::builtin::layers::Embedding`
-  - `torch::nn::MultiheadAttention` → `nnstudio::builtin::layers::MultiHeadAttention`
+  - `torch::nn::Module` → `NNSpire::core::Layer`
+  - `torch::nn::Linear` → `NNSpire::builtin::layers::Dense`
+  - `torch::nn::Conv2d` → `NNSpire::builtin::layers::Conv2D`
+  - `torch::nn::Embedding` → `NNSpire::builtin::layers::Embedding`
+  - `torch::nn::MultiheadAttention` → `NNSpire::builtin::layers::MultiHeadAttention`
   - `torch::nn::BatchNorm1d / LayerNorm / Dropout` → our NormLayers
   - `torch::nn::ReLU / Sigmoid / Tanh / GELU / Softmax` → our activations (wrapped in `ActivationsFnLayer`)
   - `torch::nn::MSELoss / CrossEntropyLoss / BCELoss` → our losses
@@ -238,44 +238,44 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - `torch::nn::functional::relu / sigmoid / softmax / ...` → our standalone activation callables
 - [x] `torch::nn::Sequential` — thin wrapper building `ComputeGraph` from initializer list
 - [x] The shim is **header-only** — zero link-time cost; only aliases, no new compiled symbols
-- [x] Unit test: compile a simple 3-layer MLP using only `torch::` names against NNStudio
+- [x] Unit test: compile a simple 3-layer MLP using only `torch::` names against NNSpire
 
 ### Python pybind11 bindings — torch-compatible naming (design constraint, not retrofit)
 
 > ⚠️ These bindings do not exist yet — but they **must be designed with torch naming** from day one.
-> Do not expose `nnstudio.core.Dense`; expose `nnstudio.nn.Linear` with `Dense` as an alias.
+> Do not expose `NNSpire.core.Dense`; expose `NNSpire.nn.Linear` with `Dense` as an alias.
 
-- [x] Top-level module: `import nnstudio` → available sub-namespaces: `nnstudio.nn`, `nnstudio.optim`, `nnstudio.nn.functional`
-- [x] `nnstudio.Tensor` matches `torch.Tensor` public surface: `.shape`, `.dtype`, `.device`, `.item()`, `.numpy()` (CPU copy), `__add__/__mul__/...`
-- [x] `nnstudio.nn.Linear(in, out)` — default torch constructor signature
-- [x] `nnstudio.nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding)` — torch signature
-- [x] `nnstudio.nn.Embedding(num_embeddings, embedding_dim)` — torch signature
-- [x] `nnstudio.nn.MultiheadAttention(embed_dim, num_heads)` — torch signature
-- [x] `nnstudio.nn.Sequential(*layers)` — torch constructor
-- [x] `nnstudio.nn.ReLU / Sigmoid / Tanh / GELU / Softmax / Dropout / BatchNorm1d / LayerNorm` — torch naming
-- [x] `nnstudio.nn.MSELoss / CrossEntropyLoss / BCEWithLogitsLoss` — torch naming
-- [x] `nnstudio.optim.SGD / Adam / AdamW / RMSProp` — torch constructor signatures (params, lr, weight_decay, ...)
-- [x] `nnstudio.nn.functional.relu / sigmoid / softmax / gelu / dropout` — functional API
-- [x] `nnstudio.torch_compat` re-export: `import nnstudio.torch_compat as torch` works as drop-in
+- [x] Top-level module: `import NNSpire` → available sub-namespaces: `NNSpire.nn`, `NNSpire.optim`, `NNSpire.nn.functional`
+- [x] `NNSpire.Tensor` matches `torch.Tensor` public surface: `.shape`, `.dtype`, `.device`, `.item()`, `.numpy()` (CPU copy), `__add__/__mul__/...`
+- [x] `NNSpire.nn.Linear(in, out)` — default torch constructor signature
+- [x] `NNSpire.nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding)` — torch signature
+- [x] `NNSpire.nn.Embedding(num_embeddings, embedding_dim)` — torch signature
+- [x] `NNSpire.nn.MultiheadAttention(embed_dim, num_heads)` — torch signature
+- [x] `NNSpire.nn.Sequential(*layers)` — torch constructor
+- [x] `NNSpire.nn.ReLU / Sigmoid / Tanh / GELU / Softmax / Dropout / BatchNorm1d / LayerNorm` — torch naming
+- [x] `NNSpire.nn.MSELoss / CrossEntropyLoss / BCEWithLogitsLoss` — torch naming
+- [x] `NNSpire.optim.SGD / Adam / AdamW / RMSProp` — torch constructor signatures (params, lr, weight_decay, ...)
+- [x] `NNSpire.nn.functional.relu / sigmoid / softmax / gelu / dropout` — functional API
+- [x] `NNSpire.torch_compat` re-export: `import NNSpire.torch_compat as torch` works as drop-in
 
 ### Python Keras-compatible aliases (additive, thin wrapper)
 
-- [x] `nnstudio.keras.layers.Dense / Conv2D / Embedding / LSTM / MultiHeadAttention / BatchNormalization / Dropout / LayerNormalization`
-- [x] `nnstudio.keras.losses.MeanSquaredError / CategoricalCrossentropy / BinaryCrossentropy`
-- [x] `nnstudio.keras.optimizers.SGD / Adam / AdamW / RMSprop`
-- [x] `nnstudio.keras.Model.compile(optimizer, loss, metrics)` — wraps training loop
-- [x] `nnstudio.keras.Model.fit(x, y, epochs, batch_size, validation_data, callbacks)` — pure-Python training loop
-- [x] `nnstudio.keras.Model.predict(x)` — single forward pass, no grad
-- [x] `nnstudio.keras.callbacks.EarlyStopping / ModelCheckpoint` — pure-Python callback system
+- [x] `NNSpire.keras.layers.Dense / Conv2D / Embedding / LSTM / MultiHeadAttention / BatchNormalization / Dropout / LayerNormalization`
+- [x] `NNSpire.keras.losses.MeanSquaredError / CategoricalCrossentropy / BinaryCrossentropy`
+- [x] `NNSpire.keras.optimizers.SGD / Adam / AdamW / RMSprop`
+- [x] `NNSpire.keras.Model.compile(optimizer, loss, metrics)` — wraps training loop
+- [x] `NNSpire.keras.Model.fit(x, y, epochs, batch_size, validation_data, callbacks)` — pure-Python training loop
+- [x] `NNSpire.keras.Model.predict(x)` — single forward pass, no grad
+- [x] `NNSpire.keras.callbacks.EarlyStopping / ModelCheckpoint` — pure-Python callback system
 
 ### Compatibility warning system
 
 - [x] `CompatibilityChecker` — static analysis pass over `ComputeGraph` nodes:
-  - Classifies each node as: `standard_torch | standard_keras | nnstudio_extension`
+  - Classifies each node as: `standard_torch | standard_keras | NNSpire_extension`
   - Reports list of non-standard ops used in the project
-- [ ] CLI: `nnstudio-sign verify --compat=torch` — exits non-zero if any extension ops present
-- [ ] UI: yellow warning banner in Layer Inspector when an NNStudio-extension layer is used
-- [ ] `.nns` project file: `"compat_level": "torch_standard" | "keras_standard" | "nnstudio_extended"` field
+- [ ] CLI: `NNSpire-sign verify --compat=torch` — exits non-zero if any extension ops present
+- [ ] UI: yellow warning banner in Layer Inspector when an NNSpire-extension layer is used
+- [ ] `.nns` project file: `"compat_level": "torch_standard" | "keras_standard" | "NNSpire_extended"` field
 - [ ] Export dialog: blocks ONNX-standard export if extension ops present; offers "export with custom ops sidecar" alternative
 
 ### ONNX export alignment
@@ -283,7 +283,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Map every torch-compatible layer to a standard ONNX op (no custom domain required):
   - `Linear` → `Gemm`, `Conv2d` → `Conv`, `Embedding` → `Gather`, `LayerNorm` → `LayerNormalization`,
     `BatchNorm1d` → `BatchNormalization`, `ReLU/Sigmoid/Tanh/GELU/Softmax` → standard ONNX ops
-- [x] NNStudio extension layers: register under `com.nnstudio.*` custom op domain; export with sidecar `.onnx_ops.dll`
+- [x] NNSpire extension layers: register under `com.NNSpire.*` custom op domain; export with sidecar `.onnx_ops.dll`
 - [ ] Plugin ONNX adapter contract: each plugin optionally provides `onnx_export()` → custom op node + sidecar impl
 
 ---
@@ -299,34 +299,34 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ### Source renames
 
-- [x] `nnstudio::layers::Dense` → `nnstudio::builtin::layers::Dense`
-- [x] `nnstudio::activations::*` (ReLU, Sigmoid, Tanh, Softmax, GELU, …) → `nnstudio::builtin::layers::*` *(activations are layers)*
-- [x] `nnstudio::losses::*` (MSE, CrossEntropy, …) → `nnstudio::builtin::losses::*`
-- [x] `nnstudio::optimizers::*` (SGD, Adam, AdamW) → `nnstudio::builtin::optimizers::*`
-- [x] `CpuBackend` in `nnstudio::` → `nnstudio::builtin::backends::CpuBackend`
-- [x] `Trainer` internals → `nnstudio::internal::training::*`
+- [x] `NNSpire::layers::Dense` → `NNSpire::builtin::layers::Dense`
+- [x] `NNSpire::activations::*` (ReLU, Sigmoid, Tanh, Softmax, GELU, …) → `NNSpire::builtin::layers::*` *(activations are layers)*
+- [x] `NNSpire::losses::*` (MSE, CrossEntropy, …) → `NNSpire::builtin::losses::*`
+- [x] `NNSpire::optimizers::*` (SGD, Adam, AdamW) → `NNSpire::builtin::optimizers::*`
+- [x] `CpuBackend` in `NNSpire::` → `NNSpire::builtin::backends::CpuBackend`
+- [x] `Trainer` internals → `NNSpire::internal::training::*`
 
 ### Folder renames (to match namespaces)
 
-- [ ] `nnstudio/core/include/nnstudio/core/` → split into `api/` (Tier 1 public) and `internal/` (Tier 2)
+- [ ] `NNSpire/core/include/NNSpire/core/` → split into `api/` (Tier 1 public) and `internal/` (Tier 2)
   <!-- DEFERRED: 60+ #include <core/...> references across src, tests, python-bridge. Scope > 1 day.
-       Do as Phase 2 SDK prep step 0 (before nnstudio_plugin.h is written), so plugin authors
+       Do as Phase 2 SDK prep step 0 (before NNSpire_plugin.h is written), so plugin authors
        see the correct include paths from day one. Namespace migration is already done. -->
-- [x] `nnstudio/core/` layers/activations/losses/optimizers/backends → `nnstudio/builtin/`
+- [x] `NNSpire/core/` layers/activations/losses/optimizers/backends → `NNSpire/builtin/`
 - [x] Update all `#include` paths in source files and tests
 
 ### Verification
 
 - [x] `cmake --build && ctest` — all 16 tests still pass after migration
-- [x] No `nnstudio::layers::`, `nnstudio::activations::`, `nnstudio::losses::`, `nnstudio::optimizers::` appear outside of a `using` alias (grep check)
-- [x] Only `nnstudio::` (Tier 1 interfaces + data types) and `nnstudio::builtin::` remain after rename
+- [x] No `NNSpire::layers::`, `NNSpire::activations::`, `NNSpire::losses::`, `NNSpire::optimizers::` appear outside of a `using` alias (grep check)
+- [x] Only `NNSpire::` (Tier 1 interfaces + data types) and `NNSpire::builtin::` remain after rename
 
 ---
 
 ## Phase 2 — Plugin SDK
 
-### C ABI contract (`nnstudio/plugin-api/`)
-- [x] `nnstudio_plugin.h` — C-linkage structs/function pointers; no C++ in public ABI
+### C ABI contract (`NNSpire/plugin-api/`)
+- [x] `NNSpire_plugin.h` — C-linkage structs/function pointers; no C++ in public ABI
 - [x] `PluginDescriptor` — name, version, type, factory functions, capabilities
 - [x] Plugin types: `LAYER | TOKENIZER | OPTIMIZER | BACKEND | UI_PANEL | TRUST_UPDATE`
 - [x] `LayerPlugin` interface — custom `forward()`/`backward()`, operator registration
@@ -338,7 +338,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `TUP` (Trust Update Package) manifest schema — type: `TRUST_UPDATE`, timestamp, cert add/revoke lists
 - [x] Schema validation library (C++ + Python)
 
-### Trust system (`nnstudio/plugin-api/trust/`)
+### Trust system (`NNSpire/plugin-api/trust/`)
 - [x] `TrustStore` class — manages `<app_data>/truststore/` (roots/, intermediates/, crls/, history/)
 - [x] First-run seed from embedded `seed_roots/root_ca.pem`
 - [x] Append-only `history/` audit log
@@ -349,7 +349,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] Root CA public key embedded as `seed_roots/root_ca.pem` (published openly)
 - [x] TUP validation rules: signature valid, timestamp not replayed, no self-referential removal, user confirmation modal required
 
-### `nnstudio-sign` CLI tool
+### `NNSpire-sign` CLI tool
 - [x] `keygen` subcommand — generate plugin key pair + CSR
 - [x] `sign` subcommand — sign plugin binary + manifest using issued cert
 - [x] `verify` subcommand — verify plugin signature offline
@@ -357,19 +357,19 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [x] `create-tup` subcommand — build and sign a Trust Update Package
 - [x] `issue-enterprise-ca` subcommand — project owner issues Enterprise Intermediate CA cert (admin only)
 
-### pybind11 bridge (`nnstudio/python-bridge/`)
-- [x] Python module `nnstudio` exposing: `Tensor`, all `Layer` subclasses, `ComputeGraph`, `Trainer`, `BackendRegistry`
-- [x] `runners/` sub-package: Python-side runner clients mirroring `nnstudio/deployment/`
+### pybind11 bridge (`NNSpire/python-bridge/`)
+- [x] Python module `NNSpire` exposing: `Tensor`, all `Layer` subclasses, `ComputeGraph`, `Trainer`, `BackendRegistry`
+- [x] `runners/` sub-package: Python-side runner clients mirroring `NNSpire/deployment/`
 - [x] `pyproject.toml` for installable Python package
 - [ ] Wheel build in CI
 
-### Plugin scaffolds (`nnstudio/plugin-api/templates/`)
+### Plugin scaffolds (`NNSpire/plugin-api/templates/`)
 - [x] `cpp/` — CMakeLists.txt + `.h`/`.cpp` template (layer type; other types follow same pattern)
 - [x] `python/` — `pyproject.toml` + `.py` module template (layer type; other types follow same pattern)
 - [x] Both templates include `plugin.manifest.json` generator script (`generate_manifest.py`)
 - [x] `README.md` per template explaining the plugin type
 
-### Built-in reference plugins (`nnstudio/plugins/`)
+### Built-in reference plugins (`NNSpire/plugins/`)
 - [x] BPE tokenizer plugin (C++ + Python, from KB A06) — C++ ✓ (319-token vocab, full encode/decode C ABI); Python binding deferred to Phase 3
 - [ ] FAISS vector index plugin (C++ + Python) — deferred to Phase 3.5
 - [x] Example custom activation plugin (demonstrates both C++ and Python plugin path) — C++ ✓ (Swish/SiLU forward+backward); Python binding deferred to Phase 3
@@ -387,7 +387,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 >
 > ### UI Reentrant Idempotency
 >
-> The NNStudio UI state machine must be designed around a dominant **`ReadyToEdit`**
+> The NNSpire UI state machine must be designed around a dominant **`ReadyToEdit`**
 > state. This principle governs every panel, dialog, wizard, and control added in
 > Phase 3 and beyond.
 >
@@ -444,21 +444,21 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > is generated from it at compile/export time.  The user never edits code directly
 > in the primary workflow.
 >
-> **(b) Native NNStudio / torch-compat source code** — the source file
+> **(b) Native NNSpire / torch-compat source code** — the source file
 > (`model.py` or `model.cpp`) *is* the canonical representation.  The visual canvas
 > is a live rendering of the parsed AST.  Export to other frameworks is a well-defined
 > code-to-code translation.
 >
 > **(c) Multi-framework native editing** — the user can choose which framework language
-> is "live" (NNStudio engine, PyTorch, Keras …) and the editor hides/shows features
+> is "live" (NNSpire engine, PyTorch, Keras …) and the editor hides/shows features
 > that are not expressible in the currently selected framework.  Switching framework
 > re-parses the same file under a different grammar.
 >
 > **Recommendation: (b) — native code as source of truth.**
 >
-> Rationale: NNStudio already has a `torch_compat.h` C++ shim and a
-> `nnstudio.torch_compat` Python module whose public API is *syntactically identical*
-> to PyTorch.  This means "NNStudio engine code" and "torch-compatible code" are the
+> Rationale: NNSpire already has a `torch_compat.h` C++ shim and a
+> `NNSpire.torch_compat` Python module whose public API is *syntactically identical*
+> to PyTorch.  This means "NNSpire engine code" and "torch-compatible code" are the
 > same text.  There is no IR translation for the primary path — code IS the model.
 > Export to real PyTorch is then a mechanical projection, not a lossy round-trip.
 > Option (c) is additive on top of (b): grammar switching can be layered in later
@@ -484,12 +484,12 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > inside the `.nnsx` zip bundle) keyed on stable node identifiers derived from the
 > AST (layer variable names / positional indices, not line numbers).
 >
-> **Option II — Structured comments** — `# @nnstudio {"x":120,"y":80}` comments
+> **Option II — Structured comments** — `# @NNSpire {"x":120,"y":80}` comments
 > embedded directly above each layer construction call in the source file.
 >
 > **Recommendation: Option I — sidecar inside the `.nnsx` bundle.**
 >
-> Rationale: source code stays clean and runnable outside NNStudio without any
+> Rationale: source code stays clean and runnable outside NNSpire without any
 > stripping step.  The sidecar is completely invisible to Python/C++ tooling
 > (formatters, linters, type checkers).  The key stability problem ("positions go
 > stale when the user rearranges code") is solved by keying entries on the AST
@@ -516,7 +516,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > **Proposed approach (concrete grammar + AST walk):**
 >
 > 1. Use **tree-sitter** with the existing Python (or C++) grammar plus a set of
->    named query patterns covering all recognized NNStudio/torch constructs.
+>    named query patterns covering all recognized NNSpire/torch constructs.
 > 2. Walk the concrete syntax tree; tag every matched node as `recognized`.
 > 3. Any top-level statement or expression that is NOT tagged `recognized` is
 >    classified as `opaque` and rendered in the code editor with an **amber
@@ -534,7 +534,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > - [ ] Confirm tree-sitter as the parser foundation (alternative: ANTLR4 grammar)
 >   and record in `ARCHITECTURE.md §ADR-032`
 > - [ ] Define the query-pattern file format and where it lives in the repo
->   (`nnstudio/app/grammar/nnstudio_torch.scm` is the suggested path)
+>   (`NNSpire/app/grammar/NNSpire_torch.scm` is the suggested path)
 > - [ ] Decide whether `opaque` blocks appear as placeholder nodes on the canvas
 >   (recommendation: yes, opt-out toggle) or are hidden entirely (opt-in toggle)
 >
@@ -748,19 +748,19 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > | Step | What | Phase | Risk |
 > |---|---|---|---|
 > | 0 | Refactor `Dense` → `ParametricLayer<LinearFn>` · `using Dense = ParametricLayer<LinearFn>;` | Phase 4 | Zero — identical behaviour, no API change |
-> | 1 | Add CPU-only `KANLayer` + `SIRENLayer`; mark `nnstudio_extension` in `CompatibilityChecker`; expose `torch::nn::KANLinear` alias in `torch_compat.h` | Phase 4 | Low — isolated, off by default |
+> | 1 | Add CPU-only `KANLayer` + `SIRENLayer`; mark `NNSpire_extension` in `CompatibilityChecker`; expose `torch::nn::KANLinear` alias in `torch_compat.h` | Phase 4 | Low — isolated, off by default |
 > | 2 | Add optional `IBackend::applyFunctor1D` (backend minor-version bump); GPU backends may fuse custom kernels | Phase 5 | Medium — vtable change, all backend plugins must update |
 >
 > This preserves the **didactic aim**: `ParametricLayer<LinearFn>` reads as a textbook
 > definition of a parametric affine layer. KAN/SIREN variants then demonstrate
 > exactly what changes when you swap the synapse function — one template parameter,
-> everything else identical. NNStudio becomes both technically state-of-the-art *and*
+> everything else identical. NNSpire becomes both technically state-of-the-art *and*
 > maximally transparent about what the difference actually is.
 >
 > **Decision gate items:**
 > - [ ] Confirm Phase 4 step 0: refactor `Dense` → `ParametricLayer<LinearFn>` (pure,
 >   no behaviour change) — record decision in `ARCHITECTURE.md §ADR-034`
-> - [ ] Confirm Phase 4 step 1: add experimental `KANLayer` (CPU-only, `nnstudio_extension`
+> - [ ] Confirm Phase 4 step 1: add experimental `KANLayer` (CPU-only, `NNSpire_extension`
 >   scope; `torch::nn::KANLinear` alias in `torch_compat.h`)
 > - [ ] Confirm backend vtable extension strategy for GPU-accelerated functor dispatch
 >   (step 2; requires IBackend minor-version bump)
@@ -769,7 +769,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > - [ ] Track research: re-evaluate KAN FLOP-efficiency claim on standard ML tasks
 >   at Phase 4 start; adjust step 1 priority accordingly
 
-### App shell (`nnstudio/app/`)
+### App shell (`NNSpire/app/`)
 - [ ] `main.cpp` — Qt app init, backend detection, plugin loader, dependency check, QML engine setup
 - [ ] `controllers/` — `ModelController`, `TrainingController`, `BackendController`, `PluginController`, `HelpController`, **`CodeGraphSyncController`** (owns the parser ↔ model-graph ↔ canvas sync loop; see ADR-033)
 - [ ] Dockable panel system — every panel (model editor, training dashboard, weight viewer,
@@ -812,10 +812,10 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 > time (see ADR-033).  The user can collapse either pane to work full-screen in either
 > mode.  The split is a draggable `SplitView`; ratio is persisted in settings.
 
-#### Parser subsystem (`nnstudio/app/parser/`)
+#### Parser subsystem (`NNSpire/app/parser/`)
 - [ ] Integrate **tree-sitter** as a static C library (`third-party-deps/tree-sitter/`)
 - [ ] Bundle `tree-sitter-python` grammar (primary) and `tree-sitter-cpp` grammar (secondary)
-- [ ] Implement `nnstudio_torch.scm` query file — named captures for all recognized
+- [ ] Implement `NNSpire_torch.scm` query file — named captures for all recognized
   layer/optimizer/loss construction patterns (see ADR-032)
 - [ ] `NNParser` C++ class — wraps tree-sitter; exposes `parse(source)`,
   `applyEdit(edit)`, `recognizedNodes()`, `opaqueNodes()`
@@ -968,7 +968,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] Walkthroughs: XOR MLP, MNIST CNN, Transformer block, BPE tokenizer
 
 ### Phase 3 milestone
-- [ ] NNStudio launches on Windows/macOS/Linux
+- [ ] NNSpire launches on Windows/macOS/Linux
 - [ ] Create 3-layer MLP → view topology → run XOR training → watch live loss chart
 - [ ] KB help opens from layer "?" button showing correct KB section
 
@@ -1004,23 +1004,23 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 **`launch.json` profiles (one `.vscode/launch.json` entry each)**
 - [ ] `Engine tests (GDB/MinGW)` — launch `build/engine-ninja/tests/test-core.exe` under
-      `gdb` (from MSYS2 MinGW); `cwd` = `nnstudio/`; env: `PATH` includes Qt bin + MSYS2 bin;
+      `gdb` (from MSYS2 MinGW); `cwd` = `NNSpire/`; env: `PATH` includes Qt bin + MSYS2 bin;
       `stopAtEntry=false`
 - [ ] `Engine tests — filter (GDB/MinGW)` — same as above with `"args": ["--gtest_filter=${input:gtestFilter}"]`
       and a `${input}` prompt so the user types a filter expression without editing the file
-- [ ] `NNStudio App (GDB/MinGW)` — launch the Qt app executable; pre-launch task = build; working dir = project root
-- [ ] `NNStudio App (no GPU)` — same with `"env": {"NN_BACKEND": "cpu"}` override
-- [ ] `NNStudio App (CUDA backend)` — same with `"env": {"NN_BACKEND": "cuda"}`
+- [ ] `NNSpire App (GDB/MinGW)` — launch the Qt app executable; pre-launch task = build; working dir = project root
+- [ ] `NNSpire App (no GPU)` — same with `"env": {"NN_BACKEND": "cpu"}` override
+- [ ] `NNSpire App (CUDA backend)` — same with `"env": {"NN_BACKEND": "cuda"}`
 - [ ] `Engine tests (LLDB/Clang)` — alternate clang/LLDB profile using `CodeLLDB` extension
 - [ ] `Engine tests (MSVC / cppvsdbg)` — Windows-only; requires `ms-vscode.cpptools` debugger;
       preset `engine-vs` (MSVC x64 generator)
-- [ ] `NNStudio App (MSVC / cppvsdbg)` — app launch via MSVC debug adapter
+- [ ] `NNSpire App (MSVC / cppvsdbg)` — app launch via MSVC debug adapter
 
 **CMake presets**
 - [ ] `engine-vs` preset — Visual Studio 17 generator, MSVC x64 (mirrors `engine-ninja` logic, different generator)
 - [ ] `engine-clang-ninja` preset — Ninja + clang++ (MSYS2 LLVM package), same flags minus `-fno-exceptions` for
       libcxx compatibility check
-- [ ] `app-ninja` preset — includes `nnstudio/app/` target; `CMAKE_PREFIX_PATH` pointing to Qt installation
+- [ ] `app-ninja` preset — includes `NNSpire/app/` target; `CMAKE_PREFIX_PATH` pointing to Qt installation
 - [ ] `app-vs` preset — same with Visual Studio generator
 
 **Extensions and toolchain validation guide**
@@ -1032,10 +1032,10 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 ### Visual Studio (Windows, secondary)
 
 - [ ] `engine-vs` CMake preset (above) enables "Open Folder" workflow in VS 2022 — no `.sln` needed
-- [ ] `nnstudio.natvis` — NatVis visualiser file so VS debugger pretty-prints `Tensor`, `Shape`,
+- [ ] `NNSpire.natvis` — NatVis visualiser file so VS debugger pretty-prints `Tensor`, `Shape`,
       `Result<T>`, `Parameter` in the Autos/Watch/Locals pane instead of raw byte dumps
-- [ ] `nnstudio.props` — shared property sheet: Qt install path, MSYS2 path, include dirs;
-      developers override via `nnstudio.user.props` (gitignored) for local paths
+- [ ] `NNSpire.props` — shared property sheet: Qt install path, MSYS2 path, include dirs;
+      developers override via `NNSpire.user.props` (gitignored) for local paths
 - [ ] Verify: right-click `CMakeLists.txt` → "Add to View" → CMake Targets appear; build + test
       via VS Test Explorer (GTest adapter)
 - [ ] Document the one known friction point: MSYS2 DLLs not in VS `PATH` → workaround in
@@ -1045,23 +1045,23 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 - [ ] Confirm `CMakeLists.txt` opens cleanly in Qt Creator 13+ via "Open as CMake project"
 - [ ] Kit configuration: MinGW 15.2.0 (MSYS2) + Qt 6.10.1; document kit JSON in `docs/VSCODE-DEV-SETUP.md`
-- [ ] `.qmlproject` stub for `nnstudio/app/ui/` — allows pure QML/UI work in **Qt Design Studio**
+- [ ] `.qmlproject` stub for `NNSpire/app/ui/` — allows pure QML/UI work in **Qt Design Studio**
       without building the C++ engine; mock `ModelController` QML singleton provides stub data
 - [ ] Verify QML live-preview works in Qt Design Studio 4+ for all `.qml` files in `ui/`
-- [ ] Document: Qt Creator run configurations for `test-core` and `NNStudio app`
+- [ ] Document: Qt Creator run configurations for `test-core` and `NNSpire app`
 
 ### Phase 3.5 milestone
 - [ ] A contributor on a fresh Windows machine can clone → open in VS Code → press F5 → debugger
       hits a breakpoint in `Dense::forward()` in under 15 minutes, following `docs/VSCODE-DEV-SETUP.md`
 - [ ] Same contributor can run and filter GTest cases directly from the VS Code Testing sidebar
-- [ ] `nnstudio.natvis` makes `Tensor` readable in the VS 2022 debugger Locals pane
+- [ ] `NNSpire.natvis` makes `Tensor` readable in the VS 2022 debugger Locals pane
 - [ ] Qt Design Studio opens the `ui/` QML project and live-previews the model editor panel stub
 
 ---
 
 ## Phase 4 — Full Pipeline
 
-### Input adapters (`nnstudio/pipeline/input/`)
+### Input adapters (`NNSpire/pipeline/input/`)
 - [ ] Text (UTF-8 string)
 - [ ] Image (via Qt image loading → tensor)
 - [ ] Audio (WAV/FLAC → waveform tensor via libsndfile or similar)
@@ -1069,13 +1069,13 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] MCP message format adapter
 - [ ] Python + C++ implementation for each
 
-### Tokenization chain (`nnstudio/pipeline/tokenize/`)
+### Tokenization chain (`NNSpire/pipeline/tokenize/`)
 - [ ] `TokenizationChain` — ordered list of `TokenizerPlugin`s
 - [ ] Produces: token-ID tensor, attention mask, position IDs
 - [ ] Cache layer for repeated vocabulary lookups
 - [ ] Python + C++ implementation
 
-### Context / RAG stage (`nnstudio/pipeline/context/`)
+### Context / RAG stage (`NNSpire/pipeline/context/`)
 - [ ] `ContextStage` — optional; takes query tensor, returns retrieved chunk tensors
 - [ ] Embedded FAISS connector (no server needed)
 - [ ] Qdrant HTTP connector
@@ -1083,13 +1083,13 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 - [ ] Reranker interface (cross-encoder plugin slot)
 - [ ] Python + C++ implementation
 
-### Execution stage (`nnstudio/pipeline/execution/`)
+### Execution stage (`NNSpire/pipeline/execution/`)
 - [ ] `ExecutionStage` — runs one `ComputeGraph` or a chain of chained graphs
 - [ ] Output of graph A → input of graph B wiring
 - [ ] Streaming output support (token-by-token)
 - [ ] Python + C++ implementation
 
-### Output adapters (`nnstudio/pipeline/output/`)
+### Output adapters (`NNSpire/pipeline/output/`)
 - [ ] Text decode (de-tokenize)
 - [ ] Image synthesis stub
 - [ ] Audio synthesis stub
@@ -1109,17 +1109,17 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ## Phase 5 — Deployment & Runners
 
-### Export wizards (`nnstudio/deployment/export/`)
+### Export wizards (`NNSpire/deployment/export/`)
 - [ ] ONNX export wizard (uses `OnnxIO::export()`)
 - [ ] TorchScript export (via Python bridge + `torch.jit.script`)
 - [ ] TFLite export stub
 - [ ] `.nnsr` runner bundle builder: zip of weights + `manifest.json` + `runner.py` + `runner.cpp` + precompiled `.so`/`.dll`
-- [ ] **C++ library export** — generates self-contained, NNStudio-free compilable package:
+- [ ] **C++ library export** — generates self-contained, NNSpire-free compilable package:
   `model.h` + `model.cpp` + `CMakeLists.txt` + `README.md`; output uses only stdlib +
-  Eigen (header-only); no `nnstudio-core` link dependency in the exported build
+  Eigen (header-only); no `NNSpire-core` link dependency in the exported build
 - [ ] **Python package export** — generates pip-installable package: `pyproject.toml` +
-  `model.py` (uses real PyTorch or raw NumPy, no `nnstudio` import); `model.py` is the
-  round-trip of the canonical source with the `nnstudio.torch_compat` import replaced by
+  `model.py` (uses real PyTorch or raw NumPy, no `NNSpire` import); `model.py` is the
+  round-trip of the canonical source with the `NNSpire.torch_compat` import replaced by
   `import torch`
 - [ ] **"Compile to binary" one-click** — runs CMake + Ninja on the exported C++ package;
   output is a `.dll`/`.so` or standalone executable; build stdout/stderr shown in the
@@ -1128,7 +1128,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   presets, sandbox snippets) shown with a `Python | C++` tab switcher; chosen language
   persisted per-user in settings; both tabs always kept in sync with the model graph
 
-### Runner connectors (`nnstudio/deployment/runners/`) — C++ + Python each
+### Runner connectors (`NNSpire/deployment/runners/`) — C++ + Python each
 - [ ] Triton gRPC client (HTTP/2 gRPC, model load/infer/health — KB doc 10 + 08)
 - [ ] TF Serving REST client (KB doc 05)
 - [ ] KServe V2 client (KB doc 09)
@@ -1152,35 +1152,35 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
   - [ ] Job list: status, cost so far, ETA, logs tail
   - [ ] Download + import weights from completed job
 
-### `nnstudio-cli` command-line tool (`nnstudio/app/cli/`)
+### `NNSpire-cli` command-line tool (`NNSpire/app/cli/`)
 
 A headless CLI companion to the Qt app. Same C++ engine, no Qt dependency in
-the CLI binary itself — links only `nnstudio-core` + `nnstudio-builtin`.
+the CLI binary itself — links only `NNSpire-core` + `NNSpire-builtin`.
 Useful for CI pipelines, scripting, and SSH sessions on remote pods.
 
-- [ ] `nnstudio-cli train <project.nnsp> [--preset <name>] [--epochs N] [--remote <service>]`
+- [ ] `NNSpire-cli train <project.nnsp> [--preset <name>] [--epochs N] [--remote <service>]`
   — run training locally or submit to a remote service; streams loss to stdout
-- [ ] `nnstudio-cli export <project.nnsp> --format <onnx|nns|nnsr> -o <out>`
+- [ ] `NNSpire-cli export <project.nnsp> --format <onnx|nns|nnsr> -o <out>`
   — export model; no UI required
-- [ ] `nnstudio-cli run <model.nnsx> --input <file|stdin> --output <file|stdout>`
+- [ ] `NNSpire-cli run <model.nnsx> --input <file|stdin> --output <file|stdout>`
   — single inference pass; reads NMID for I/O format
-- [ ] `nnstudio-cli remote list` — list active pods on configured services
-- [ ] `nnstudio-cli remote launch --service vast.ai --gpu RTX4090`
-- [ ] `nnstudio-cli remote stop <pod-id>`
+- [ ] `NNSpire-cli remote list` — list active pods on configured services
+- [ ] `NNSpire-cli remote launch --service vast.ai --gpu RTX4090`
+- [ ] `NNSpire-cli remote stop <pod-id>`
 - [ ] Common flags: `--backend cpu|cuda|remote`, `--config <settings.json>`,
       `--api-key <env-var-name>` (never accept key as positional arg — shell history)
 - [ ] Machine-readable output: `--json` flag on all commands for scripting
-- [ ] Built as a separate CMake target `nnstudio-cli`; included in `app-ninja` and
+- [ ] Built as a separate CMake target `NNSpire-cli`; included in `app-ninja` and
       `app-vs` presets; single static binary goal on Linux/macOS (musl / libc++)
 
-### Plugin Registry server spec (`nnstudio/deployment/registry/`)
+### Plugin Registry server spec (`NNSpire/deployment/registry/`)
 - [ ] REST API spec (OpenAPI 3.1): `POST /plugin/register`, `GET /plugin/{id}`, `POST /enterprise/ca/request`, `GET /crl`
 - [ ] Reference server implementation (Python FastAPI)
-- [ ] `nnstudio-sign submit` integration
+- [ ] `NNSpire-sign submit` integration
 
 ### `.nnsp` project file spec (finalise)
 - [ ] Adopt ZIP container format (ECMA OPC principle — like .docx/.xlsx)
-- [ ] `project.json`: project metadata, NNStudio version, author, signature/encryption header
+- [ ] `project.json`: project metadata, NNSpire version, author, signature/encryption header
 - [ ] `networks/<variant>/blueprint.json`: layer stack, sizes, activations, loss fn, optimizer config, hyperparameters
 - [ ] `networks/<variant>/manifest.json`: parts references (embedded or sidecar paths)
 - [ ] `networks/<variant>/graph.onnx`: OPTIONAL embedded weights
@@ -1236,10 +1236,10 @@ Useful for CI pipelines, scripting, and SSH sessions on remote pods.
 > with export capability.  The visual language is ArchiMate-inspired (components,
 > interfaces, connectors, typed ports) but domain-specific and simplified.
 >
-> NNStudio models built in the model editor appear as first-class components in the
+> NNSpire models built in the model editor appear as first-class components in the
 > ecosystem canvas — the NN is one node among others in the full AI system picture.
 
-### Component library (`nnstudio/ecosystem/components/`)
+### Component library (`NNSpire/ecosystem/components/`)
 
 Each component type has: a C++ descriptor (name, category, ports, config schema),
 a QML node card, a KB reference, and a configuration panel.
@@ -1251,7 +1251,7 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] **LiteLLM proxy** — config: upstream provider list, routing policy, rate limits
 - [ ] **HuggingFace TGI** — local/container; config: HF model ID, dtype, sharding
 - [ ] **OpenAI-compatible endpoint** — generic; config: base URL, API key env-var, model name
-- [ ] **NNStudio model (local runner)** — inline reference to any model built in Phase 3;
+- [ ] **NNSpire model (local runner)** — inline reference to any model built in Phase 3;
   runs via the embedded Python runtime; no separate server required
 
 #### Vector Stores / Retrieval
@@ -1291,12 +1291,12 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] **Sentence-Transformers** — local; config: model name, batch size, device
 - [ ] **Ollama embed** — via Ollama `/api/embeddings`; config: model tag
 - [ ] **OpenAI embeddings** — config: API key env-var, model (`text-embedding-3-small` etc.)
-- [ ] **Custom embedding** — NNStudio model from the model editor functioning as an encoder
+- [ ] **Custom embedding** — NNSpire model from the model editor functioning as an encoder
 
 ### Ecosystem canvas (`ui/EcosystemCanvas.qml`)
 - [ ] Separate canvas from the model editor — full panel occupying the `Ecosystem` layout preset
 - [ ] Component palette (toolbox) docked to left; grouped by category (Runners / Stores /
-  Agents / Ingestion / Connectors / NNStudio Models)
+  Agents / Ingestion / Connectors / NNSpire Models)
 - [ ] Drag component from palette → node card placed on canvas; double-click → config panel
 - [ ] Wire two ports by drag-connect; connector type inferred from port types; incompatible
   types highlighted red with tooltip explaining the mismatch
@@ -1311,7 +1311,7 @@ a QML node card, a KB reference, and a configuration panel.
   - Multi-agent supervisor (planner + specialist agents + shared vector store)
   - Local-only stack (Ollama + FAISS + llama.cpp; zero cloud)
   - Hybrid local+cloud (Ollama for fast drafts, OpenAI for final answers)
-  - NNStudio model as a component (Studio-trained NN acts as a classifier inside the pipeline)
+  - NNSpire model as a component (Studio-trained NN acts as a classifier inside the pipeline)
 - [ ] **Learn panel** — clicking any component opens a KB panel explaining: what it is, when
   to use it, typical configuration parameters, links to official docs, cost/resource estimates
 - [ ] **Resource estimator** — per node: estimated VRAM (GPU), RAM (CPU), disk; totalled for
@@ -1328,7 +1328,7 @@ a QML node card, a KB reference, and a configuration panel.
 ### Export artefacts (`ui/EcosystemExportDialog.qml`)
 - [ ] **Docker Compose** — `docker-compose.yml` configuring all server components (Ollama,
   Qdrant, Elasticsearch, etc.) with the configured versions, ports, volumes, environment vars;
-  NNStudio-model components mapped to a `nnstudio-runner` container
+  NNSpire-model components mapped to a `NNSpire-runner` container
 - [ ] **Kubernetes Helm values** — `values.yaml` for a generic AI-stack chart; one entry per
   component; secret refs replace inline key values
 - [ ] **Ollama Modelfile + run script** — `Modelfile` + `run_ollama.sh`/`.ps1` for the
@@ -1336,8 +1336,8 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] **`.env` template** — all required environment variables listed with placeholder values
   and comments; sensitive vars marked `# REQUIRED — set in CI/keychain, do not commit`
 - [ ] **Python orchestration script** — `run_pipeline.py` matching the designed architecture;
-  uses real library imports (LangChain, requests, qdrant-client, etc.);  no NNStudio import;
-  comments explain each section; NNStudio model nodes emitted as ONNX Runtime inference calls
+  uses real library imports (LangChain, requests, qdrant-client, etc.);  no NNSpire import;
+  comments explain each section; NNSpire model nodes emitted as ONNX Runtime inference calls
 - [ ] **Architecture diagram (Mermaid)** — auto-generated `architecture.md` with a
   Mermaid flowchart of all components and connections; suitable for documentation
 
@@ -1376,7 +1376,7 @@ a QML node card, a KB reference, and a configuration panel.
 > different typed messages and a different preset of blocks. **So the same node-graph
 > editor can express both.** An "LLM" is one **macro-architecture preset**; a "diffuser"
 > is another; a "VAE", a "CLIP encoder", a "reranker", a "query-rewrite head" are smaller
-> presets that plug into them. ComfyUI proved this works for diffusion; NNStudio
+> presets that plug into them. ComfyUI proved this works for diffusion; NNSpire
 > generalises it across **all** architecture families *and* across wrapping formats
 > (`.onnx`, `.safetensors`, GGUF, `.nnsx`).
 >
@@ -1398,7 +1398,7 @@ a QML node card, a KB reference, and a configuration panel.
 > deployment scene (data sources, clients, service bindings, monitoring) hosting the
 > *inner* model canvas. The inner canvas can itself host a deeper canvas, to arbitrary
 > depth. A nested canvas exposes typed ports to its parent, exactly like a node. **No
-> external format (ONNX/GGUF/safetensors) can express this nesting — only NNStudio
+> external format (ONNX/GGUF/safetensors) can express this nesting — only NNSpire
 > project files (`.nnsp`/`.nnsx`) store it.** Export to a standard format flattens or
 > extracts the runnable leaf where the format allows; the recursive landscape stays
 > Studio-native.
@@ -1417,7 +1417,7 @@ a QML node card, a KB reference, and a configuration panel.
 > ```
 >
 > Double-clicking any macro/group node opens its definition: either a built-in/native
-> NNStudio subgraph (drill down to primitives), an imported weights blob, or a remote
+> NNSpire subgraph (drill down to primitives), an imported weights blob, or a remote
 > API endpoint. **Macro and micro are two views of one model; the canonical source is
 > still code (ADR-030).**
 >
@@ -1468,7 +1468,7 @@ a QML node card, a KB reference, and a configuration panel.
 
 | # | Chunk (sub-section) | Deliverable | Read first (refs) |
 |---|---|---|---|
-| 0 | 5.7.0 | Accept ADR-035–049 (conceptual gates) | `docs/ARCHITECTURE.md` §12, `docs/blueprints.md` §3.10, `docs/modern_ai_systems_ontology.md` "Application to NNStudio" |
+| 0 | 5.7.0 | Accept ADR-035–049 (conceptual gates) | `docs/ARCHITECTURE.md` §12, `docs/blueprints.md` §3.10, `docs/modern_ai_systems_ontology.md` "Application to NNSpire" |
 | 1 | 5.7.1 + 5.7.1a | Tier A/B/C/D descriptors + `NN_bricks` realisation map | ADR-036, ADR-042, `docs/NN_bricks_overview.md` |
 | 2 | 5.7.2 | `SemanticPortType` + compat check | ADR-037, ontology L5 |
 | 3 | 5.7.4 | `BackingModel` (native / imported / remote) | ADR-035, `docs/DEPLOYMENT.md` (`.nnsp` spec) |
@@ -1487,7 +1487,7 @@ a QML node card, a KB reference, and a configuration panel.
 > `[! decision needed]` until accepted, then promoted to a file in `docs/adr/`.
 
 #### ADR-035 — Macro/micro two-level graph; "LLM is a preset, not a type" `[! decision needed]`
-- [ ] Confirm that NNStudio has **one** graph model rendered at two zoom levels (macro =
+- [ ] Confirm that NNSpire has **one** graph model rendered at two zoom levels (macro =
   semantic blocks, micro = primitive layers), not two separate editors — record in
   `ARCHITECTURE.md §12`
 - [ ] Confirm macro-architectures (LLM, diffuser, VAE, encoder-only, RAG head) are
@@ -1543,7 +1543,7 @@ a QML node card, a KB reference, and a configuration panel.
 
 #### ADR-039 — `ServiceConnector` plugin type (standardised external APIs) `[! decision needed]`
 - [ ] Add `SERVICE_CONNECTOR` to the Plugin SDK plugin-type enum (`PLUGIN-SDK.md`,
-  `nnstudio_plugin.h`) alongside `LAYER | TOKENIZER | OPTIMIZER | BACKEND | UI_PANEL |
+  `NNSpire_plugin.h`) alongside `LAYER | TOKENIZER | OPTIMIZER | BACKEND | UI_PANEL |
   TRUST_UPDATE`
 - [ ] `ServiceConnector` contract: `capabilities()` (train / infer / embed / generate),
   `submit(typed message + model ref)`, `poll(job)`, `fetchWeights(job)`, `estimateCost()`,
@@ -1576,7 +1576,7 @@ a QML node card, a KB reference, and a configuration panel.
   canvas exposes ComfyUI-style typed ports to its parent; arbitrary depth
 - [ ] Confirm an **outer `landscape` canvas** can wrap an inner model canvas as its
   "running landscape" (data sources, clients, `ExecutionBinding`s, monitors) — usable as
-  a standalone NNStudio project
+  a standalone NNSpire project
 - [ ] Confirm nesting is **Studio-only persistence** (`.nnsp`/`.nnsx`); no external format
   stores it; export flattens/extracts the runnable leaf where the target format allows
 - [ ] Single-NN templates expose exactly one slot, fillable only with role-valid content
@@ -1585,7 +1585,7 @@ a QML node card, a KB reference, and a configuration panel.
 #### ADR-042 — `NN_bricks_overview.md` realisation: Prim.X channels, Beh.X as templates `[! decision needed]`
 - [ ] Confirm **Prim.X (the 20 primitives) → Tier A**, each realised via one of three
   channels (see 5.7.1a):
-  1. **Builtin** — compiled into `nnstudio::builtin::*` (the prominent ones; mostly done
+  1. **Builtin** — compiled into `NNSpire::builtin::*` (the prominent ones; mostly done
      in Phase 1: Dense, ReLU, GELU, Sigmoid, Softmax, MHA, LayerNorm, Conv2D, …)
   2. **Native plugin** — compiled, distributed, signed reference plugins (heavier / less
      common: DiffusionStep, PPO/RL, Routing/Gating, CrossAttention, …)
@@ -1607,7 +1607,7 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] Confirm the tree is the navigation spine: selecting a node focuses it on the active
   canvas and vice-versa; drill-down + breadcrumb (5.7.3) are tree traversal
 - [ ] Confirm the user's **"level 0" (Client / Foundry / Agents) is ontology L6**, living
-  in the separate `nnagent` project *outside* NNStudio's structural tree, embeddable only
+  in the separate `nnagent` project *outside* NNSpire's structural tree, embeddable only
   as a single typed **orchestration-boundary node** with an I/O interface into a canvas;
   note the numbering inversion (user-top "0" = ontology-top "L6"; hardware L0 is the floor)
 
@@ -1666,7 +1666,7 @@ a QML node card, a KB reference, and a configuration panel.
   across the project); filter + jump-to-edge
 - [ ] Pure query over `SemanticPortType` edges (5.7.2) — a view, not new persisted data
 
-### 5.7.1 — Semantic composition taxonomy (`nnstudio/builtin/blocks/` + catalog)
+### 5.7.1 — Semantic composition taxonomy (`NNSpire/builtin/blocks/` + catalog)
 - [ ] `BlockTemplate` descriptor (Tier B): `{id, displayName, tier, function, inputPorts,
   outputPorts, params, body: native-subgraph | code-snippet, kbRef, provenance}`
 - [ ] `ModelRoleTemplate` descriptor (Tier C): `{id, role, inputPorts, outputPorts,
@@ -1682,7 +1682,7 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] **Template catalog**: repo-shipped catalog + user catalog (`<app_data>/catalog/`) +
   plugin-contributed; each template versioned, signed (reuse Phase 2 trust), and
   classified by `CompatibilityChecker` (`torch_standard` / `keras_standard` /
-  `nnstudio_extended`)
+  `NNSpire_extended`)
 - [ ] Each Tier B/C template carries `@kb:` deep-links and a paragraph mapping it to
   `NN_vnitrni_struktury_…architektury.pdf` / `NN_bricks_overview.md`
 - [ ] Dual-language: every template emits both Python (`torch_compat`) and C++ source
@@ -1695,7 +1695,7 @@ a QML node card, a KB reference, and a configuration panel.
 > content (including duplicate-of-builtin scripts).
 
 - [ ] **Prim → channel** assignments (initial proposal; finalise in ADR-042):
-  - *Builtin* (`nnstudio::builtin::*`): Prim.1 Dense, Prim.2 Embedding, Prim.3 ReLU,
+  - *Builtin* (`NNSpire::builtin::*`): Prim.1 Dense, Prim.2 Embedding, Prim.3 ReLU,
     Prim.4 GELU, Prim.5 Sigmoid, Prim.6 Softmax, Prim.7 MHA, Prim.9 ResidualAdd,
     Prim.10 LayerNorm, Prim.11 BatchNorm, Prim.12 Convolution, Prim.13 MaxPooling,
     Prim.14 PositionalEncoding
@@ -1714,7 +1714,7 @@ a QML node card, a KB reference, and a configuration panel.
   Beh.20→`ToolInvocationDecoder`, Beh.21→`EntityExtractionHead`
 - [ ] Each `Prim`/`Beh` entry records its channel, namespace/plugin id, and `@kb:` link
 
-### 5.7.2 — Typed semantic port system (`nnstudio/builtin/ports/`)
+### 5.7.2 — Typed semantic port system (`NNSpire/builtin/ports/`)
 - [ ] `SemanticPortType` enum + `dim`/shape carrier (ADR-037 set)
 - [ ] `PortCompat::check(out, in)` → `{ok | dimWarning | typeError}` with human message
 - [ ] Unify with the Phase 5.5 ecosystem `PortType` enum (single source of truth)
@@ -1742,12 +1742,12 @@ a QML node card, a KB reference, and a configuration panel.
   across nesting levels; arbitrary depth
 - [ ] **`landscape` canvas kind**: an outer "running landscape" canvas (data sources,
   `UniversalClient`s, `ExecutionBinding`s, monitors) that hosts an inner model canvas and
-  is itself a standalone NNStudio project
+  is itself a standalone NNSpire project
 - [ ] **Single-slot templates**: a concept that is one network renders as a one-box canvas;
   the box accepts only role-valid content (native subgraph | imported weights | endpoint)
 - [ ] Nesting persisted **only** in `.nnsp`/`.nnsx` (no external-format equivalent)
 
-### 5.7.4 — Backing models: native / imported weights / remote (`nnstudio/builtin/backing/`)
+### 5.7.4 — Backing models: native / imported weights / remote (`NNSpire/builtin/backing/`)
 - [ ] `BackingModel` abstraction — a Tier B/C node is backed by exactly one of:
   - **(a) Native subgraph** — drills down to Phase 3 primitives; trainable in-engine
   - **(b) Imported weights** — `.safetensors` / `.onnx` / GGUF / `.nnsx`; run/fine-tune
@@ -1833,7 +1833,7 @@ a QML node card, a KB reference, and a configuration panel.
   definition show usage sites; edit-once-update-all (ADR-047)
 - [ ] Backed by `composition/definitions/` + `*_ref.json`; namespace = path (ADR-021, ADR-047)
 
-### 5.7.10 — Procedure / process templates (`nnstudio/builtin/procedures/`)
+### 5.7.10 — Procedure / process templates (`NNSpire/builtin/procedures/`)
 - [ ] `ProcedureTemplate` kinds: `train`, `fine-tune`, `infer`, `evaluate`, `distil`,
   `rlhf` — each *references* one model definition (ADR-046)
 - [ ] Run-mode selector on the canvas swaps the active procedure without altering the model
@@ -1849,7 +1849,7 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] Confirm `.nnsp` internal layout mirrors the composition tree (one folder per nested
   canvas; `definitions/` for classes; `composition/*` for instances + axis attributes)
 - [ ] Confirm built-in template namespaces follow path = namespace (ADR-021):
-  `nnstudio::builtin::blocks::*`, `::roles::*`, `::macros::*`, `::procedures::*`
+  `NNSpire::builtin::blocks::*`, `::roles::*`, `::macros::*`, `::procedures::*`
 - [ ] Schema-validate the mirrored layout; round-trip test (tree ⇄ files)
 
 ### Phase 5.7 milestone
@@ -1880,7 +1880,7 @@ a QML node card, a KB reference, and a configuration panel.
 
 ## Phase 6 — Quantum Backend
 
-### Quantum backend (`nnstudio/backends/quantum/`)
+### Quantum backend (`NNSpire/backends/quantum/`)
 - [ ] `QuantumBackend` implementation: `execute()` dispatches to Qiskit Python via bridge
 - [ ] Quantum layer type: `QuantumCircuitLayer` — parameterised quantum gate sequence
 - [ ] Hybrid graph support: classical `ComputeGraph` with embedded `QuantumCircuitLayer` nodes
@@ -1902,7 +1902,7 @@ a QML node card, a KB reference, and a configuration panel.
 
 ### UI frontend portability — desktop-first, but web/mobile-ready (do not lock out)
 
-> **Architecture guard.** NNStudio ships as a **desktop application**, and that is the
+> **Architecture guard.** NNSpire ships as a **desktop application**, and that is the
 > right call. But the *UI* (only the UI — never the runners) should remain *convertible*
 > in the future into an **Android / iOS** app or a **Web** front-end (Qt for WebAssembly /
 > `QtWebEngine`), without a rewrite. **Runners are always a HW/VM/host concern and stay
@@ -1974,7 +1974,7 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] AppImage build for Linux
 - [ ] Installer build (optional) for Windows
 - [ ] Doxygen API doc generation
-- [ ] Plugin signing step in release pipeline using `nnstudio-sign`
+- [ ] Plugin signing step in release pipeline using `NNSpire-sign`
 
 ### Performance & optimization
 - [ ] CUDA backend benchmarks (matmul, conv) vs CPU baseline
@@ -1984,7 +1984,7 @@ a QML node card, a KB reference, and a configuration panel.
 
 ### Security
 - [ ] TrustStore permissions hardened on all three platforms
-- [ ] `nnstudio-runner` sidecar sandboxing (process isolation, limited syscalls)
+- [ ] `NNSpire-runner` sidecar sandboxing (process isolation, limited syscalls)
 - [ ] No eval / dynamic code execution in the Qt app process without sandbox
 - [ ] OpenSSL kept up to date; SBOM generated for each release
 
@@ -1995,8 +1995,8 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] **CUDA attribution** *(Phase 4)* — when CudaBackend ships: add NVIDIA CUDA Toolkit attribution to `Help → About`; confirm EULA redistribution terms; do NOT vendor NVIDIA runtime files without legal review; add `LICENSES/third-party/NVIDIA-CUDA-EULA.txt`
 - [ ] **Qiskit attribution** *(Phase 6)* — when QuantumBackend ships: add `Qiskit-LICENSE` + `Qiskit-NOTICE` to `LICENSES/third-party/`; add attribution to `Help → About`
 - [ ] **CLA tooling** — set up GitHub CLA bot or DCO sign-off (`Signed-off-by:`) before first external contribution is accepted; CLA text must include the patent warranty clause (see `LICENSING.md §5`)
-- [ ] **Trademark search** *(before public beta)* — perform formal USPTO / EUIPO / WIPO wordmark search for "NNStudio" in Nice classes 9 + 42; see `LICENSING.md §6` for findings and action items
-- [ ] **Domain registration** *(before public marketing)* — `nnstudio.com` is taken (graphic design freelancer, different field); register `nnstudio.io` / `.ai` / `.dev` or chosen alternative; align with trademark filing
+- [ ] **Trademark search** *(before public beta)* — perform formal USPTO / EUIPO / WIPO wordmark search for "NNSpire" in Nice classes 9 + 42; see `LICENSING.md §6` for findings and action items
+- [ ] **Domain registration** *(before public marketing)* — `NNSpire.com` is taken (graphic design freelancer, different field); register `NNSpire.io` / `.ai` / `.dev` or chosen alternative; align with trademark filing
 - [ ] **Trademark filing** *(before commercial plugin sales)* — file in US (class 9 + 42) and EU; engage IP attorney
 - [ ] **GELU patent watch** — US application 20210110229A1 (Hendrycks 2019); confirm current prosecution status with attorney before commercial release; consensus is non-patentable as a mathematical function but confirm
 
@@ -2004,10 +2004,10 @@ a QML node card, a KB reference, and a configuration panel.
 
 ## External Compute Services
 
-NNStudio must support offloading computation to remote GPU services at multiple architectural levels.
+NNSpire must support offloading computation to remote GPU services at multiple architectural levels.
 This is critical during development (no local CUDA GPU available) and for production scale-out.
 
-### Where external compute surfaces in the NNStudio UI and CLI
+### Where external compute surfaces in the NNSpire UI and CLI
 
 | Integration point | Where it appears | Phase |
 |---|---|---|
@@ -2015,17 +2015,17 @@ This is critical during development (no local CUDA GPU available) and for produc
 | **Remote training panel** (pod launch, job monitor, cost estimate, weight import) | Training Dashboard panel — shown when Remote mode active | Phase 3 |
 | **Remote pod manager** (Vast.ai / RunPod / LambdaLabs pod lifecycle) | Deployment panel | Phase 5 |
 | **Managed job submitter** (SageMaker / Vertex AI / Azure ML job dispatch) | Deployment panel | Phase 5 |
-| **`nnstudio-cli remote *`** (pod list / launch / stop from terminal) | `nnstudio-cli` command-line tool | Phase 5 |
-| **`nnstudio-cli train --remote`** (headless training submission) | `nnstudio-cli` command-line tool | Phase 5 |
+| **`NNSpire-cli remote *`** (pod list / launch / stop from terminal) | `NNSpire-cli` command-line tool | Phase 5 |
+| **`NNSpire-cli train --remote`** (headless training submission) | `NNSpire-cli` command-line tool | Phase 5 |
 | **Runner health monitor** (Triton / KServe / TF Serving inference endpoints) | Deployment panel — health/latency/throughput | Phase 5 |
 
-### Integration points in NNStudio architecture
+### Integration points in NNSpire architecture
 
-| NNStudio level | What integrates | What it enables |
+| NNSpire level | What integrates | What it enables |
 |---|---|---|
 | **Backend level** | New `IBackend` implementation (`RemoteBackend`) | Individual tensor ops (`matmul`, etc.) forwarded via gRPC to a remote CUDA worker; training loop runs locally |
 | **Trainer level** | `RemoteTrainer` / job dispatch | Entire training job serialised and sent to a remote service; local machine only submits + receives trained weights |
-| **Inference level** | Existing Triton / KServe / TF Serving connectors | Already in TODO Phase 5; model deployed remotely, NNStudio queries it |
+| **Inference level** | Existing Triton / KServe / TF Serving connectors | Already in TODO Phase 5; model deployed remotely, NNSpire queries it |
 
 ### Services sorted by abstraction level (lowest = most control / cheapest)
 
@@ -2077,12 +2077,12 @@ Best for: production-scale training with guaranteed capacity. Enterprise contrac
 2. **Vast.ai RTX 4090** (~$0.30/hr) — cheapest CUDA GPU with 24 GB VRAM; test Backend-level RemoteBackend over SSH tunnel.
 3. **RunPod Serverless** (~$0.00031/s for 4090) — test per-request inference dispatch; useful for the inference-level connector.
 4. **LambdaLabs A100** (~$1.15/hr) — first "real" training run at scale; stable fixed pricing, no surprises.
-5. **CoreWeave / AWS** — only once NNStudio's remote training pipeline is proven at smaller scale.
+5. **CoreWeave / AWS** — only once NNSpire's remote training pipeline is proven at smaller scale.
 
 ### TODOs — architecture items to add
 - [ ] Design `RemoteBackend : IBackend` — forwards individual tensor ops to a remote CUDA worker via gRPC (Phase 1 extension)
 - [ ] Design `RemoteTrainer` / job-dispatch adapter — serialises model + dataset, submits to SageMaker/Vertex/RunPod job API, polls for completion, imports weights (Phase 5 extension)
-- [ ] `DEPLOYMENT.md` section: external compute service integration guide (which service maps to which NNStudio integration point)
+- [ ] `DEPLOYMENT.md` section: external compute service integration guide (which service maps to which NNSpire integration point)
 - [ ] Add backend selector dropdown in Phase 3 UI to include "Remote (gRPC)" option alongside CPU/CUDA
 - [ ] Credential/secret management for API keys (none stored in `.nnsp`; use OS keychain or env var)
 - [ ] Vast.ai / RunPod CLI wrapper in `deployment/runners/` for spinning up and tearing down training pods from within Studio
@@ -2107,20 +2107,20 @@ Best for: production-scale training with guaranteed capacity. Enterprise contrac
   See **ADR-034** for full design rationale, both advocatus diaboli arguments,
   reference papers, and the recommended three-step Phase 4 rollout.
   Low priority until Phase 3 UI is stable; high strategic value —
-  NNStudio becomes a transparent didactic bridge from standard linear layers
+  NNSpire becomes a transparent didactic bridge from standard linear layers
   to cutting-edge research architectures with a single template parameter change.
 
 - [ ] **Primitivistic educational `nnprimitive` engine** — a small, fully isolated
   sub-project: its own CMake target, include tree (`include/nnprimitive/`), source
   tree (`src/nnprimitive/`), and C++ namespace `nnprimitive`. No dependency on
-  `nnstudio-core`, no `Tensor`, no `IBackend`, no BLAS, no template metaprogramming.
+  `NNSpire-core`, no `Tensor`, no `IBackend`, no BLAS, no template metaprogramming.
   Implements the identical NN concepts (neuron, layer, forward pass, backward pass,
   gradient descent) as explicit `for`-loops over `std::vector<float>` — exactly
   how a motivated beginner encountering NNs for the first time would write them.
   **Purpose: purely educational.** Acts as the missing stepping-stone between
   "NN mathematical theory" and the matrix-optimised production implementation in
-  `nnstudio`: a learner who finds the leap from textbook equations to `Dense::forward()`
+  `NNSpire`: a learner who finds the leap from textbook equations to `Dense::forward()`
   too large can read `nnprimitive` first, then see the same computation generalised
-  and optimised in `nnstudio`. A dedicated blueprints.md chapter (to be written)
+  and optimised in `NNSpire`. A dedicated blueprints.md chapter (to be written)
   will explain every generalisation step and why it was made.
   **Low priority** — implement only once the main engine and Phase 3 UI are stable.

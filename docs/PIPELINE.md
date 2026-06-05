@@ -1,4 +1,4 @@
-# NNStudio — Pipeline Whitepaper
+# NNSpire — Pipeline Whitepaper
 
 **Version**: 0.1 (Phase 0 — design)  
 **Date**: 2026-03-31  
@@ -11,7 +11,7 @@
 
 ## 1. Overview
 
-The NNStudio pipeline describes the full data flow from raw human input through all processing stages to final output. Each stage is an independently configurable component that can be swapped, extended by plugins, and inspected in the Studio UI. The same pipeline description is executable both from the UI and from exported Python/C++ code.
+The NNSpire pipeline describes the full data flow from raw human input through all processing stages to final output. Each stage is an independently configurable component that can be swapped, extended by plugins, and inspected in the Studio UI. The same pipeline description is executable both from the UI and from exported Python/C++ code.
 
 ```
 Human Input
@@ -93,7 +93,7 @@ Accepts CSV (header row inferred as feature names) and Apache Arrow IPC format. 
 
 ### 2.5 MCP message adapter
 
-Accepts a JSON message conforming to the Model Context Protocol schema (KB doc 03 §MCP). Deserialises to the appropriate tensor based on the `content_type` field of the MCP message. Enables NNStudio pipelines to be triggered as MCP tool endpoints.
+Accepts a JSON message conforming to the Model Context Protocol schema (KB doc 03 §MCP). Deserialises to the appropriate tensor based on the `content_type` field of the MCP message. Enables NNSpire pipelines to be triggered as MCP tool endpoints.
 
 ---
 
@@ -253,7 +253,7 @@ The entire pipeline configuration is exportable as **both** Python and C++ sourc
 ### Python export (example skeleton)
 
 ```python
-import nnstudio as nn
+import NNSpire as nn
 
 # Build pipeline
 input_adapter = nn.TextInputAdapter()
@@ -273,8 +273,8 @@ print(output_adapter.decode(logits))
 ### C++ export (equivalent)
 
 ```cpp
-#include <nnstudio/pipeline/pipeline.h>
-using namespace nnstudio;
+#include <NNSpire/pipeline/pipeline.h>
+using namespace NNSpire;
 
 int main() {
     auto input   = TextInputAdapter{};
@@ -291,17 +291,17 @@ int main() {
 }
 ```
 
-The exported C++ code uses `nnstudio-core` as a library and includes a `CMakeLists.txt`.
+The exported C++ code uses `NNSpire-core` as a library and includes a `CMakeLists.txt`.
 
 ---
 
 ## 8. MCP / A2A integration
 
-NNStudio pipelines can be exposed as **MCP tool endpoints** (KB doc 03 §MCP):
+NNSpire pipelines can be exposed as **MCP tool endpoints** (KB doc 03 §MCP):
 
 - The Studio generates an OpenAPI 3.1 descriptor for a configured pipeline
 - A lightweight embedded HTTP server (single-pipeline mode) serves the endpoint
 - MCP messages with `content_type: text | image | audio | structured` are routed to the appropriate input adapter
 - Responses are streamed back in MCP-compatible SSE format
 
-This allows NNStudio pipelines to participate in multi-agent systems without any additional server infrastructure.
+This allows NNSpire pipelines to participate in multi-agent systems without any additional server infrastructure.

@@ -1,4 +1,4 @@
-# NNStudio
+# NNSpire
 
 A multiplatform (Qt 6) neural-network design, training, deployment, and learning workbench.
 Built "inside out" — from the mathematics of a single neuron outward to full LLM pipelines, hardware runners, and eventually quantum computation backends.
@@ -28,8 +28,8 @@ Built "inside out" — from the mathematics of a single neuron outward to full L
 
 ```
 Studio/                         ← project root (this folder)
-├── nnstudio/                   ← all source code
-│   ├── core/                   ← C++17 engine library (nnstudio-core, LGPL v3)
+├── NNSpire/                   ← all source code
+│   ├── core/                   ← C++17 engine library (NNSpire-core, LGPL v3)
 │   ├── backends/               ← CPU / CUDA / Quantum backend plugins
 │   ├── plugin-api/             ← C ABI headers + TrustVerifier + PluginLoader
 │   ├── plugins/                ← built-in reference plugins (BPE tokenizer, FAISS, etc.)
@@ -51,7 +51,7 @@ Studio/                         ← project root (this folder)
 
 ```bash
 # Clone
-git clone <repo-url> NNStudio && cd NNStudio
+git clone <repo-url> NNSpire && cd NNSpire
 
 # Read the plan
 cat TODO.md                  # full task checklist
@@ -63,7 +63,7 @@ cat docs/blueprints.md       # engine walkthrough
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
-./build/nnstudio/app/NNStudio
+./build/NNSpire/app/NNSpire
 ```
 
 ---

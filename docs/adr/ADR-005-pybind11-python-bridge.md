@@ -9,7 +9,7 @@
 ## Context
 
 ADR-004 mandates Python parity for all engine artefacts. A binding mechanism must expose
-the `nnstudio-core` C++ API to Python without rewriting it.
+the `NNSpire-core` C++ API to Python without rewriting it.
 
 Candidates evaluated:
 
@@ -25,10 +25,10 @@ Candidates evaluated:
 
 ## Decision
 
-**pybind11** is the Python bridge for NNStudio.
+**pybind11** is the Python bridge for NNSpire.
 
-- All pybind11 binding code lives in `nnstudio/python-bridge/`.
-- The Python package name is `nnstudio` (top-level).
+- All pybind11 binding code lives in `NNSpire/python-bridge/`.
+- The Python package name is `NNSpire` (top-level).
 - Python minimum version: **3.10** (matches embeddable Python distribution shipped with the app).
 - Python packaged with the app lives in `<install>/runtime/python/` — it never touches the user's system Python.
 - `pyproject.toml` (PEP 517/518) governs the Python package build.
@@ -49,6 +49,6 @@ Candidates evaluated:
 - pybind11 header version must be pinned in `third-party/pybind11/`.
 
 **Follow-on**
-- Add pybind11 as a git submodule in `nnstudio/third-party/pybind11/`.
+- Add pybind11 as a git submodule in `NNSpire/third-party/pybind11/`.
 - Equivalence tests compare C++ and Python tensor shapes, dtypes, and numeric results.
 - If nanobind matures sufficiently, evaluate migration in Phase 3+.

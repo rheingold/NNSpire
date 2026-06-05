@@ -8,13 +8,13 @@
 
 ## Context
 
-NNStudio targets multiple compute backends:
+NNSpire targets multiple compute backends:
 - **CPU** — Eigen-based BLAS, for development, testing, and machines without a GPU.
 - **CUDA** — cuBLAS / cuDNN-accelerated operations for NVIDIA GPUs.
 - **Quantum** — Hybrid classical-quantum execution via Qiskit (Phase 6).
 - (Future) Custom FPGA, Apple MPS, RISC-V accelerators via plugin backends.
 
-If backend-specific code (CUDA headers, cuBLAS calls) is compiled into `nnstudio-core`,
+If backend-specific code (CUDA headers, cuBLAS calls) is compiled into `NNSpire-core`,
 the core library cannot be distributed to machines that lack the CUDA toolkit.
 Static linking of backends also prevents hot-swapping (switching CPU↔CUDA at runtime).
 
@@ -22,7 +22,7 @@ Static linking of backends also prevents hot-swapping (switching CPU↔CUDA at r
 
 ## Decision
 
-All compute operations in `nnstudio-core` are **dispatched through `IBackend`**.
+All compute operations in `NNSpire-core` are **dispatched through `IBackend`**.
 No backend-specific code lives in the core library itself.
 
 ```cpp
@@ -39,15 +39,15 @@ public:
 };
 ```
 
-Each backend is a **separately compiled shared library** (`nnstudio-backend-cpu.so`,
-`nnstudio-backend-cuda.so`, etc.) loaded at runtime by `BackendRegistry`.
+Each backend is a **separately compiled shared library** (`NNSpire-backend-cpu.so`,
+`NNSpire-backend-cuda.so`, etc.) loaded at runtime by `BackendRegistry`.
 
 `BackendRegistry::active()` returns the currently selected backend.
 Switching backends is done by calling `BackendRegistry::select(name)` before running
 any compute — not mid-graph.
 
 Backend shared libraries use the same **C ABI boundary** convention as plugins (ADR-003):
-they export a `nnstudio_backend_descriptor()` C function returning a descriptor struct.
+they export a `NNSpire_backend_descriptor()` C function returning a descriptor struct.
 
 ---
 
@@ -66,9 +66,9 @@ they export a `nnstudio_backend_descriptor()` C function returning a descriptor 
 - Mid-graph backend switches not supported; models must be designed for a single backend.
 
 **Follow-on**
-- `IBackend` defined in `nnstudio/core/include/nnstudio/core/backend/IBackend.h`.
-- `BackendRegistry` singleton in `nnstudio/core/backend/`.
-- CPU backend in `nnstudio/backends/cpu/` (Eigen dependency only, always available).
-- CUDA backend in `nnstudio/backends/cuda/` (guards for CUDA toolkit presence in CMake).
-- Quantum backend stub in `nnstudio/backends/quantum/` (Phase 6, Qiskit bridge).
+- `IBackend` defined in `NNSpire/core/include/NNSpire/core/backend/IBackend.h`.
+- `BackendRegistry` singleton in `NNSpire/core/backend/`.
+- CPU backend in `NNSpire/backends/cpu/` (Eigen dependency only, always available).
+- CUDA backend in `NNSpire/backends/cuda/` (guards for CUDA toolkit presence in CMake).
+- Quantum backend stub in `NNSpire/backends/quantum/` (Phase 6, Qiskit bridge).
 - See ADR-015 for the quantum backend decision.

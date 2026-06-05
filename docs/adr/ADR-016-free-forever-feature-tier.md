@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio has a dual mandate: it is both a **learning workbench** and a
+NNSpire has a dual mandate: it is both a **learning workbench** and a
 **professional deployment tool**. These two goals are in tension when considering
 a commercial sustainability model.
 
@@ -28,8 +28,8 @@ economy** (ADR-007): authors pay for Vendor Signing Certificates; the core app s
 
 ## Decision
 
-The following categories of NNStudio functionality are declared **permanently FREE**
-and encoded as `Tier::FREE` in `nnstudio/core/features/FeatureFlags.h`:
+The following categories of NNSpire functionality are declared **permanently FREE**
+and encoded as `Tier::FREE` in `NNSpire/core/features/FeatureFlags.h`:
 
 | Category | Scope |
 |---|---|
@@ -39,7 +39,7 @@ and encoded as `Tier::FREE` in `nnstudio/core/features/FeatureFlags.h`:
 | **Standard runner connectors** | Triton, TF Serving, KServe, ONNX Runtime embedded, OpenAI-compatible REST |
 | **KB help system** | In-app help, context-sensitive KB popups, wizard KB integration |
 | **All standard export formats** | ONNX, TorchScript, `.nns`, `.nnsr` |
-| **Plugin SDK** | C ABI headers, Python bridge, scaffolding tools, `nnstudio-sign` CLI |
+| **Plugin SDK** | C ABI headers, Python bridge, scaffolding tools, `NNSpire-sign` CLI |
 | **Trust verification** | The signing/verification mechanism is open; only the *certificate issuance service* is commercial |
 
 ### Rules for any future paid-tier consideration
@@ -70,6 +70,6 @@ This policy is a **public commitment** enforceable by the GPL/LGPL license terms
   is caught by code review and CI.
 
 **Follow-on**
-- `FeatureFlags.h` in `nnstudio/core/features/` with `enum class Tier { FREE, PRO }`.
+- `FeatureFlags.h` in `NNSpire/core/features/` with `enum class Tier { FREE, PRO }`.
 - CI lint rule: any PR changing a flag from `FREE` to `PRO` requires a linked ADR.
 - See LICENSING.md §2 and §3 for the full plugin charter and Pro-tier policy.

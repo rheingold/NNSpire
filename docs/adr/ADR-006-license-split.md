@@ -8,12 +8,12 @@
 
 ## Context
 
-NNStudio must satisfy two competing goals simultaneously:
+NNSpire must satisfy two competing goals simultaneously:
 
 1. **Commercial plugin ecosystem**: third parties must be able to write proprietary,
-   commercially licensed plugins that link against the NNStudio engine without being
+   commercially licensed plugins that link against the NNSpire engine without being
    forced to open-source their plugin code.
-2. **Copyleft protection**: modifications to the NNStudio engine and Studio application
+2. **Copyleft protection**: modifications to the NNSpire engine and Studio application
    itself — including any attempt to fork the Studio with the trust chain disabled — must
    be disclosed under an open-source license.
 
@@ -27,22 +27,22 @@ The project uses a **dual-tier license split**:
 
 | Component | License | Rationale |
 |---|---|---|
-| `nnstudio-core` | **GNU LGPL v3** | Proprietary plugins may dynamically link without GPL infection |
-| `nnstudio/plugin-api/` | **GNU LGPL v3** | Plugin authors link against these headers |
-| `nnstudio/python-bridge/` | **GNU LGPL v3** | Bridge to core; same terms |
-| `nnstudio/backends/` | **GNU LGPL v3** | Backend plugins are linkable libraries |
-| `nnstudio/app/` | **GNU GPL v3** | App is not a library; GPL prevents proprietary Studio forks |
-| `nnstudio/plugins/` (built-in reference plugins) | **MIT** | Widest use for learning/scaffolding |
-| `nnstudio-sign` CLI | **GNU GPL v3** | Standalone executable |
+| `NNSpire-core` | **GNU LGPL v3** | Proprietary plugins may dynamically link without GPL infection |
+| `NNSpire/plugin-api/` | **GNU LGPL v3** | Plugin authors link against these headers |
+| `NNSpire/python-bridge/` | **GNU LGPL v3** | Bridge to core; same terms |
+| `NNSpire/backends/` | **GNU LGPL v3** | Backend plugins are linkable libraries |
+| `NNSpire/app/` | **GNU GPL v3** | App is not a library; GPL prevents proprietary Studio forks |
+| `NNSpire/plugins/` (built-in reference plugins) | **MIT** | Widest use for learning/scaffolding |
+| `NNSpire-sign` CLI | **GNU GPL v3** | Standalone executable |
 | AI Standards KB | **CC BY 4.0** | Documentation / knowledge base |
 
 ### Key implications
 
 - A third party **may** build a closed-source commercial plugin that *dynamically links*
-  against `nnstudio-core` — explicitly permitted by LGPL v3 §4.
-- A third party **must not** statically link `nnstudio-core` into a closed-source plugin
+  against `NNSpire-core` — explicitly permitted by LGPL v3 §4.
+- A third party **must not** statically link `NNSpire-core` into a closed-source plugin
   without publishing core source modifications.
-- Anyone distributing a fork of the Studio application (`nnstudio/app/`) that disables
+- Anyone distributing a fork of the Studio application (`NNSpire/app/`) that disables
   the trust verification system **must** publish that fork's source under GPL v3.
   Disabling the trust chain and distributing the result is a GPL violation.
 

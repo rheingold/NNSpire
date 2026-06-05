@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://NNSpire.dev/schemas/plugin.manifest.schema.json",
+  "title": "NNSpire Plugin Manifest",
+  "description": "Manifest schema for NNSpire plugins (LGPL v3).  Every plugin package (C++ or Python) must include a plugin.manifest.json conforming to this schema.  @kb: PLUGIN-SDK.md §4",
+  "type": "object",
+  "required": [
+    "manifestVersion",
+    "id",
+    "name",
+    "version",
+    "type",
+    "author",
+    "license",
+    "minStudioVersion",
+    "capabilities",
+    "implementations",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifestVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version.  Must be 1 for this release."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$",
+      "description": "Reverse-domain plugin identifier, e.g. com.example.my-layer.",
+      "examples": ["com.example.my-layer", "org.myorg.bpe-tokenizer"]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Human-readable display name shown in the Studio plugin browser."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-(0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?$",
+      "description": "Semver version string, e.g. 1.0.0 or 2.3.1-beta.1."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "LAYER",
+        "ACTIVATION",
+        "OPTIMIZER",
+        "TOKENIZER",
+        "BACKEND",
+        "INPUT_ADAPTER",
+        "OUTPUT_ADAPTER",
+        "CONTEXT_SOURCE",
+        "RUNNER_CLIENT",
+        "UI_PANEL"
+      ],
+      "description": "Plugin type.  Must NOT be TRUST_UPDATE — TUP packages use tup.manifest.json."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Author or organisation name."
+    },
+    "authorUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional URL to the author's website."
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier, e.g. MIT, Apache-2.0, GPL-3.0-only.",
+      "examples": ["MIT", "Apache-2.0", "GPL-3.0-only", "LGPL-3.0-or-later", "Proprietary"]
+    },
+    "licenseUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional URL to the full license text."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4096,
+      "description": "Optional short description of the plugin shown in the Studio plugin browser."
+    },
+    "minStudioVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "Minimum NNSpire version required to load this plugin."
+    },
+    "maxStudioVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "Optional maximum NNSpire version.  PluginLoader will refuse to load the plugin above this version."
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "LAYER_FORWARD",
+          "LAYER_BACKWARD",
+          "LAYER_PARAMETERS",
+          "ACTIVATION_APPLY",
+          "ACTIVATION_DERIVATIVE",
+          "OPTIMIZER_STEP",
+          "TOKENIZER_ENCODE",
+          "TOKENIZER_DECODE",
+          "TOKENIZER_VOCAB",
+          "BACKEND_MATMUL",
+          "BACKEND_ADD",
+          "BACKEND_RELU",
+          "INPUT_LOAD",
+          "OUTPUT_SAVE",
+          "CONTEXT_QUERY",
+          "RUNNER_INFER",
+          "UI_QML_PANEL"
+        ]
+      },
+      "description": "Declared list of capabilities this plugin implements.  Must be consistent with the plugin type."
+    },
+    "kbRef": {
+      "type": "string",
+      "description": "Optional Knowledge Base reference, e.g. ai-standards-kb/standards/01-Neural-Networks-Fundamentals.md#training-loop."
+    },
+    "implementations": {
+      "type": "object",
+      "description": "Build artefacts for each language implementation.  At least one of 'cpp' or 'python' is required.",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "cpp": {
+          "type": "object",
+          "required": ["library", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "library": {
+              "type": "string",
+              "description": "Relative path to the shared library (.dll / .so / .dylib).",
+              "examples": ["my-layer.dll", "bin/my-layer.so"]
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "SHA-256 hex digest of the compiled shared library."
+            }
+          }
+        },
+        "python": {
+          "type": "object",
+          "required": ["module", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "module": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$",
+              "description": "Importable Python module name, e.g. my_layer or org.my_layer."
+            },
+            "wheel": {
+              "type": "string",
+              "description": "Optional relative path to the wheel file for offline install.",
+              "examples": ["dist/my_layer-1.0.0-py3-none-any.whl"]
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "SHA-256 hex digest of the wheel file (if present) or of the module directory zip."
+            }
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "string",
+      "description": "Relative path to the detached PKCS#7 (.p7s) signature file covering this manifest and all listed artefacts.",
+      "examples": ["my-layer.p7s", "signatures/my-layer.p7s"]
+    }
+  }
+}

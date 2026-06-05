@@ -4,26 +4,26 @@
 
 **Status:** ACCEPTED  
 **Date:** 2026-04-06  
-**Author:** NNStudio project  
+**Author:** NNSpire project  
 
 ---
 
 ## Context / Problem Statement
 
-NNStudio implements its own compute engine (Tensor, Dense, Adam, ComputeGraph, CpuBackend via Eigen) for didactical reasons — to make every internal NN operation visible and inspectable. During Phase 1 implementation it became clear that:
+NNSpire implements its own compute engine (Tensor, Dense, Adam, ComputeGraph, CpuBackend via Eigen) for didactical reasons — to make every internal NN operation visible and inspectable. During Phase 1 implementation it became clear that:
 
 1. The compute engine (Tensor, layers, optimizers) is a reinvented wheel. PyTorch/LibTorch does this better, with 10 years of CUDA optimization and a dedicated team.
 2. Everything *around* the compute engine (plugin trust/PKI, plugin ABI, project format `.nns`, UI, workflow, export pipeline) is genuinely novel — no existing NN framework has it.
-3. The performance concern is **scoped exclusively to Studio-side training** (UI, CLI, embedded server). Exported models run on their own independent runtimes (PyTorch, ONNX Runtime, TensorRT) regardless of which backend NNStudio used during training — so the backend choice has zero effect on the performance of shipped models.
+3. The performance concern is **scoped exclusively to Studio-side training** (UI, CLI, embedded server). Exported models run on their own independent runtimes (PyTorch, ONNX Runtime, TensorRT) regardless of which backend NNSpire used during training — so the backend choice has zero effect on the performance of shipped models.
 
 | Runtime context | Backend affects performance? |
 |---|---|
-| NNStudio training (UI / CLI) | ✅ Yes — this is the scope of this ADR |
-| NNStudio embedded server (Ollama-like) | ✅ Yes |
+| NNSpire training (UI / CLI) | ✅ Yes — this is the scope of this ADR |
+| NNSpire embedded server (Ollama-like) | ✅ Yes |
 | Exported model on PyTorch runner | ❌ No — independent runtime |
 | Exported model on ONNX Runtime / TensorRT | ❌ No — independent runtime |
 
-The Linus Torvalds analogy: Torvalds wrote a kernel because MINIX couldn't do what he needed — there was a genuine gap. The gap NNStudio fills is the *studio* (trust, plugin ecosystem, visual workflow, project format), not the compute engine itself.
+The Linus Torvalds analogy: Torvalds wrote a kernel because MINIX couldn't do what he needed — there was a genuine gap. The gap NNSpire fills is the *studio* (trust, plugin ecosystem, visual workflow, project format), not the compute engine itself.
 
 ---
 
@@ -44,8 +44,8 @@ The Linus Torvalds analogy: Torvalds wrote a kernel because MINIX couldn't do wh
 ## Consequences
 
 **Positive:**
-- CUDA, cuDNN, and multi-GPU training become available to NNStudio users at production quality without a multi-year kernel implementation effort.
-- The `torch_compat.h` alignment story becomes trivially true for the production path: "NNStudio literally runs on LibTorch under the hood when you choose it."
+- CUDA, cuDNN, and multi-GPU training become available to NNSpire users at production quality without a multi-year kernel implementation effort.
+- The `torch_compat.h` alignment story becomes trivially true for the production path: "NNSpire literally runs on LibTorch under the hood when you choose it."
 - `CpuBackend` remains available for learning, debugging, and zero-dependency builds.
 - Plugin authors using `IBackend` get LibTorch acceleration transparently with no API changes.
 - Shipped/exported models are completely unaffected — they run on their own runtime.
@@ -104,7 +104,7 @@ He wrote his own kernel *because* he couldn't use MINIX for what he needed. Ther
 The `LibTorchBackend : IBackend` path is not a compromise — it's *the correct answer*:
 
 ```
-NNStudio (our work — genuinely novel)
+NNSpire (our work — genuinely novel)
 ├── UI, project format, plugin trust, workflow
 ├── Layer/Trainer/ComputeGraph (our API, torch-compatible naming)
 └── IBackend
@@ -116,7 +116,7 @@ With `LibTorchBackend`: CUDA support is free, ONNX export is trivial (`torch.onn
 
 **Verdict: don't abandon what we've built. Retrofit the compute, keep the studio.**
 
-The work isn't wasted — the architecture, the plugin SDK, the trust system, the test suite, the API design — none of that goes away. Adding `LibTorchBackend` as the production backend would take perhaps 2-3 weeks and would make NNStudio genuinely competitive on performance without abandoning a single line of the novel work.
+The work isn't wasted — the architecture, the plugin SDK, the trust system, the test suite, the API design — none of that goes away. Adding `LibTorchBackend` as the production backend would take perhaps 2-3 weeks and would make NNSpire genuinely competitive on performance without abandoning a single line of the novel work.
 
 ---
 
@@ -128,7 +128,7 @@ The work isn't wasted — the architecture, the plugin SDK, the trust system, th
 >
 > so your question hints me to the fact, that you were intending to implement the backend for CUDA "from scratch" (simpler, lower perf, didactical rather for understanding of mine/users learning NNs), however now we are discussing the option to — at some higher costs — add another backend, the same CUDA, YET not being called directly, but using ("plugging in into our reinvented-wheel solution a few more already existing spokes") the NVIDIA LibTorch implementation, of course the costs being some rewrites to accommodate it, tests, and maybe architectural limitations if that high-end backend should be used.
 >
-> Nevertheless, if I understand clearly from the architecture so far, we are NOT compromising the performance of the RESULTING networks, as they will be run on independent runners anyway, so the performance issue is only aiming at NNStudio runners (UI, CLI, some embedded like-to-be-Ollama server...), not on the resulting networks published and run on Torch-only based runners, right? (of course, the plugins and extensibility may be an issue, but that is ok, that we shall solve as it comes, that's understandable — anyway, we do not aim to reconstruct the entire AI NN industry here :-)
+> Nevertheless, if I understand clearly from the architecture so far, we are NOT compromising the performance of the RESULTING networks, as they will be run on independent runners anyway, so the performance issue is only aiming at NNSpire runners (UI, CLI, some embedded like-to-be-Ollama server...), not on the resulting networks published and run on Torch-only based runners, right? (of course, the plugins and extensibility may be an issue, but that is ok, that we shall solve as it comes, that's understandable — anyway, we do not aim to reconstruct the entire AI NN industry here :-)
 
 **Assistant:**
 
@@ -138,13 +138,13 @@ Yes — your understanding is exactly right, and this is an important clarificat
 
 | Runtime context | Backend used | Performance concern? |
 |---|---|---|
-| NNStudio training (UI/CLI) | Our `CpuBackend` or `LibTorchBackend` | ✅ Yes — this is what the ADR is about |
-| NNStudio embedded server (Ollama-like) | Our backends | ✅ Yes — same concern |
+| NNSpire training (UI/CLI) | Our `CpuBackend` or `LibTorchBackend` | ✅ Yes — this is what the ADR is about |
+| NNSpire embedded server (Ollama-like) | Our backends | ✅ Yes — same concern |
 | **Exported model running on PyTorch runner** | Pure PyTorch / LibTorch | ❌ **Not our concern** — it's their runtime |
 | **Exported model on ONNX Runtime** | ONNX Runtime kernels | ❌ **Not our concern** |
 | **Exported model on TensorRT** | TensorRT | ❌ **Not our concern** |
 
-The backend performance question is entirely scoped to *Studio-side training and inference* — the process of building and iterating on the model. Once exported (`.onnx`, `.pt`, `.nns` → runner), the model runs on whatever runtime the user deploys to, which is completely independent of NNStudio's backends.
+The backend performance question is entirely scoped to *Studio-side training and inference* — the process of building and iterating on the model. Once exported (`.onnx`, `.pt`, `.nns` → runner), the model runs on whatever runtime the user deploys to, which is completely independent of NNSpire's backends.
 
 This means the stakes of the backend decision are bounded:
 - High-volume production training (GPT-scale, days of A100 time): LibTorch backend matters a lot

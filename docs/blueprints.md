@@ -1,4 +1,4 @@
-# NNStudio — Blueprints
+# NNSpire — Blueprints
 
 A guided tour through the source code, written for humans.  
 Each chapter links directly to the relevant file. Open the file alongside this doc in VS Code (`Ctrl+\` to split editor).
@@ -160,15 +160,15 @@ Every concept in this document maps to a specific file. Use this table as a quic
 | **§10.3–4** | Full loss + optimizer suites | same as Ch.5–6 | same | same |
 | **§10.5** | Checkpoint · EarlyStopping | `include/core/Checkpoint.h` · `EarlyStopping.h` | `src/core/Checkpoint.cpp` | `tests/core/test_checkpoint.cpp` · `test_early_stopping.cpp` |
 | **§10.6** | `torch_compat` · CompatibilityChecker | `include/torch_compat.h` · `include/core/CompatibilityChecker.h` | `src/core/CompatibilityChecker.cpp` | `tests/compat/test_torch_compat.cpp` · `tests/core/test_compat.cpp` |
-| **§10.7** | Plugin SDK · Trust architecture | `include/plugin-api/nnstudio_plugin.h` · `include/plugin-api/trust/` · `plugin-api/` | `src/plugin-api/` | `tests/plugin-api/test_plugin_loader.cpp` · `test_trust_store.cpp` · `test_trust_verifier.cpp` |
+| **§10.7** | Plugin SDK · Trust architecture | `include/plugin-api/NNSpire_plugin.h` · `include/plugin-api/trust/` · `plugin-api/` | `src/plugin-api/` | `tests/plugin-api/test_plugin_loader.cpp` · `test_trust_store.cpp` · `test_trust_verifier.cpp` |
 | **§10.8** | Reference plugins (BPE · ExampleActivation) | `plugins/bpe_tokenizer/` · `plugins/example_activation/` | same | `tests/plugin-api/test_bpe_tokenizer.cpp` |
-| **§10.9** | Python bridge · Keras façade · runners | `python-bridge/bindings/module.cpp` · `python-bridge/nnstudio/` | same | — |
+| **§10.9** | Python bridge · Keras façade · runners | `python-bridge/bindings/module.cpp` · `python-bridge/NNSpire/` | same | — |
 
 ---
 
 ## Chapter 1 — The Memory Model (`Tensor`)
 
-**File:** [`core/include/nnstudio/core/Tensor.h`](nnstudio/core/include/nnstudio/core/Tensor.h)
+**File:** [`core/include/NNSpire/core/Tensor.h`](NNSpire/core/include/NNSpire/core/Tensor.h)
 
 ### Overview (plain language)
 
@@ -250,8 +250,8 @@ y[2] = 0.6·w₂₀ + 0.4·w₂₁ + b₂   ← neuron 2's output
 Each output is exactly the "weighted sum of all inputs plus bias" that defines a neuron.
 
 > **Implementation:**  
-> [`Dense.cpp — forward()`](nnstudio/core/src/layers/Dense.cpp)  
-> [`BackendRegistry.h — backend()`](nnstudio/core/include/nnstudio/core/BackendRegistry.h)
+> [`Dense.cpp — forward()`](NNSpire/core/src/layers/Dense.cpp)  
+> [`BackendRegistry.h — backend()`](NNSpire/core/include/NNSpire/core/BackendRegistry.h)
 
 ### Batching — why the first dimension exists
 
@@ -290,22 +290,22 @@ Because both have the same shape, Adam can do this as a single flat loop over `n
 
 ### §1.x — Foundation types: `Device`, `DType`, `Result<T>`
 
-Three small enums/types serve as the vocabulary shared by every other file in the engine. They live in `core/include/nnstudio/core/` and are included transitively by almost everything.
+Three small enums/types serve as the vocabulary shared by every other file in the engine. They live in `core/include/NNSpire/core/` and are included transitively by almost everything.
 
-**`Device`** ([Device.h](nnstudio/core/include/nnstudio/core/Device.h)) — a `uint8_t` enum tag stored on every Tensor declaring *where its data lives*: `CPU` (main memory, Phase 1 default), `CUDA` (GPU device memory, Phase 2+), `Quantum` (Phase 6 stub). Device is a property of **data**, not computation — a `DeviceMismatch` error fires before any arithmetic if the active Backend and the Tensor disagree.
+**`Device`** ([Device.h](NNSpire/core/include/NNSpire/core/Device.h)) — a `uint8_t` enum tag stored on every Tensor declaring *where its data lives*: `CPU` (main memory, Phase 1 default), `CUDA` (GPU device memory, Phase 2+), `Quantum` (Phase 6 stub). Device is a property of **data**, not computation — a `DeviceMismatch` error fires before any arithmetic if the active Backend and the Tensor disagree.
 
-**`DType`** ([DType.h](nnstudio/core/include/nnstudio/core/DType.h)) — the element type of a Tensor: `Float32` (training, always supported), `Float16` (inference compression, GPU), `Int8` (quantized export), `Int32` (index/token-ID tensors), `Bool` (masks). Phase 1 computes in `Float32` only; the others are reserved for CUDA and quantization phases. `dtypeBytes(d)` drives all stride and memory-size calculations; `dtypeName(d)` produces the stable string used in ONNX and `.nns` serialization.
+**`DType`** ([DType.h](NNSpire/core/include/NNSpire/core/DType.h)) — the element type of a Tensor: `Float32` (training, always supported), `Float16` (inference compression, GPU), `Int8` (quantized export), `Int32` (index/token-ID tensors), `Bool` (masks). Phase 1 computes in `Float32` only; the others are reserved for CUDA and quantization phases. `dtypeBytes(d)` drives all stride and memory-size calculations; `dtypeName(d)` produces the stable string used in ONNX and `.nns` serialization.
 
-**`Result<T>`** ([Result.h](nnstudio/core/include/nnstudio/core/Result.h)) — the error-handling contract for the entire engine, replacing exceptions (see ADR-011). The engine is compiled with `-fno-exceptions` and `-fno-rtti` because it will be linked into plugin shared libraries; C++ exceptions crossing shared-library boundaries are undefined behaviour in the C ABI. `Result<T>` holds either a `T` value (success) or an `Error` (code + message string). `Result<void>` / `VoidResult` carries success-or-error with no payload. The `NN_TRY(expr)` macro propagates an error upward immediately — analogous to Rust's `?` — and is the standard idiom in any function that calls multiple fallible operations in sequence.
+**`Result<T>`** ([Result.h](NNSpire/core/include/NNSpire/core/Result.h)) — the error-handling contract for the entire engine, replacing exceptions (see ADR-011). The engine is compiled with `-fno-exceptions` and `-fno-rtti` because it will be linked into plugin shared libraries; C++ exceptions crossing shared-library boundaries are undefined behaviour in the C ABI. `Result<T>` holds either a `T` value (success) or an `Error` (code + message string). `Result<void>` / `VoidResult` carries success-or-error with no payload. The `NN_TRY(expr)` macro propagates an error upward immediately — analogous to Rust's `?` — and is the standard idiom in any function that calls multiple fallible operations in sequence.
 
 ---
 
 ## Chapter 2 — Who Does the Math? (`IBackend` + `CpuBackend`)
 
 **Files:**  
-[`core/include/nnstudio/core/IBackend.h`](nnstudio/core/include/nnstudio/core/IBackend.h)  
-[`core/include/nnstudio/core/BackendRegistry.h`](nnstudio/core/include/nnstudio/core/BackendRegistry.h)  
-[`backends/cpu/CpuBackend.cpp`](nnstudio/backends/cpu/CpuBackend.cpp)
+[`core/include/NNSpire/core/IBackend.h`](NNSpire/core/include/NNSpire/core/IBackend.h)  
+[`core/include/NNSpire/core/BackendRegistry.h`](NNSpire/core/include/NNSpire/core/BackendRegistry.h)  
+[`backends/cpu/CpuBackend.cpp`](NNSpire/backends/cpu/CpuBackend.cpp)
 
 ### Overview (plain language)
 
@@ -345,9 +345,9 @@ C^T = B^T @ A^T   ✓  (mathematically identical to C = A @ B)
 ## Chapter 3 — A Layer's Contract (`ILayer` + `Dense`)
 
 **Files:**  
-[`core/include/nnstudio/core/Layer.h`](nnstudio/core/include/nnstudio/core/Layer.h)  
-[`core/include/nnstudio/core/layers/Dense.h`](nnstudio/core/include/nnstudio/core/layers/Dense.h)  
-[`core/src/layers/Dense.cpp`](nnstudio/core/src/layers/Dense.cpp)
+[`core/include/NNSpire/core/Layer.h`](NNSpire/core/include/NNSpire/core/Layer.h)  
+[`core/include/NNSpire/core/layers/Dense.h`](NNSpire/core/include/NNSpire/core/layers/Dense.h)  
+[`core/src/layers/Dense.cpp`](NNSpire/core/src/layers/Dense.cpp)
 
 ### Overview (plain language)
 
@@ -519,39 +519,39 @@ The same `float*` block is read by Eigen with a different stride interpretation.
 
 | Class | Namespace | Has parameters? | Connectivity | Mental box |
 |---|---|---|---|---|
-| **Dense** | `nnstudio::layers` | Yes: `W_`, `b_` | Every input → every output | Most general; most expensive |
-| **ReLU** | `nnstudio::activations` | No | 1-to-1 elementwise | `y = max(0,x)` — non-linearity, zero params |
-| **LeakyReLU** | `nnstudio::activations` | No (but has `alpha_` hyper-param) | 1-to-1 elementwise | Like ReLU but negative side scales by α |
-| **Sigmoid** | `nnstudio::activations` | No | 1-to-1 elementwise | Squash to (0,1); output = probability |
-| **TanhAct** | `nnstudio::activations` | No | 1-to-1 elementwise | Squash to (−1,1); zero-centred variant |
-| **Softmax** | `nnstudio::activations` | No | All inputs → all outputs | Normalise to probability distribution; NOT elementwise |
-| **GELU** | `nnstudio::activations` | No | 1-to-1 elementwise | Smooth probabilistic gate; used in Transformers |
-| **Conv2D** | `nnstudio::layers` | Yes: small kernel | Local patch → one output | Fewer weights; shared spatially |
-| **BatchNorm** | `nnstudio::layers` | Yes: γ, β (2 per feature) | 1-to-1 with statistics | Keeps activations well-scaled |
-| **Dropout** | `nnstudio::layers` | No | Randomly zeros activations | Regularisation; train/eval differ |
-| **Embedding** | `nnstudio::layers` | Yes: lookup table | Integer index → float vector | Token ID → dense representation |
+| **Dense** | `NNSpire::layers` | Yes: `W_`, `b_` | Every input → every output | Most general; most expensive |
+| **ReLU** | `NNSpire::activations` | No | 1-to-1 elementwise | `y = max(0,x)` — non-linearity, zero params |
+| **LeakyReLU** | `NNSpire::activations` | No (but has `alpha_` hyper-param) | 1-to-1 elementwise | Like ReLU but negative side scales by α |
+| **Sigmoid** | `NNSpire::activations` | No | 1-to-1 elementwise | Squash to (0,1); output = probability |
+| **TanhAct** | `NNSpire::activations` | No | 1-to-1 elementwise | Squash to (−1,1); zero-centred variant |
+| **Softmax** | `NNSpire::activations` | No | All inputs → all outputs | Normalise to probability distribution; NOT elementwise |
+| **GELU** | `NNSpire::activations` | No | 1-to-1 elementwise | Smooth probabilistic gate; used in Transformers |
+| **Conv2D** | `NNSpire::layers` | Yes: small kernel | Local patch → one output | Fewer weights; shared spatially |
+| **BatchNorm** | `NNSpire::layers` | Yes: γ, β (2 per feature) | 1-to-1 with statistics | Keeps activations well-scaled |
+| **Dropout** | `NNSpire::layers` | No | Randomly zeros activations | Regularisation; train/eval differ |
+| **Embedding** | `NNSpire::layers` | Yes: lookup table | Integer index → float vector | Token ID → dense representation |
 
-`Dense` lives in `nnstudio::builtin::layers::`. Activations also live in `nnstudio::builtin::layers::`. Both extend the same `nnstudio::ILayer`. See §3.8 for the inheritance hierarchy.
+`Dense` lives in `NNSpire::builtin::layers::`. Activations also live in `NNSpire::builtin::layers::`. Both extend the same `NNSpire::ILayer`. See §3.8 for the inheritance hierarchy.
 
 ---
 
 ### 3.8 Activation functions — `IActivation`, functors, and `ActivationBase`
 
 **Files:**  
-[`include/core/IActivation.h`](nnstudio/include/core/IActivation.h)  
-[`include/builtin/layers/ActivationFunctors.h`](nnstudio/include/builtin/layers/ActivationFunctors.h)  
-[`include/builtin/layers/Activations.h`](nnstudio/include/builtin/layers/Activations.h)  
-[`include/builtin/layers/ActivationsFnLayer.h`](nnstudio/include/builtin/layers/ActivationsFnLayer.h)  
-[`src/builtin/layers/ActivationFunctors.cpp`](nnstudio/src/builtin/layers/ActivationFunctors.cpp)  
-[`src/builtin/layers/Activations.cpp`](nnstudio/src/builtin/layers/Activations.cpp)  
-[`tests/builtin/test_activations.cpp`](nnstudio/tests/builtin/test_activations.cpp)
+[`include/core/IActivation.h`](NNSpire/include/core/IActivation.h)  
+[`include/builtin/layers/ActivationFunctors.h`](NNSpire/include/builtin/layers/ActivationFunctors.h)  
+[`include/builtin/layers/Activations.h`](NNSpire/include/builtin/layers/Activations.h)  
+[`include/builtin/layers/ActivationsFnLayer.h`](NNSpire/include/builtin/layers/ActivationsFnLayer.h)  
+[`src/builtin/layers/ActivationFunctors.cpp`](NNSpire/src/builtin/layers/ActivationFunctors.cpp)  
+[`src/builtin/layers/Activations.cpp`](NNSpire/src/builtin/layers/Activations.cpp)  
+[`tests/builtin/test_activations.cpp`](NNSpire/tests/builtin/test_activations.cpp)
 
 #### The two-tier design (ADR-020)
 
 Activations now live on two tiers:
 
 ```
-Tier 1 — pure stateless functor  (nnstudio::core::IActivation)
+Tier 1 — pure stateless functor  (NNSpire::core::IActivation)
   No mutable state. Can be shared across threads and graph nodes.
   Implemented by: ReLUFn, LeakyReLUFn, SigmoidFn, TanhFn, SoftmaxFn, GELUFn
 
@@ -564,14 +564,14 @@ Tier 2 — ILayer adapter  (wraps one Tier-1 functor, owns the per-call context)
 
 The `ILayer` tree for `ReLU` (Path A):
 ```
-nnstudio::ILayer
-  └─ nnstudio::builtin::layers::ActivationBase   ← no-ops for parameters()/build()
-       └─ nnstudio::builtin::layers::ReLU        ← typeName + delegates to ReLUFn
+NNSpire::ILayer
+  └─ NNSpire::builtin::layers::ActivationBase   ← no-ops for parameters()/build()
+       └─ NNSpire::builtin::layers::ReLU        ← typeName + delegates to ReLUFn
 ```
 
 The `ILayer` tree for `ActivationsFnLayer<ReLUFn>` (Path B):
 ```
-nnstudio::ILayer
+NNSpire::ILayer
   └─ ActivationsFnLayer<ReLUFn>                  ← owns ReLUFn fn_; stores ctx_
 ```
 
@@ -692,10 +692,10 @@ GELU is the standard activation in Transformer and LLM architectures (GPT, BERT)
 The XOR model is four `ILayer` objects in a `ComputeGraph`:
 
 ```
-Dense   (2→4)   ← nnstudio::builtin::layers::Dense
-ReLU            ← nnstudio::builtin::layers::ReLU          (Path A — ActivationBase subclass)
-Dense   (4→1)   ← nnstudio::builtin::layers::Dense
-Sigmoid         ← nnstudio::builtin::layers::Sigmoid        (Path A — ActivationBase subclass)
+Dense   (2→4)   ← NNSpire::builtin::layers::Dense
+ReLU            ← NNSpire::builtin::layers::ReLU          (Path A — ActivationBase subclass)
+Dense   (4→1)   ← NNSpire::builtin::layers::Dense
+Sigmoid         ← NNSpire::builtin::layers::Sigmoid        (Path A — ActivationBase subclass)
 ```
 
 Equivalently, using the Path B adapter:
@@ -767,19 +767,19 @@ The major templates in common use:
 
 None of these is the "only" valid architecture. They are solutions that happened to work well enough that the community converged on them. New architectures appear regularly — Mixture of Experts (MoE), State Space Models (Mamba, 2023), Kolmogorov-Arnold Networks (KAN, 2024, replacing Dense layers entirely with learnable spline functions on edges rather than fixed activations on nodes).
 
-**What NNStudio's design allows:**
+**What NNSpire's design allows:**
 
 - `Sequential`: any ordering of any `ILayer` descendants. You can put Sigmoid before ReLU, repeat Dense ten times, or put a custom plugin layer anywhere. Nothing in the engine enforces a template.
 - `ComputeGraph` (Chapter 9 / Phase 3): DAG topology. Skip connections, multi-head branches, encoder-decoder splits — anything that is a directed acyclic graph.
 - Plugin SDK (Phase 2): any `ILayer` (or future `IActivation`) implementation, including layer types that don't exist yet.
 
-**What NNStudio's design does NOT currently include:**
+**What NNSpire's design does NOT currently include:**
 
 - `Conv2D` — not implemented yet (Phase 1 TODO). The interface (`ILayer`) supports it; the implementation doesn't exist.
 - Recurrent / stateful layers — `Sequential::backward()` assumes one forward = one backward. Recurrent layers require unrolling across time steps; this needs a different `ILayer` contract or explicit loop in the training loop. Not blocked, but not designed for yet.
 - Attention mechanism — requires `ComputeGraph` (non-sequential topology) plus `MultiHeadAttention` layer implementation. Both are Phase 3+ items.
 
-So: NNStudio is currently a full MLP workbench, with the architecture to become a Transformer workbench once Phase 2/3 are complete. The stacking variability goal is structurally intact — the engine imposes no template. The limitation is which layer *types* are implemented, not how they can be combined.
+So: NNSpire is currently a full MLP workbench, with the architecture to become a Transformer workbench once Phase 2/3 are complete. The stacking variability goal is structurally intact — the engine imposes no template. The limitation is which layer *types* are implemented, not how they can be combined.
 
 > **Forward reference — semantic composition (Phase 5.7).** The templates in this
 > section (MLP, CNN, Transformer, …) are *micro*-level patterns over Tier A primitives.
@@ -797,8 +797,8 @@ So: NNStudio is currently a full MLP workbench, with the architecture to become 
 ## Chapter 4 — The Ordered Pipeline (`Sequential`)
 
 **Files:**  
-[`core/include/nnstudio/core/Layer.h`](nnstudio/core/include/nnstudio/core/Layer.h) — `ILayer` + `Sequential` class definition  
-[`core/src/layers/Layer.cpp`](nnstudio/core/src/layers/Layer.cpp) — `Sequential` implementation
+[`core/include/NNSpire/core/Layer.h`](NNSpire/core/include/NNSpire/core/Layer.h) — `ILayer` + `Sequential` class definition  
+[`core/src/layers/Layer.cpp`](NNSpire/core/src/layers/Layer.cpp) — `Sequential` implementation
 
 > **Call-chain trace:** [`docs/examples/sequential-call-chain.cpp`](docs/examples/sequential-call-chain.cpp)  
 > A single annotated file that walks through every virtual call in one forward pass and one backward pass for the XOR model — readable without a debugger.
@@ -914,8 +914,8 @@ Layers such as `Dropout` and `BatchNorm` behave differently at train vs eval tim
 ## Chapter 5 — Judging the Output (`Loss`)
 
 **Files:**  
-[`core/include/nnstudio/core/Losses.h`](nnstudio/core/include/nnstudio/core/Losses.h)  
-[`core/src/losses/Losses.cpp`](nnstudio/core/src/losses/Losses.cpp)
+[`core/include/NNSpire/core/Losses.h`](NNSpire/core/include/NNSpire/core/Losses.h)  
+[`core/src/losses/Losses.cpp`](NNSpire/core/src/losses/Losses.cpp)
 
 ### Overview (plain language)
 
@@ -992,8 +992,8 @@ Loss functions hold no mutable members between calls (except `HuberLoss::delta_`
 ## Chapter 6 — Fixing the Weights (`Optimizer`)
 
 **Files:**  
-[`core/include/nnstudio/core/Optimizers.h`](nnstudio/core/include/nnstudio/core/Optimizers.h)  
-[`core/src/optimizers/Optimizers.cpp`](nnstudio/core/src/optimizers/Optimizers.cpp)
+[`core/include/NNSpire/core/Optimizers.h`](NNSpire/core/include/NNSpire/core/Optimizers.h)  
+[`core/src/optimizers/Optimizers.cpp`](NNSpire/core/src/optimizers/Optimizers.cpp)
 
 ### Overview (plain language)
 
@@ -1139,8 +1139,8 @@ if (globalStep % stepSize_ == 0)
 ## Chapter 7 — Running the Loop (`Trainer`)
 
 **Files:**  
-[`core/include/nnstudio/core/Trainer.h`](nnstudio/core/include/nnstudio/core/Trainer.h)  
-[`core/src/training/Trainer.cpp`](nnstudio/core/src/training/Trainer.cpp)
+[`core/include/NNSpire/core/Trainer.h`](NNSpire/core/include/NNSpire/core/Trainer.h)  
+[`core/src/training/Trainer.cpp`](NNSpire/core/src/training/Trainer.cpp)
 
 ### Overview (plain language)
 
@@ -1180,13 +1180,13 @@ $$\theta_t = \theta_{t-1} - \alpha\,\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\varepsilo
 `v` = running mean of squared gradients (adaptive per-weight learning rate).  
 Bias-correction hats (^) stop the estimates from being near-zero at the start of training.
 
-> **Implementation:** [`core/src/optimizers/Optimizers.cpp`](nnstudio/core/src/optimizers/Optimizers.cpp)
+> **Implementation:** [`core/src/optimizers/Optimizers.cpp`](NNSpire/core/src/optimizers/Optimizers.cpp)
 
 ---
 
 ## Chapter 8 — The XOR Milestone
 
-**File:** [`tests/core/test_trainer_xor.cpp`](nnstudio/tests/core/test_trainer_xor.cpp)
+**File:** [`tests/core/test_trainer_xor.cpp`](NNSpire/tests/core/test_trainer_xor.cpp)
 
 XOR is the classic "hello world" for neural networks:  
 the simplest problem that is *not* linearly separable — no single line divides the 0s from the 1s.  
@@ -1475,11 +1475,11 @@ Key design choices:
 
 ### §10.6 — `torch_compat` — The Code IS the Model
 
-`include/torch_compat.h` is a **header-only** shim that makes any translation unit that uses only the standard PyTorch / LibTorch C++ API work against the NNStudio engine with a one-line change:
+`include/torch_compat.h` is a **header-only** shim that makes any translation unit that uses only the standard PyTorch / LibTorch C++ API work against the NNSpire engine with a one-line change:
 
 ```cpp
 // swap exactly this one line:
-#include <torch_compat.h>    // ← NNStudio
+#include <torch_compat.h>    // ← NNSpire
 // #include <torch/torch.h>  // ← LibTorch
 
 auto model = torch::nn::Sequential(
@@ -1493,9 +1493,9 @@ auto opt = torch::optim::Adam(1e-3f);
 
 The shim maps:
 
-| PyTorch name | NNStudio type |
+| PyTorch name | NNSpire type |
 |---|---|
-| `torch::Tensor` | `nnstudio::core::Tensor` |
+| `torch::Tensor` | `NNSpire::core::Tensor` |
 | `torch::nn::Linear` | `Dense` (wrapper storing `in_features`) |
 | `torch::nn::Conv2d` | `Conv2D` (wrapper storing `in_channels`) |
 | `torch::nn::Embedding` | `Embedding` (direct alias) |
@@ -1510,7 +1510,7 @@ The shim maps:
 | `torch::kFloat32, kFloat16, kInt8, kInt32, kBool` | `DType::*` constants |
 | `torch::kCPU, torch::kCUDA` | `Device::*` constants |
 
-`torch::nn::Sequential` in this header is **not** the same as `nnstudio::builtin::layers::Sequential` — it is a self-contained implementation that builds the wire-up at construction time from variadic template arguments, matching PyTorch's interface exactly:
+`torch::nn::Sequential` in this header is **not** the same as `NNSpire::builtin::layers::Sequential` — it is a self-contained implementation that builds the wire-up at construction time from variadic template arguments, matching PyTorch's interface exactly:
 
 ```cpp
 auto m = torch::nn::Sequential(
@@ -1519,13 +1519,13 @@ m.build({1, 4});
 auto y = m.forward(x).value();
 ```
 
-**This shim is the foundation for ADR-030 option (b)** — the argument that NNStudio model files should use torch-compat code rather than a custom DSL.  The shim demonstrates that torch-compat code is already a first-class citizen in the engine.
+**This shim is the foundation for ADR-030 option (b)** — the argument that NNSpire model files should use torch-compat code rather than a custom DSL.  The shim demonstrates that torch-compat code is already a first-class citizen in the engine.
 
-The Python-layer equivalent is `python-bridge/nnstudio/torch_compat.py`:
+The Python-layer equivalent is `python-bridge/NNSpire/torch_compat.py`:
 
 ```python
-import nnstudio.torch_compat as torch   # instead of: import torch
-import nnstudio.torch_compat.nn as nn
+import NNSpire.torch_compat as torch   # instead of: import torch
+import NNSpire.torch_compat.nn as nn
 
 model = nn.Sequential()
 model.add(nn.Linear(4, 8))
@@ -1536,12 +1536,12 @@ model.add(nn.ReLU())
 
 ### §10.7 — Plugin SDK
 
-#### The C ABI (`nnstudio_plugin.h`)
+#### The C ABI (`NNSpire_plugin.h`)
 
 The plugin interface is **pure C** — no C++ types cross the ABI boundary.  This allows plugins written in any language that can export a C symbol.  Every plugin shared library must export exactly one symbol:
 
 ```c
-const NNPluginDescriptor* nnstudio_plugin_descriptor(void);
+const NNPluginDescriptor* NNSpire_plugin_descriptor(void);
 ```
 
 `NNPluginDescriptor` carries: `api_version`, `type`, `id` (reverse-domain string), `name`, `version`, `author`, `license`, `create()`, `destroy()`, and a `vtable*` pointer cast to the type-specific vtable struct.
@@ -1570,13 +1570,13 @@ The `NNTensorView` struct (read-only window into engine-owned memory: `data, sha
 1. `TrustVerifier::verify(path)` — check plugin signature against `TrustStore`
 2. If trust level < policy minimum → **reject** (never call `dlopen`)
 3. `dlopen` (Linux/macOS) / `LoadLibraryW` (Windows)
-4. Resolve `nnstudio_plugin_descriptor` symbol
-5. Check `api_version == NNSTUDIO_PLUGIN_API_VERSION`
+4. Resolve `NNSpire_plugin_descriptor` symbol
+5. Check `api_version == NNSpire_PLUGIN_API_VERSION`
 6. Return `LoadedPlugin` (RAII handle; destructor calls `destroy()` + `dlclose`)
 
 `LoadPolicy` is an enum: `RequireEnterprise`, `RequireCommunity`, `AllowUntrusted`.
 
-Phase 5 plans a **sandboxed** policy that routes through an `nnstudio-runner` sidecar process over gRPC instead of `dlopen`.
+Phase 5 plans a **sandboxed** policy that routes through an `NNSpire-runner` sidecar process over gRPC instead of `dlopen`.
 
 #### Trust Architecture
 
@@ -1595,7 +1595,7 @@ The `.nnts` store file (binary, little-endian) contains a list of `CaEntry` reco
 
 `TrustUpdateHandler` (`include/plugin-api/trust/TrustUpdateHandler.h`) verifies a Trust Update Packet (TUP) before calling `TrustStore::addCa()` / `revokeCa()`.  No CA can be added or removed except through a signed TUP — this is the anti-supply-chain-attack guarantee.
 
-**Plugin signing tool** — `src/plugin-api/tools/sign/main.cpp`: CLI tool `nnstudio-sign` that signs a plugin shared library with a Developer CA certificate and embeds the signature as a section in the binary.  Used during plugin release pipeline.
+**Plugin signing tool** — `src/plugin-api/tools/sign/main.cpp`: CLI tool `NNSpire-sign` that signs a plugin shared library with a Developer CA certificate and embeds the signature as a section in the binary.  Used during plugin release pipeline.
 
 ---
 
@@ -1629,11 +1629,11 @@ Both plugins ship with a `plugin.manifest.json` (JSON5, fields: `id`, `name`, `v
 
 ### §10.9 — Python Bridge
 
-The Python bridge (`nnstudio/python-bridge/`) exposes the C++ engine to Python via **pybind11** and layers three compatibility façades on top:
+The Python bridge (`NNSpire/python-bridge/`) exposes the C++ engine to Python via **pybind11** and layers three compatibility façades on top:
 
 #### pybind11 bindings (`bindings/module.cpp`)
 
-The compiled extension module (`nnstudio.<arch>.so` / `.pyd`) exposes:
+The compiled extension module (`NNSpire.<arch>.so` / `.pyd`) exposes:
 - `Tensor`, `DType`, `Device` Python classes
 - `zeros`, `ones`, `full` factory functions
 - The full `nn`, `optim`, and loss namespaces
@@ -1641,26 +1641,26 @@ The compiled extension module (`nnstudio.<arch>.so` / `.pyd`) exposes:
 
 On Windows (MinGW) the `__init__.py` probes well-known MSYS2 locations and calls `os.add_dll_directory()` so Python ≥ 3.8 can resolve MinGW runtime DLLs at import time.
 
-#### `nnstudio` package — torch-style import
+#### `NNSpire` package — torch-style import
 
 ```python
-import nnstudio as torch         # drop-in swap
-import nnstudio.nn as nn
-import nnstudio.nn.functional as F
-import nnstudio.optim as optim
+import NNSpire as torch         # drop-in swap
+import NNSpire.nn as nn
+import NNSpire.nn.functional as F
+import NNSpire.optim as optim
 ```
 
-`nnstudio.torch_compat` module re-exports the same surface with explicit `torch.*` naming so existing scripts can alias the import with zero other changes:
+`NNSpire.torch_compat` module re-exports the same surface with explicit `torch.*` naming so existing scripts can alias the import with zero other changes:
 
 ```python
-import nnstudio.torch_compat as torch
+import NNSpire.torch_compat as torch
 model = torch.nn.Sequential()
 ```
 
-#### Keras façade (`nnstudio.keras`)
+#### Keras façade (`NNSpire.keras`)
 
 ```python
-from nnstudio.keras import Model, layers, losses, optimizers, callbacks
+from NNSpire.keras import Model, layers, losses, optimizers, callbacks
 
 seq = layers.Sequential()
 seq.add(layers.Dense(4, 1))
@@ -1671,7 +1671,7 @@ history = m.fit(x, y, epochs=10)
 
 Sub-modules: `layers` (Dense, Conv2D, Embedding, MHA, BN, LN, Dropout, activations), `losses` (MSE, BCE, Categorical CE, Huber), `optimizers` (Adam, AdamW, SGD, RMSProp), `callbacks` (EarlyStopping, ModelCheckpoint, LRScheduler, CSVLogger, TensorBoard stub).
 
-#### Runner clients (`nnstudio.runners`)
+#### Runner clients (`NNSpire.runners`)
 
 Five connector classes unified under the `RunnerClient` protocol:
 
@@ -1689,7 +1689,7 @@ All share: `connect(url)`, `load_model(name)`, `infer(model, input)`, `health()`
 
 ### §10.10 — Architecture Templates: Current Implementation Status
 
-The tables below supersede the "Status in NNStudio" entries in the Architecture Templates appendix.
+The tables below supersede the "Status in NNSpire" entries in the Architecture Templates appendix.
 
 **Template 4 — Transformer block (as of Phase 2 / commit `055eb99`)**
 
@@ -1740,7 +1740,7 @@ Residual connections (Template 5) still require `ComputeGraph`.  All other indiv
 Full annotated source tree. Chapter and section tags match the body of this document. The compact chapter-by-chapter navigator appears at the end of the intro (just before Chapter 1) for quick lookup.
 
 ```
-nnstudio/
+NNSpire/
 │
 ├── include/                            ← all public headers (no .cpp here)
 │   │
@@ -1760,9 +1760,9 @@ nnstudio/
 │   │   ├── Checkpoint.h                §10.5  save/load weights + metadata
 │   │   ├── EarlyStopping.h             §10.5  patience-based stopping
 │   │   ├── FeatureFlags.h              §10.6  FREE | PRO | ENTERPRISE tier gating
-│   │   └── CompatibilityChecker.h      §10.6  standard_torch vs nnstudio_extension
+│   │   └── CompatibilityChecker.h      §10.6  standard_torch vs NNSpire_extension
 │   │
-│   ├── builtin/                        ← NNStudio's own implementations
+│   ├── builtin/                        ← NNSpire's own implementations
 │   │   ├── activations/
 │   │   │   ├── Activations.h           Ch.3 §10.1  layer types (ReLU, Sigmoid, …)
 │   │   │   ├── Functors.h             Ch.3 §10.1  IActivation stateless functors
@@ -1783,7 +1783,7 @@ nnstudio/
 │   │       └── Optimizers.h            Ch.6 §10.4  SGD, Adam, AdamW
 │   │
 │   ├── plugin-api/                     ← SDK headers (also in plugin-api/ below)
-│   │   ├── nnstudio_plugin.h           §10.7  C ABI: vtable structs, entry points
+│   │   ├── NNSpire_plugin.h           §10.7  C ABI: vtable structs, entry points
 │   │   ├── PluginLoader.h              §10.7  load / verify / register .nnsp
 │   │   └── trust/
 │   │       ├── TrustStore.h            §10.7  certificate pin store
@@ -1821,14 +1821,14 @@ nnstudio/
 │   │       └── Optimizers.cpp          Ch.6   SGD momentum + Adam update rule
 │   └── plugin-api/
 │       ├── PluginLoader.cpp            §10.7
-│       ├── tools/sign/main.cpp         §10.7  nnstudio-sign CLI tool
+│       ├── tools/sign/main.cpp         §10.7  NNSpire-sign CLI tool
 │       └── trust/
 │           ├── TrustStore.cpp
 │           ├── TrustVerifier.cpp
 │           └── TrustUpdateHandler.cpp
 │
 ├── plugin-api/                         ← Distributable SDK (not part of engine lib)
-│   ├── nnstudio_plugin.h               §10.7  canonical C ABI header for plugin authors
+│   ├── NNSpire_plugin.h               §10.7  canonical C ABI header for plugin authors
 │   ├── schemas/
 │   │   ├── plugin.manifest.schema.json §10.7  plugin manifest JSON schema
 │   │   └── tup.manifest.schema.json    §10.7  Trust Update Protocol manifest schema
@@ -1845,7 +1845,7 @@ nnstudio/
 ├── python-bridge/                      §10.9
 │   ├── bindings/module.cpp             pybind11 C++ extension module entry point
 │   ├── pyproject.toml
-│   └── nnstudio/                       Python package (torch-style import)
+│   └── NNSpire/                       Python package (torch-style import)
 │       ├── __init__.py
 │       ├── torch_compat.py             Python-side torch shims
 │       ├── plugin_manifest.py
@@ -1900,15 +1900,15 @@ nnstudio/
 
 Three visibility tiers separate the stable public contract from engine internals from bundled implementations.
 
-#### Tier 1 — `nnstudio::core::` — the stable, versioned public contract
+#### Tier 1 — `NNSpire::core::` — the stable, versioned public contract
 
 Contains **only** abstract extension points and core data types.  
 **No concrete implementation ever lives here.**  
-Plugin authors include `<core/ILayer.h>` etc. and work entirely inside `nnstudio::core::`.  
+Plugin authors include `<core/ILayer.h>` etc. and work entirely inside `NNSpire::core::`.  
 Breaking changes require a version bump and a transition period.
 
 ```
-nnstudio::core::
+NNSpire::core::
     ILayer          abstract layer contract (build/forward/backward/zeroGrad)
     IBackend        abstract compute contract (matmul, transpose, elementwise...)
     ILoss           abstract loss contract
@@ -1927,38 +1927,38 @@ nnstudio::core::
     Sequential      ordered container of ILayer instances
 ```
 
-#### Tier 2 — `nnstudio::internal::` — engine guts, not for plugin authors
+#### Tier 2 — `NNSpire::internal::` — engine guts, not for plugin authors
 
 Contains the engine's own machinery.  
 Documented as: *"do not use from plugins — may change in any release with no warning."*
 
 ```
-nnstudio::internal::
+NNSpire::internal::
     graph::         ComputeGraph, autograd traversal, DAG node types
     training::      Trainer step loop, callback dispatch, EvalTrace capture
     formats::       .nnsp / .nnsx file I/O, ONNX serialisation
     detail::        utility templates, helpers, type traits
 ```
 
-#### Tier 2b — `nnstudio::ui::` — UI extension points (Phase 3+)
+#### Tier 2b — `NNSpire::ui::` — UI extension points (Phase 3+)
 
 Semi-stable; evolves with Qt version requirements.  
 Plugin authors use this only when registering a custom UI panel.
 
 ```
-nnstudio::ui::
+NNSpire::ui::
     panels::        QML panel plugin registration interface
     qml::           QML-side property/signal contract types
 ```
 
-#### Tier 3 — `nnstudio::builtin::` — NNStudio's own implementations
+#### Tier 3 — `NNSpire::builtin::` — NNSpire's own implementations
 
-**NNStudio's default implementations are treated identically to third-party plugins.**  
+**NNSpire's default implementations are treated identically to third-party plugins.**  
 They happen to ship bundled with the installer, but they have no special namespace or access privilege.  
-A list of all loaded layer types will show `nnstudio::builtin::layers::Dense` alongside `myplugin::layers::MyLayer` — no VIP.
+A list of all loaded layer types will show `NNSpire::builtin::layers::Dense` alongside `myplugin::layers::MyLayer` — no VIP.
 
 ```
-nnstudio::builtin::
+NNSpire::builtin::
     layers::        Dense, ReLU, LeakyReLU, Sigmoid, Tanh, Softmax, GELU,
                     Conv2D, BatchNorm, Dropout, Embedding, ...
     backends::      CpuBackend, CudaBackend, QuantumBackend
@@ -1968,11 +1968,11 @@ nnstudio::builtin::
 
 A third-party plugin developer writes:
 ```cpp
-eu::plachy::nnplugins::myplugin::layers::MyLayer : public nnstudio::core::ILayer { ... }
+eu::plachy::nnplugins::myplugin::layers::MyLayer : public NNSpire::core::ILayer { ... }
 ```
-NNStudio itself writes:
+NNSpire itself writes:
 ```cpp
-nnstudio::builtin::layers::Dense : public nnstudio::core::ILayer { ... }
+NNSpire::builtin::layers::Dense : public NNSpire::core::ILayer { ... }
 ```
 Both are just implementations. The only allowed difference is that `builtin` ships by default and appears first in UI lists.
 
@@ -1988,27 +1988,27 @@ Both are just implementations. The only allowed difference is that `builtin` shi
 
 | Symbol | Old namespace (deleted) | New namespace ✅ |
 |---|---|---|
-| `Dense` | `nnstudio::layers::` | `nnstudio::builtin::layers::` |
-| `ReLU`, `Sigmoid`, etc. | `nnstudio::activations::` | `nnstudio::builtin::layers::` (activations are layers) |
-| `MSE`, `BCE`, etc. | `nnstudio::losses::` | `nnstudio::builtin::losses::` |
-| `SGD`, `Adam`, `AdamW` | `nnstudio::optimizers::` | `nnstudio::builtin::optimizers::` |
-| `CpuBackend` | `nnstudio::` | `nnstudio::builtin::backends::` |
-| `ILoss` | bundled in `Losses.h` | extracted to `nnstudio::core::ILoss` in `ILoss.h` (Tier 1) |
-| `IOptimizer`, `ILRScheduler` | bundled in `Optimizers.h` | extracted to `nnstudio::core::IOptimizer` in `IOptimizer.h` (Tier 1) |
+| `Dense` | `NNSpire::layers::` | `NNSpire::builtin::layers::` |
+| `ReLU`, `Sigmoid`, etc. | `NNSpire::activations::` | `NNSpire::builtin::layers::` (activations are layers) |
+| `MSE`, `BCE`, etc. | `NNSpire::losses::` | `NNSpire::builtin::losses::` |
+| `SGD`, `Adam`, `AdamW` | `NNSpire::optimizers::` | `NNSpire::builtin::optimizers::` |
+| `CpuBackend` | `NNSpire::` | `NNSpire::builtin::backends::` |
+| `ILoss` | bundled in `Losses.h` | extracted to `NNSpire::core::ILoss` in `ILoss.h` (Tier 1) |
+| `IOptimizer`, `ILRScheduler` | bundled in `Optimizers.h` | extracted to `NNSpire::core::IOptimizer` in `IOptimizer.h` (Tier 1) |
 
 #### Phase 2 — core namespace + Option B folder structure
 
 | Symbol | Old namespace (deleted) | New namespace ✅ |
 |---|---|---|
-| `Tensor`, `Parameter`, `Shape`, `Device`, `DType` | `nnstudio::` | `nnstudio::core::` |
-| `ILayer`, `Sequential`, `LayerPtr` | `nnstudio::` | `nnstudio::core::` |
-| `IBackend`, `BackendRegistry` | `nnstudio::` | `nnstudio::core::` |
-| `ILoss`, `IOptimizer`, `ILRScheduler` | `nnstudio::` | `nnstudio::core::` |
-| `Trainer`, `DataBatch`, `Dataset`, `TrainMetrics` | `nnstudio::` | `nnstudio::core::` |
-| `Result<T>`, `FeatureFlags` | `nnstudio::` | `nnstudio::core::` |
-| All files | `core/include/nnstudio/*.h` + `builtin/include/nnstudio/**/*.h` | `include/core/*.h` + `include/builtin/**/*.h` (Option B shared root) |
+| `Tensor`, `Parameter`, `Shape`, `Device`, `DType` | `NNSpire::` | `NNSpire::core::` |
+| `ILayer`, `Sequential`, `LayerPtr` | `NNSpire::` | `NNSpire::core::` |
+| `IBackend`, `BackendRegistry` | `NNSpire::` | `NNSpire::core::` |
+| `ILoss`, `IOptimizer`, `ILRScheduler` | `NNSpire::` | `NNSpire::core::` |
+| `Trainer`, `DataBatch`, `Dataset`, `TrainMetrics` | `NNSpire::` | `NNSpire::core::` |
+| `Result<T>`, `FeatureFlags` | `NNSpire::` | `NNSpire::core::` |
+| All files | `core/include/NNSpire/*.h` + `builtin/include/NNSpire/**/*.h` | `include/core/*.h` + `include/builtin/**/*.h` (Option B shared root) |
 
-Builtin `include/` and `src/` files gained `using namespace nnstudio::core;` inside (or just before) their namespace block so they reference Tier 1 types without qualification.
+Builtin `include/` and `src/` files gained `using namespace NNSpire::core;` inside (or just before) their namespace block so they reference Tier 1 types without qualification.
 
 ---
 
@@ -2019,7 +2019,7 @@ Every on-disk path segment translates directly to exactly one C++ namespace segm
 ```
 Disk path segment          →   C++ namespace segment
 ─────────────────────────────────────────────────────────────────
-nnstudio/                  →   nnstudio::           (repo root = outermost namespace)
+NNSpire/                  →   NNSpire::           (repo root = outermost namespace)
 include/  or  src/         →   (SKIP — visibility boundary, not a namespace layer)
 core/                      →   core::
 builtin/                   →   builtin::
@@ -2035,17 +2035,17 @@ Rule:  EVERY segment except include/ and src/ maps 1-to-1 to a namespace segment
 Examples:
 
 ```
-nnstudio / include / core    / Tensor.h
+NNSpire / include / core    / Tensor.h
     ↓       (skip)    ↓            ↓
-nnstudio::           core::      Tensor
+NNSpire::           core::      Tensor
 
-nnstudio / include / builtin / layers / Dense.h
+NNSpire / include / builtin / layers / Dense.h
     ↓       (skip)     ↓          ↓         ↓
-nnstudio::            builtin:: layers::  Dense
+NNSpire::            builtin:: layers::  Dense
 
-nnstudio / src     / core    / Tensor.cpp
+NNSpire / src     / core    / Tensor.cpp
     ↓       (skip)    ↓            ↓
-nnstudio::           core::      (Tensor impl — same namespace, visibility-only boundary)
+NNSpire::           core::      (Tensor impl — same namespace, visibility-only boundary)
 ```
 
 This is the convention enforced by the Option B shared-root layout. See the **Plugin exception** section below for the one deliberate reversal of this rule.
@@ -2057,28 +2057,28 @@ This is the convention enforced by the Option B shared-root layout. See the **Pl
 The folder layout reflects namespace tiers, the one-directional mirror rule, and the colocated-headers-for-implementations principle.
 
 ```
-nnstudio/
+NNSpire/
     include/                           ← ONE CMake search root (all targets: core, builtin, …)
-        core/                          → namespace nnstudio::core::
-            Tensor.h                   → nnstudio::core::Tensor
-            Layer.h                    → nnstudio::core::ILayer, Sequential, LayerPtr, Parameter
-            IBackend.h                 → nnstudio::core::IBackend
-            BackendRegistry.h          → nnstudio::core::BackendRegistry
-            ILoss.h                    → nnstudio::core::ILoss
-            IOptimizer.h               → nnstudio::core::IOptimizer, ILRScheduler
-            Trainer.h                  → nnstudio::core::Trainer, DataBatch, Dataset, TrainMetrics
-            Result.h                   → nnstudio::core::Result<T>
-            Device.h  DType.h          → nnstudio::core::Device, DType
-            FeatureFlags.h             → nnstudio::core::FeatureFlags
-        builtin/                       → namespace nnstudio::builtin::
-            layers/                    → nnstudio::builtin::layers::
+        core/                          → namespace NNSpire::core::
+            Tensor.h                   → NNSpire::core::Tensor
+            Layer.h                    → NNSpire::core::ILayer, Sequential, LayerPtr, Parameter
+            IBackend.h                 → NNSpire::core::IBackend
+            BackendRegistry.h          → NNSpire::core::BackendRegistry
+            ILoss.h                    → NNSpire::core::ILoss
+            IOptimizer.h               → NNSpire::core::IOptimizer, ILRScheduler
+            Trainer.h                  → NNSpire::core::Trainer, DataBatch, Dataset, TrainMetrics
+            Result.h                   → NNSpire::core::Result<T>
+            Device.h  DType.h          → NNSpire::core::Device, DType
+            FeatureFlags.h             → NNSpire::core::FeatureFlags
+        builtin/                       → namespace NNSpire::builtin::
+            layers/                    → NNSpire::builtin::layers::
                 Dense.h
                 Activations.h
-            backends/                  → nnstudio::builtin::backends::
+            backends/                  → NNSpire::builtin::backends::
                 CpuBackend.h
-            losses/                    → nnstudio::builtin::losses::
+            losses/                    → NNSpire::builtin::losses::
                 Losses.h
-            optimizers/                → nnstudio::builtin::optimizers::
+            optimizers/                → NNSpire::builtin::optimizers::
                 Optimizers.h
 
     src/                               ← mirrors include/ exactly — build-only, never installed
@@ -2091,11 +2091,11 @@ nnstudio/
             optimizers/ Optimizers.cpp
 
     core/                              ← CMake target definition only
-        CMakeLists.txt                 ← target nnstudio-core; sources from ../src/core/
+        CMakeLists.txt                 ← target NNSpire-core; sources from ../src/core/
         CONTRIBUTING.md
 
     builtin/                           ← CMake target definition only
-        CMakeLists.txt                 ← targets nnstudio-builtin + nnstudio-backend-cpu
+        CMakeLists.txt                 ← targets NNSpire-builtin + NNSpire-backend-cpu
         CONTRIBUTING.md
 
     plugins/                           ← third-party and first-party plugin slots
@@ -2114,7 +2114,7 @@ nnstudio/
 Every subfolder present in `include/` **must** have a corresponding subfolder in `src/`.  
 The reverse does not hold — `src/` may gain private subfolders (e.g. `src/graph/`, `src/training/`) that have no counterpart in `include/` when they are build-internal only.
 
-Plugin authors add `${nnstudio_SOURCE_DIR}/include` to their include search path. Nothing else.
+Plugin authors add `${NNSpire_SOURCE_DIR}/include` to their include search path. Nothing else.
 
 **Per-folder documentation files:**  
 Every folder that contains primarily subfolders (rather than files) carries two Markdown files:
@@ -2137,7 +2137,7 @@ The `include/` tree above is different: it is the **publicly installed plugin SD
 |---|---|---|
 | Interface / abstract base | `I` prefix | `ILayer`, `IBackend` |
 | Concrete implementation | Descriptive name only | `Dense`, `Adam`, `CpuBackend` |
-| Path → namespace | Every path segment (except `include/`/`src/`) maps 1-to-1 to a namespace segment | `include/core/Tensor.h` → `nnstudio::core::Tensor` |
+| Path → namespace | Every path segment (except `include/`/`src/`) maps 1-to-1 to a namespace segment | `include/core/Tensor.h` → `NNSpire::core::Tensor` |
 | Namespace for plugin implementations | Author's reverse-domain identity (**not** derived from `plugins/` folder position) | `eu::plachy::nnplugins::myplugin::layers::MyLayer` |
 | Plugin distribution ID (manifest) | reverse-domain dot-notation | `"id": "eu.plachy.nnplugins.myplugin"` |
 | Filename | PascalCase, no prefix/suffix | `Dense.h`, `CpuBackend.cpp` |
@@ -2146,7 +2146,7 @@ The `include/` tree above is different: it is the **publicly installed plugin SD
 | Folder names (single-concept roots) | Singular or plural as natural language dictates | `plugins/`, `formats/` |
 | `include/` subfolder → `src/` subfolder | One-directional mirror: every `include/X/` implies `src/X/` exists | `include/core/` ↔ `src/core/` |
 | `src/` private subfolder | May exist with no `include/` counterpart | `src/graph/`, `src/training/` |
-| `using namespace nnstudio::core;` in builtin | Placed after innermost namespace opening in `.h`; at file scope before namespace block in `.cpp` | `namespace nnstudio::builtin::layers { using namespace nnstudio::core; … }` |
+| `using namespace NNSpire::core;` in builtin | Placed after innermost namespace opening in `.h`; at file scope before namespace block in `.cpp` | `namespace NNSpire::builtin::layers { using namespace NNSpire::core; … }` |
 | Per-folder documentation | `README.md` (software concept) + `CONTRIBUTING.md` (repo structure rationale + `## Reading order` list) | — |
 
 The `I` prefix on the filename is the complete interface signal — no separate `interfaces/` subfolder is needed. The `include/` vs `src/` split already expresses the contract-vs-implementation distinction at the directory level.
@@ -2158,12 +2158,12 @@ The `I` prefix on the filename is the complete interface signal — no separate 
 All rules above derive one direction: **folder path → C++ namespace**. Inside `plugins/` this direction is **inverted**: the author's namespace identity is the primary artifact, and the on-disk folder layout follows from it.
 
 **Why?**  
-The namespace of a plugin is owned by its author, not by NNStudio. It is based on the author's reverse-domain identity and must not change when the plugin moves between repositories, organizations, or deployment targets. Deriving it from the folder position inside `nnstudio/plugins/` would couple it to NNStudio's internal directory structure — the exact coupling the plugin system exists to avoid.
+The namespace of a plugin is owned by its author, not by NNSpire. It is based on the author's reverse-domain identity and must not change when the plugin moves between repositories, organizations, or deployment targets. Deriving it from the folder position inside `NNSpire/plugins/` would couple it to NNSpire's internal directory structure — the exact coupling the plugin system exists to avoid.
 
 **Layout inside `plugins/`:**
 
 ```
-nnstudio/plugins/
+NNSpire/plugins/
     <plugin-slug>/                    ← reverse-domain slug, e.g. eu.plachy.nnplugins.myplugin
         include/                      ← visibility boundary (same semantics as everywhere else)
             layers/                   → author-controlled namespace segment
@@ -2198,7 +2198,7 @@ The segments above `layers/` are entirely the author's choice, e.g.:
 ```cpp
 // Author chooses their own top-level namespace:
 namespace eu::plachy::nnplugins::myplugin::layers {
-    class MyLayer : public nnstudio::core::ILayer { … };
+    class MyLayer : public NNSpire::core::ILayer { … };
 }
 ```
 
@@ -2210,7 +2210,7 @@ namespace eu::plachy::nnplugins::myplugin::layers {
 | Folder slug contributes namespace segment? | Yes — `core/` → `::core::`, `builtin/` → `::builtin::` | No — slug is an artifact identifier, not a namespace |
 | `include/` / `src/` are visibility boundaries? | Yes | Yes (same) |
 | Domain subfolders (`layers/`, `backends/`, …) contribute namespace? | Yes | Yes — same sub-segment rule applies *within* the plugin |
-| Inherits from | `nnstudio::core::ILayer`, etc. | `nnstudio::core::ILayer`, etc. (same) |
+| Inherits from | `NNSpire::core::ILayer`, etc. | `NNSpire::core::ILayer`, etc. (same) |
 
 > **Current status (documentation only):** The `plugins/` folder exists as a placeholder. Moving `builtin/` content into `plugins/builtin/` is a future option that requires no namespace changes — only file relocation and CMakeLists updates.
 
@@ -2246,7 +2246,7 @@ Output activation by task:
 | Small classifier (MNIST) | 784→512→256→10 | ~670 K |
 | Medium tabular | 64→256→256→128→1 | ~130 K |
 
-**Status in NNStudio:** fully operational. XOR is the proof.
+**Status in NNSpire:** fully operational. XOR is the proof.
 
 ---
 
@@ -2262,7 +2262,7 @@ Input → Dense(512)→ReLU → Dense(256)→ReLU → Dense(bottleneck)→ReLU  
 The loss is reconstruction: MSE or BCE between output and original input.
 `target = input` — self-supervised, no external labels needed.
 
-**Status in NNStudio:** engine supports it (all required layers and losses exist); ILoss contract uses an external `target` argument so you pass the input batch as both `inputs` and `targets` in `trainStep()`.
+**Status in NNSpire:** engine supports it (all required layers and losses exist); ILoss contract uses an external `target` argument so you pass the input batch as both `inputs` and `targets` in `trainStep()`.
 
 ---
 
@@ -2285,7 +2285,7 @@ MaxPool reduces spatial size. Flatten converts 2D feature maps to 1D for the Den
 | AlexNet (2012) | 5×Conv + 3×Dense | ~60 M |
 | ResNet-50 (2015) | 50 layers, skip connections | ~25 M |
 
-**Status in NNStudio:** `Conv2D` not yet implemented. `ILayer` interface supports it; Phase 1 TODO.
+**Status in NNSpire:** `Conv2D` not yet implemented. `ILayer` interface supports it; Phase 1 TODO.
 
 ---
 
@@ -2312,7 +2312,7 @@ Token embedding + positional encoding
 
 #### Layer-by-layer breakdown
 
-> All four layer types below are **not yet in NNStudio**. They are explained here so the design intent is clear when they are implemented.
+> All four layer types below are **not yet in NNSpire**. They are explained here so the design intent is clear when they are implemented.
 
 ---
 
@@ -2330,7 +2330,7 @@ No sigmoid, no dot product. Just a lookup. But because `E` is a weight matrix, b
 
 **Parameters:** `V × d_model` weights. For GPT-2 small: `50 257 × 768 ≈ 38.6 M` parameters — the embedding table alone is 33% of the model.
 
-**Status in NNStudio:** not implemented. `ILayer::build(Shape)` would need to accept a scalar integer index as input shape, which breaks the current Tensor contract (which expects float tensors). This needs a design decision before implementing.
+**Status in NNSpire:** not implemented. `ILayer::build(Shape)` would need to accept a scalar integer index as input shape, which breaks the current Tensor contract (which expects float tensors). This needs a design decision before implementing.
 
 ---
 
@@ -2348,7 +2348,7 @@ $$PE(pos, 2i) = \sin\!\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right), \qua
 
 Different frequency sine/cosine waves fill alternating dimensions. The result: each position has a unique vector, and nearby positions have similar vectors. Modern models (Llama) use **RoPE** (Rotary Position Embedding) instead — applied inside the attention computation rather than at input.
 
-**Status in NNStudio:** not implemented. Sinusoidal PE is parameter-free (just an `apply()` function on the input tensor) and could be implemented before the embedding layer.
+**Status in NNSpire:** not implemented. Sinusoidal PE is parameter-free (just an `apply()` function on the input tensor) and could be implemented before the embedding layer.
 
 ---
 
@@ -2386,7 +2386,7 @@ $$\text{MultiHead}(x) = \text{concat}(\text{head}_1, \ldots, \text{head}_h) \; W
 
 **Causal mask (decoder only):** in a GPT-style model, position `i` must not attend to position `j > i` (future tokens). This is enforced by adding `-∞` to the attention scores before softmax for all future positions — they become 0 after softmax. This is a single mask operation, not a structural change.
 
-**Status in NNStudio:** not implemented. Requires:
+**Status in NNSpire:** not implemented. Requires:
 - The QKV projection (three Dense layers per head, or one fused Dense of `3×d_model`)
 - Scaled dot product (Tensor batch-matmul operation, not yet in the Tensor API)
 - Softmax over a variable-length dimension
@@ -2415,7 +2415,7 @@ $$y_i = \gamma_i \hat{x}_i + \beta_i$$
 
 **Parameters:** `2 × d_model` (one `γ` and one `β` vector). Tiny — for `d_model=768` that is 1 536 floats.
 
-**Status in NNStudio:** not implemented. Forward pass is a pure tensor operation (mean, std, elementwise scale+shift). Backward requires the gradient through mean and variance — slightly involved but closed-form. A good early implementation target because it has no exotic topology requirements.
+**Status in NNSpire:** not implemented. Forward pass is a pure tensor operation (mean, std, elementwise scale+shift). Backward requires the gradient through mean and variance — slightly involved but closed-form. A good early implementation target because it has no exotic topology requirements.
 
 ---
 
@@ -2435,7 +2435,7 @@ $$\text{GELU}(x) \approx 0.5 \cdot x \cdot \left(1 + \tanh\!\left(\sqrt{\tfrac{2
 
 Practically the difference is small in shallow networks. In very deep Transformers with 96+ layers (GPT-3) the accumulated smoothness advantage compounds.
 
-**Status in NNStudio:** GELU can be implemented as an `IActivation` right now — it is a pure elementwise operation, same contract as ReLU/Sigmoid. The only thing needed is the math in `apply()` and the derivative `Φ(x) + x·φ(x)` (where `φ` is the Gaussian PDF) in `gradient()`.
+**Status in NNSpire:** GELU can be implemented as an `IActivation` right now — it is a pure elementwise operation, same contract as ReLU/Sigmoid. The only thing needed is the math in `apply()` and the derivative `Φ(x) + x·φ(x)` (where `φ` is the Gaussian PDF) in `gradient()`.
 
 ---
 
@@ -2484,10 +2484,10 @@ For each of N blocks:
 | Llama 2 70B | 8 192 | 64 | 80 | 70 B | 4 096 tokens |
 | GPT-4 (est.) | ~16 384 (MoE) | ~128 | ~120 | ~1.8 T (MoE) | 8 192+ tokens |
 
-**For NNStudio's text parsing / reasoning / QA use case:**  
-A Llama 2 7B-class model is the practical minimum for reliable open-domain reasoning. That is 7 billion floats × 4 bytes = **28 GB** just for weights in fp32; 14 GB in fp16. Training from scratch is not realistic — fine-tuning a pre-trained checkpoint (LoRA or full fine-tune) is the standard approach. NNStudio would load an existing `.onnx` or `.nns` checkpoint and run inference or fine-tuning on specific layers (`frozen = true` on base weights, `frozen = false` on LoRA adapters).
+**For NNSpire's text parsing / reasoning / QA use case:**  
+A Llama 2 7B-class model is the practical minimum for reliable open-domain reasoning. That is 7 billion floats × 4 bytes = **28 GB** just for weights in fp32; 14 GB in fp16. Training from scratch is not realistic — fine-tuning a pre-trained checkpoint (LoRA or full fine-tune) is the standard approach. NNSpire would load an existing `.onnx` or `.nns` checkpoint and run inference or fine-tuning on specific layers (`frozen = true` on base weights, `frozen = false` on LoRA adapters).
 
-**Status in NNStudio (updated — Phase 2 complete):**
+**Status in NNSpire (updated — Phase 2 complete):**
 
 | Layer | Status | Notes |
 |---|---|---|
@@ -2513,7 +2513,7 @@ x → Dense(n) → ReLU → Dense(n) → + x  ← skip: add original x back
 
 The skip connection (residual connection) routes the gradient directly around the block. Even if the block adds near-zero contribution, the gradient highway through the skip ensures early layers still receive a clean signal. This is why networks with hundreds of layers became trainable.
 
-**Status in NNStudio:** requires `ComputeGraph` for the branching topology. `Sequential` cannot express a skip connection (it is strictly linear). Phase 3.
+**Status in NNSpire:** requires `ComputeGraph` for the branching topology. `Sequential` cannot express a skip connection (it is strictly linear). Phase 3.
 
 ---
 
@@ -2544,7 +2544,7 @@ This is not blocked — it is the intentional design. But it means adding a genu
 
 ### How this list was obtained
 
-Every entry corresponds directly to a `virtual` method in [`include/core/IBackend.h`](nnstudio/include/core/IBackend.h) — the canonical ABI contract. The file was read in full; nothing is inferred from documentation elsewhere. When `IBackend.h` changes (new method added, signature changed), this appendix must be updated to match.
+Every entry corresponds directly to a `virtual` method in [`include/core/IBackend.h`](NNSpire/include/core/IBackend.h) — the canonical ABI contract. The file was read in full; nothing is inferred from documentation elsewhere. When `IBackend.h` changes (new method added, signature changed), this appendix must be updated to match.
 
 ---
 
@@ -2683,7 +2683,7 @@ Unary functions applied independently to each element. Like §D.3, they are triv
 > - **Image processing:** thresholding or *value quantisation floor/ceiling* — clamping pixel values to `[0, 255]` after a brightness adjustment.
 > - **Control systems:** *output saturation* — a PID controller whose actuator has physical limits (a motor can't spin faster than its max RPM).
 >
-> In all cases the concept is identical: values inside the band `[lo, hi]` pass through unchanged; values outside are pinned to the nearest boundary. The NNStudio use is precisely the audio-engineer's "limiter for numerical safety": prevent `log(0)` → `−∞` by pinning predictions to `[1e-7, 1-1e-7]` before computing entropy.
+> In all cases the concept is identical: values inside the band `[lo, hi]` pass through unchanged; values outside are pinned to the nearest boundary. The NNSpire use is precisely the audio-engineer's "limiter for numerical safety": prevent `log(0)` → `−∞` by pinning predictions to `[1e-7, 1-1e-7]` before computing entropy.
 
 `tanh` could be expressed as $\tanh(x) = 2\sigma(2x) - 1 = 2/(1+e^{-2x}) - 1$ — entirely via vtable ops. Instead it currently uses a raw C loop:
 
@@ -2841,7 +2841,7 @@ Every layer's `forward()` and `backward()` path is analysed by whether it reache
 
 **The problem:** Every `virtual ... = 0` in `IBackend` is a pure-virtual function. Adding a new pure-virtual after the interface is published breaks every backend that does not implement it — including third-party plugin backends that have no knowledge of the change.
 
-Three patterns are available; NNStudio will use all three for different categories of new functionality.
+Three patterns are available; NNSpire will use all three for different categories of new functionality.
 
 ---
 
@@ -2906,11 +2906,11 @@ virtual uint32_t apiVersion() const noexcept { return 1; }
 [BackendRegistry] WARN: backend "mycuda" api_version=1, required=2 — reject
 ```
 
-This mirrors `NNSTUDIO_PLUGIN_API_VERSION` in the plugin ABI (§10.7). Used for mandatory interface evolution only — prefer Pattern 1 for optional accelerations.
+This mirrors `NNSpire_PLUGIN_API_VERSION` in the plugin ABI (§10.7). Used for mandatory interface evolution only — prefer Pattern 1 for optional accelerations.
 
 ---
 
-**Adopted strategy for NNStudio (in line with ADR-034):**
+**Adopted strategy for NNSpire (in line with ADR-034):**
 
 | Class of change | Pattern | Target version |
 |---|---|---|
@@ -2981,9 +2981,9 @@ Every `IActivation` subclass has access to the active backend through `B()` (doc
 
 ```cpp
 // Plugin file: my_activation.cpp
-#include <nnstudio/plugin-api/IActivation.h>
+#include <NNSpire/plugin-api/IActivation.h>
 
-class SwishAct final : public nnstudio::IActivation {
+class SwishAct final : public NNSpire::IActivation {
 public:
     // forward(x) = x * sigmoid(x) = x / (1 + exp(-x))
     Tensor forward(const Tensor& x) override {
@@ -3047,11 +3047,11 @@ BackendAccelerationProfile SwishAct::backendAccelerationProfile() const override
 }
 ```
 
-The macro `NNSTUDIO_ACTIVATION_VTABLE_PROFILE(ops...)` is a convenience wrapper that generates this override automatically:
+The macro `NNSpire_ACTIVATION_VTABLE_PROFILE(ops...)` is a convenience wrapper that generates this override automatically:
 
 ```cpp
 // Example macro use (defined in plugin-api/Macros.h):
-NNSTUDIO_ACTIVATION_VTABLE_PROFILE(neg, exp, addScalar, div_, mul,
+NNSpire_ACTIVATION_VTABLE_PROFILE(neg, exp, addScalar, div_, mul,
                                     subScalar, mulScalar, add)
 ```
 
@@ -3143,7 +3143,7 @@ Note: `tanh` can also be expressed as `1 - 2 / (exp(2x) + 1)`, which uses one fe
 **Summary checklist for plugin activation authors:**
 
 - [ ] Implement `forward()` / `backward()` using only `B().someMethod(...)` calls (zero `flat(i)` loops).
-- [ ] Override `backendAccelerationProfile()` (or use `NNSTUDIO_ACTIVATION_VTABLE_PROFILE(ops...)`).
+- [ ] Override `backendAccelerationProfile()` (or use `NNSpire_ACTIVATION_VTABLE_PROFILE(ops...)`).
 - [ ] Do _not_ add a CPU fallback — `CpuBackend` is the framework's built-in fallback.
 - [ ] Test on `CpuBackend`; a future CI lane will test on `CudaBackend` (Phase 4).
 - [ ] If a raw loop is unavoidable (e.g. custom indexing), declare it in `rawLoopPaths` so the UI and export manifest reflect reality.
@@ -3233,9 +3233,9 @@ These identifiers appear only in explanatory examples, not in production source 
 
 | Term | Meaning |
 |---|---|
-| `GEMM` | **GEneral Matrix Multiply** — the Level 3 BLAS routine name. Full form: $C \leftarrow \alpha \cdot \text{op}(A) \cdot \text{op}(B) + \beta C$, where `op ∈ {N, T, C}` (no-op / transpose / conjugate-transpose) and $\alpha, \beta$ are scalar multipliers. Plain matrix product is GEMM with $\alpha=1,\, \beta=0$. The `S` in `cublasSgemm` = single-precision float; `D` = double; `H` = half. In NNStudio dispatched via `IBackend::matmul`; underlies `Dense`, `Conv2D` (via im2col Phase 4), and every attention head in `MultiHeadAttention`. See §D.2 for the full spec. |
+| `GEMM` | **GEneral Matrix Multiply** — the Level 3 BLAS routine name. Full form: $C \leftarrow \alpha \cdot \text{op}(A) \cdot \text{op}(B) + \beta C$, where `op ∈ {N, T, C}` (no-op / transpose / conjugate-transpose) and $\alpha, \beta$ are scalar multipliers. Plain matrix product is GEMM with $\alpha=1,\, \beta=0$. The `S` in `cublasSgemm` = single-precision float; `D` = double; `H` = half. In NNSpire dispatched via `IBackend::matmul`; underlies `Dense`, `Conv2D` (via im2col Phase 4), and every attention head in `MultiHeadAttention`. See §D.2 for the full spec. |
 | `noalias()` | Eigen hint: output buffer does not overlap any input — skips defensive internal allocation |
-| Row-major / C-order | Layout where the last index changes fastest; elements of one row are contiguous. Used by NNStudio `Tensor`. |
+| Row-major / C-order | Layout where the last index changes fastest; elements of one row are contiguous. Used by NNSpire `Tensor`. |
 | Col-major / Fortran-order | Layout where the first index changes fastest. Used internally by Eigen. |
 | `Result<T>` | Engine error-or-value return type. Holds either a `T` value or an error. Methods: `.value()`, `.error()`, `.hasValue()`. |
 | `LayerPtr` | `std::shared_ptr<ILayer>` — ownership handle for a layer inside `Sequential::layers_` |
@@ -3248,32 +3248,32 @@ These identifiers appear only in explanatory examples, not in production source 
 | ONNX | Open Neural Network Exchange — standard format for exporting models as a flat graph of named op-nodes (MatMul, Add, Relu, ...) |
 | DAG | Directed Acyclic Graph — general model topology enabling skip connections and multi-head architectures (cf. `Sequential` which is linear) |
 | BCE | Binary Cross-Entropy loss. For one sample: `L = -[y*log(p) + (1-y)*log(1-p)]` |
-| BPE | **Byte Pair Encoding** — subword tokenisation algorithm. Iteratively merges the most frequent adjacent byte/character pair in the training corpus into a new vocabulary token. Result: rare words split into known sub-units, common words stay whole. NNStudio ships a built-in BPE tokenizer plugin (319-token vocab). |
+| BPE | **Byte Pair Encoding** — subword tokenisation algorithm. Iteratively merges the most frequent adjacent byte/character pair in the training corpus into a new vocabulary token. Result: rare words split into known sub-units, common words stay whole. NNSpire ships a built-in BPE tokenizer plugin (319-token vocab). |
 | im2col | "Image to column" — standard technique for expressing convolution as a single GEMM call: the input patches that each filter kernel would slide over are re-arranged into the columns of a matrix, so `output = filter_matrix × im2col_matrix`. Turns Conv2D into 100 % `IBackend::matmul`. Phase 4 item. |
-| ABI | **Application Binary Interface** — the machine-level contract between compiled modules: calling convention, name mangling, struct layout, vtable slot order. NNStudio's plugin ABI is the C `nnstudio_plugin.h` interface; it is deliberately C (not C++) because the C ABI is stable across compilers. |
+| ABI | **Application Binary Interface** — the machine-level contract between compiled modules: calling convention, name mangling, struct layout, vtable slot order. NNSpire's plugin ABI is the C `NNSpire_plugin.h` interface; it is deliberately C (not C++) because the C ABI is stable across compilers. |
 | PTX | **Parallel Thread Execution** — NVIDIA's virtual ISA / assembly language for CUDA kernels. `nvcc` compiles `.cu` → PTX → SASS (native GPU machine code). Relevant for `applyFunctor1D` JIT plan in ADR-034 step 2. |
 
 ---
 
 ### F — ML framework and hardware ecosystem
 
-| Term | What it is | Relation to NNStudio |
+| Term | What it is | Relation to NNSpire |
 |---|---|---|
 | **CUDA** | NVIDIA's parallel computing platform and programming model. Extends C/C++ with GPU kernel launch syntax (`<<<grid, block>>>`), unified memory, and a device driver. The *platform* that cuBLAS/cuDNN/Thrust all sit on top of. | `CudaBackend` (Phase 4) targets CUDA. The `Device::CUDA` enum tag and `§D.10` compatibility matrix document the planned integration. |
 | **cuBLAS** | NVIDIA's CUDA implementation of the BLAS standard. `cublasSgemm` = single-precision GEMM on GPU — the key call inside `CudaBackend::matmul`. Prefix legend: `S`=float32, `D`=float64, `H`=float16, `C`=complex32. | Every `IBackend::matmul` call routes here on a CUDA backend. See `§D.2`. |
 | **cuDNN** | NVIDIA's CUDA Deep Neural Network library. Provides GPU-accelerated implementations of conv, pooling, activation functions (tanh, sigmoid, relu, softmax), batch normalisation, and attention. | Phase 4: `CudaBackend::exp`, `CudaBackend::log`, etc. map to cuDNN element-wise ops. See `§D.4` CUDA column. |
 | **Thrust** | NVIDIA's C++ parallel algorithms library (ships with CUDA). Provides `thrust::transform`, `thrust::reduce`, `thrust::sort`, etc. — GPU equivalents of `std::transform` / `std::reduce`. | Phase 4: `CudaBackend` element-wise and reduction methods (abs, clamp, sum, max) use Thrust. |
-| **Eigen** | C++ header-only linear algebra template library. NNStudio's `CpuBackend` uses `Eigen::Map` to wrap raw `float*` buffers and call `Eigen::internal::gebp_kernel` (SGEMM). Eigen is col-major internally; `CpuBackend` uses the row/col transposition trick (Chapter 2) to stay row-major. | The only third-party math dependency in Phase 1. |
+| **Eigen** | C++ header-only linear algebra template library. NNSpire's `CpuBackend` uses `Eigen::Map` to wrap raw `float*` buffers and call `Eigen::internal::gebp_kernel` (SGEMM). Eigen is col-major internally; `CpuBackend` uses the row/col transposition trick (Chapter 2) to stay row-major. | The only third-party math dependency in Phase 1. |
 | **BLAS** | **Basic Linear Algebra Subprograms** — a 1979 Fortran API, now the universal standard for dense linear algebra. Three levels: L1 = vector-vector (`dot`, `axpy`), L2 = matrix-vector (`gemv`), L3 = matrix-matrix (`gemm`). Every ML framework's CPU backend implements BLAS, often via OpenBLAS or MKL. | Eigen's SGEMM is a BLAS Level 3 implementation. `IBackend::matmul` is conceptually BLAS L3 `dgemm`/`sgemm`. |
-| **PyTorch** | Facebook/Meta's open-source ML framework. Dynamic computation graph ("define-by-run"), autograd, and `torch.nn` layer API. NNStudio's `torch_compat` layer is intentionally API-compatible with `torch.nn.Module`. | `torch_compat.h` maps `torch::nn::Linear` → `Dense`, `torch::nn::Sequential` → `Sequential`, etc. See §10.6. |
-| **LibTorch** | The C++ distribution of PyTorch — the same headers and `.so`/`.dll` libraries used by the Python package, exposed as a standalone C++ SDK. Used when NNStudio is built with `-DENABLE_LIBTORCH=ON`. | Optional dependency; when present, `torch_compat` wraps LibTorch types directly instead of NNStudio's own. |
-| **Keras** | Originally a standalone high-level DL API (François Chollet, 2015); now integrated into TensorFlow as `tf.keras`. Defines the `model.compile / .fit / .evaluate` API contract. | NNStudio's Python bridge exposes a `nnstudio.keras` façade: `keras.Sequential`, `.compile()`, `.fit()`, `.layers.*`. See §10.9. |
-| **TensorFlow** | Google's open-source ML framework; computation graph is static ("define-then-run" in TF1, eager in TF2). `tf.keras` is the canonical high-level API. | Not a dependency; `nnstudio.runners.tf_serving` is an *inference client* that talks to a running TF Serving instance. |
-| **ONNX Runtime** | Microsoft's cross-platform inference engine for `.onnx` models. Reads a model graph exported from PyTorch/TensorFlow/NNStudio and executes it — no training. | `nnstudio.runners.onnx_runtime` wraps the ONNX Runtime Python SDK as a `RunnerBase` implementation. |
-| **TF Serving** | TensorFlow's production model server. Loads a `SavedModel` and exposes gRPC + REST inference endpoints. | `nnstudio.runners.tf_serving` sends inference requests to a running TF Serving endpoint. |
-| **Triton Inference Server** | NVIDIA's high-performance multi-model inference server. Supports ONNX, TensorRT, PyTorch, TensorFlow, and custom backends; dynamic batching and concurrent model execution. | `nnstudio.runners.triton` is an inference client; Triton itself is not bundled. |
-| **KServe** | Kubernetes-native model serving platform (CNCF project). Provides a standardised `InferenceService` CRD; backends can be Triton, TorchServe, TF Serving, etc. | `nnstudio.runners.kserve` targets the KServe v2 inference protocol. |
-| **gRPC** | Google's open-source RPC framework. Uses HTTP/2 + Protocol Buffers. NNStudio uses gRPC for two purposes: `RemoteBackend` (dispatch tensor ops to a remote CUDA worker) and `nnstudio.runners.*` inference clients. | `RemoteBackend` (Phase 5) serialises `Tensor` to protobuf and sends via gRPC stream; `sync()` flushes the stream. |
+| **PyTorch** | Facebook/Meta's open-source ML framework. Dynamic computation graph ("define-by-run"), autograd, and `torch.nn` layer API. NNSpire's `torch_compat` layer is intentionally API-compatible with `torch.nn.Module`. | `torch_compat.h` maps `torch::nn::Linear` → `Dense`, `torch::nn::Sequential` → `Sequential`, etc. See §10.6. |
+| **LibTorch** | The C++ distribution of PyTorch — the same headers and `.so`/`.dll` libraries used by the Python package, exposed as a standalone C++ SDK. Used when NNSpire is built with `-DENABLE_LIBTORCH=ON`. | Optional dependency; when present, `torch_compat` wraps LibTorch types directly instead of NNSpire's own. |
+| **Keras** | Originally a standalone high-level DL API (François Chollet, 2015); now integrated into TensorFlow as `tf.keras`. Defines the `model.compile / .fit / .evaluate` API contract. | NNSpire's Python bridge exposes a `NNSpire.keras` façade: `keras.Sequential`, `.compile()`, `.fit()`, `.layers.*`. See §10.9. |
+| **TensorFlow** | Google's open-source ML framework; computation graph is static ("define-then-run" in TF1, eager in TF2). `tf.keras` is the canonical high-level API. | Not a dependency; `NNSpire.runners.tf_serving` is an *inference client* that talks to a running TF Serving instance. |
+| **ONNX Runtime** | Microsoft's cross-platform inference engine for `.onnx` models. Reads a model graph exported from PyTorch/TensorFlow/NNSpire and executes it — no training. | `NNSpire.runners.onnx_runtime` wraps the ONNX Runtime Python SDK as a `RunnerBase` implementation. |
+| **TF Serving** | TensorFlow's production model server. Loads a `SavedModel` and exposes gRPC + REST inference endpoints. | `NNSpire.runners.tf_serving` sends inference requests to a running TF Serving endpoint. |
+| **Triton Inference Server** | NVIDIA's high-performance multi-model inference server. Supports ONNX, TensorRT, PyTorch, TensorFlow, and custom backends; dynamic batching and concurrent model execution. | `NNSpire.runners.triton` is an inference client; Triton itself is not bundled. |
+| **KServe** | Kubernetes-native model serving platform (CNCF project). Provides a standardised `InferenceService` CRD; backends can be Triton, TorchServe, TF Serving, etc. | `NNSpire.runners.kserve` targets the KServe v2 inference protocol. |
+| **gRPC** | Google's open-source RPC framework. Uses HTTP/2 + Protocol Buffers. NNSpire uses gRPC for two purposes: `RemoteBackend` (dispatch tensor ops to a remote CUDA worker) and `NNSpire.runners.*` inference clients. | `RemoteBackend` (Phase 5) serialises `Tensor` to protobuf and sends via gRPC stream; `sync()` flushes the stream. |
 | **pybind11** | Header-only C++11 library for creating Python extension modules. Exposes C++ classes/functions to Python with minimal boilerplate. | `python-bridge/bindings/module.cpp` uses pybind11 to expose `Tensor`, `Sequential`, `Dense`, `Trainer`, etc. to Python. |
-| **OpenAI API** | REST API for hosted LLM inference (ChatGPT, GPT-4, etc.). Standard HTTP endpoint that accepts JSON prompt objects. | `nnstudio.runners.openai` wraps the OpenAI client as a `RunnerBase` — the model runs remotely, NNStudio handles the prompt/response contract. |
+| **OpenAI API** | REST API for hosted LLM inference (ChatGPT, GPT-4, etc.). Standard HTTP endpoint that accepts JSON prompt objects. | `NNSpire.runners.openai` wraps the OpenAI client as a `RunnerBase` — the model runs remotely, NNSpire handles the prompt/response contract. |
 

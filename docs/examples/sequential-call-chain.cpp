@@ -21,11 +21,11 @@
 // then abbreviated as "// ... (same error relay)" for readability.
 // ============================================================================
 
-#include <nnstudio/core/Layer.h>        // ILayer, Sequential, LayerPtr
-#include <nnstudio/core/layers/Dense.h> // Dense
-#include <nnstudio/core/Activations.h>  // ReLU, Sigmoid
+#include <NNSpire/core/Layer.h>        // ILayer, Sequential, LayerPtr
+#include <NNSpire/core/layers/Dense.h> // Dense
+#include <NNSpire/core/Activations.h>  // ReLU, Sigmoid
 
-using namespace nnstudio;
+using namespace NNSpire;
 
 
 // ============================================================================

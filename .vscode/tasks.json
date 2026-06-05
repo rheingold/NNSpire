@@ -7,7 +7,7 @@
             "command": "C:/Users/plachy/Documents/Dev/Qt/Tools/CMake_64/bin/cmake.exe",
             "args": ["--build", "--preset", "engine-ninja"],
             "options": {
-                "cwd": "${workspaceFolder}/nnstudio"
+                "cwd": "${workspaceFolder}/NNSpire"
             },
             "group": {
                 "kind": "build",
@@ -38,7 +38,7 @@
             "command": "C:/Users/plachy/Documents/Dev/Qt/Tools/CMake_64/bin/cmake.exe",
             "args": ["--preset", "engine-ninja"],
             "options": {
-                "cwd": "${workspaceFolder}/nnstudio"
+                "cwd": "${workspaceFolder}/NNSpire"
             },
             "problemMatcher": []
         },
@@ -48,7 +48,7 @@
             "command": "C:/Users/plachy/Documents/Dev/Qt/Tools/CMake_64/bin/ctest.exe",
             "args": ["--preset", "engine-ninja", "--output-on-failure"],
             "options": {
-                "cwd": "${workspaceFolder}/nnstudio"
+                "cwd": "${workspaceFolder}/NNSpire"
             },
             "group": "test",
             "problemMatcher": []

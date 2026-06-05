@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio needs to support running trained models against real inference backends
+NNSpire needs to support running trained models against real inference backends
 (Triton Inference Server, TF Serving, KServe, ONNX Runtime, OpenAI-compatible REST, etc.)
 as part of its deployment testing and pipeline execution features.
 
@@ -29,7 +29,7 @@ Bundling a server would mean:
 
 ## Decision
 
-**NNStudio is a client of inference servers. It does not bundle, embed, or own any inference server.**
+**NNSpire is a client of inference servers. It does not bundle, embed, or own any inference server.**
 
 - Each supported server is accessed via a **runner connector** plugin implementing `IRunnerClient`.
 - Supported connectors (built-in): Triton gRPC v2, TF Serving REST, KServe REST,
@@ -60,7 +60,7 @@ All runner connectors ship in both C++ and Python forms (ADR-004).
 - Docker convenience launcher adds a Docker dependency for that workflow only.
 
 **Follow-on**
-- `IRunnerClient` interface in `nnstudio/deployment/`.
-- Built-in connectors in `nnstudio/deployment/connectors/`.
-- Docker launcher helper in `nnstudio/deployment/docker_launcher/` (Phase 5).
+- `IRunnerClient` interface in `NNSpire/deployment/`.
+- Built-in connectors in `NNSpire/deployment/connectors/`.
+- Docker launcher helper in `NNSpire/deployment/docker_launcher/` (Phase 5).
 - See DEPLOYMENT.md §3 for the full runner connector specification.

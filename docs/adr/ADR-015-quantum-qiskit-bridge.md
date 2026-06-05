@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio's long-term goal (Phase 6) is to support hybrid classical-quantum neural network
+NNSpire's long-term goal (Phase 6) is to support hybrid classical-quantum neural network
 execution, where selected layers or graph sub-trees are compiled to quantum circuits and
 executed on quantum hardware or simulators.
 
@@ -31,12 +31,12 @@ The quantum computing SDK landscape as of 2026:
 ## Decision
 
 The quantum backend is implemented as a `QuantumBackend` shared library that bridges
-to **Qiskit** via the NNStudio Python bridge (pybind11, ADR-005).
+to **Qiskit** via the NNSpire Python bridge (pybind11, ADR-005).
 
 Architecture:
 - `QuantumBackend` implements `IBackend` (ADR-012).
 - Selected operations on tensors with `device = Device::QUANTUM` are translated to
-  Qiskit `QuantumCircuit` objects by a **circuit compiler** in `nnstudio/backends/quantum/`.
+  Qiskit `QuantumCircuit` objects by a **circuit compiler** in `NNSpire/backends/quantum/`.
 - Circuit execution is dispatched to Qiskit's backend registry
   (`AerSimulator` for local simulation; IBM Quantum provider for real hardware).
 - Results (probability distributions / expectation values) are mapped back to tensors.
@@ -67,7 +67,7 @@ integration) and should be re-evaluated when Phase 6 begins.
 - Quantum computing is evolving rapidly; SDK choice may need revision at Phase 6.
 
 **Follow-on**
-- `QuantumBackend` stub in `nnstudio/backends/quantum/` — created in Phase 1 alongside CPU backend.
+- `QuantumBackend` stub in `NNSpire/backends/quantum/` — created in Phase 1 alongside CPU backend.
 - Circuit compiler design deferred to Phase 6.
 - Re-evaluate PennyLane vs Qiskit at Phase 6 kickoff.
 - IBM Quantum API key path recorded in `ai_priv/ai_priv.md`.

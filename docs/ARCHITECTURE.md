@@ -1,4 +1,4 @@
-# NNStudio — Architecture Whitepaper
+# NNSpire — Architecture Whitepaper
 
 **Version**: 0.1 (Phase 0 — design)  
 **Date**: 2026-03-31  
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-NNStudio is a multiplatform (Qt 6) neural-network design, training, deployment, and learning workbench. It is built "inside out": the core mathematical engine is implemented as a standalone C++ library (`nnstudio-core`), the plugin system and trust chain are layered on top of it, and the Qt/QML user interface surfaces the engine's capabilities without owning any computation logic.
+NNSpire is a multiplatform (Qt 6) neural-network design, training, deployment, and learning workbench. It is built "inside out": the core mathematical engine is implemented as a standalone C++ library (`NNSpire-core`), the plugin system and trust chain are layered on top of it, and the Qt/QML user interface surfaces the engine's capabilities without owning any computation logic.
 
 The guiding constraint throughout is **dual-language**: every computable artefact (plugin, export, runner client, sample) exists in both C++17 and Python 3.10+ forms, with identical behaviour. The C++ API is defined first; pybind11 provides the Python mirror.
 
@@ -18,7 +18,7 @@ The guiding constraint throughout is **dual-language**: every computable artefac
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  NNStudio Qt 6 application  (GPL v3)                                        │
+│  NNSpire Qt 6 application  (GPL v3)                                        │
 │  ┌────────────────┐  ┌──────────────────┐  ┌───────────────────────────┐   │
 │  │  QML UI panels │  │  Qt controllers  │  │  Dependency Manager / Wiz │   │
 │  │  (ModelEditor, │  │  (ModelCtrl,     │  │  (first-run, plugin mgmt, │   │
@@ -30,7 +30,7 @@ The guiding constraint throughout is **dual-language**: every computable artefac
 └──────────────────────────────┼──────────────────────────────────────────────┘
                                 │  C++ API calls
 ┌──────────────────────────────▼──────────────────────────────────────────────┐
-│  Plugin SDK  (LGPL v3 headers — nnstudio-plugin-api)                        │
+│  Plugin SDK  (LGPL v3 headers — NNSpire-plugin-api)                        │
 │  ┌─────────────────────┐  ┌────────────────────────────────────────────┐   │
 │  │  PluginLoader       │  │  Trust subsystem                           │   │
 │  │  (QPluginLoader +   │  │  TrustStore / TrustVerifier /              │   │
@@ -39,7 +39,7 @@ The guiding constraint throughout is **dual-language**: every computable artefac
 └────────────┼────────────────────────────────────────────────────────────────┘
              │  dynamic load (.dll / .so / .pyd)
 ┌────────────▼────────────────────────────────────────────────────────────────┐
-│  nnstudio-core  (LGPL v3 static library)                                    │
+│  NNSpire-core  (LGPL v3 static library)                                    │
 │                                                                              │
 │  tensor/ ──── layers/ ──── activations/ ──── losses/ ──── optimizers/      │
 │  graph/ (ComputeGraph, autograd) ──── training/ (Trainer, callbacks)        │
@@ -55,7 +55,7 @@ The guiding constraint throughout is **dual-language**: every computable artefac
 └─────────────────────────────────────────────────────────────────────────────┘
              │  pybind11
 ┌────────────▼────────────────────────────────────────────────────────────────┐
-│  Python bridge  (nnstudio Python package)                                    │
+│  Python bridge  (NNSpire Python package)                                    │
 │  Tensor, Layer, ComputeGraph, Trainer, BackendRegistry, runners/            │
 └─────────────────────────────────────────────────────────────────────────────┘
              │  plugins (C++ .dll/.so  +  Python .pyd/.so)
@@ -66,7 +66,7 @@ The guiding constraint throughout is **dual-language**: every computable artefac
 
 ---
 
-## 3. Core engine (`nnstudio-core`)
+## 3. Core engine (`NNSpire-core`)
 
 ### 3.1 Tensor
 
@@ -88,7 +88,7 @@ auto c = BackendRegistry::active().matmul(a, b);  // shape {2,4}
 
 ```python
 # Python equivalent
-import nnstudio as nn
+import NNSpire as nn
 a = nn.Tensor([2, 3], dtype=nn.float32, device='cpu')
 b = nn.Tensor([3, 4], dtype=nn.float32, device='cpu')
 c = nn.matmul(a, b)  # shape [2, 4]
@@ -146,7 +146,7 @@ Callbacks relay training progress to the Qt controller via a signal queue (threa
 
 #### The two-format family
 
-NNStudio uses two distinct ZIP-based formats, both following the Open Packaging Convention
+NNSpire uses two distinct ZIP-based formats, both following the Open Packaging Convention
 (same principle as `.docx`/`.xlsx`/`.odt` — ECMA-376). All large parts in either format
 can be **embedded** (inside the ZIP) or **referenced as sidecars** (relative or absolute
 external paths). Neither format ever forces you to pack everything in.
@@ -160,7 +160,7 @@ Parts reference scheme (in any manifest.json):
 
 ---
 
-#### `.nnsp` — NNStudio Project (always small-to-medium, the "source code")
+#### `.nnsp` — NNSpire Project (always small-to-medium, the "source code")
 
 The project file is the primary unit of work in the Studio. It contains everything
 necessary to *describe and recreate* networks, but the actual trained weights and
@@ -174,7 +174,7 @@ how those networks wire together (e.g. an LLM pipeline with encoder, decoder, re
 ```
 project.nnsp  (ZIP — always the small/shippable artefact)
 │
-├── project.json              ← project metadata, NNStudio version, author,
+├── project.json              ← project metadata, NNSpire version, author,
 │                               signature/encryption header, creation date
 │
 ├── networks/                 ← one subfolder per network variant
@@ -219,7 +219,7 @@ on their own data):
 - `project.json` carries designer's signature and optional encryption
 - `graph.onnx` and `training/` are **absent from every variant**
 
-NNStudio opens this and presents: *"Weights not present — run training to generate, or
+NNSpire opens this and presents: *"Weights not present — run training to generate, or
 import existing weights."* The large data is generated locally by the customer and stays
 local. This is the source-code-vs-binaries analogy: `.nnsp` is the source, trained weights
 are the compiled output.
@@ -235,7 +235,7 @@ also included:
 
 ---
 
-#### `.nnsx` — NNStudio Model Exchange (one network, can be large)
+#### `.nnsx` — NNSpire Model Exchange (one network, can be large)
 
 A self-contained single-network artefact. Can exist standalone or be embedded inside a
 `.nnsp` project. An `.nnsx` file can reference its large parts as sidecars.
@@ -243,7 +243,7 @@ A self-contained single-network artefact. Can exist standalone or be embedded in
 ```
 model.nnsx  (ZIP — rename to .zip to inspect freely)
 │
-├── manifest.json         ← parts directory, nnstudio_version, model_name, author
+├── manifest.json         ← parts directory, NNSpire_version, model_name, author
 ├── graph.onnx            ← valid standalone ONNX blob (embedded or sidecar ref)
 ├── training/
 │   ├── adam.bin            ← optimizer state (embedded or sidecar ref)
@@ -343,7 +343,7 @@ of every step — recomputing them costs one forward+backward pass on resume.
 #### Data structures
 
 ```cpp
-// nnstudio/core/include/nnstudio/core/EvalTrace.h
+// NNSpire/core/include/NNSpire/core/EvalTrace.h
 
 struct LayerTrace {
     std::string    layerId;       // matches Layer::name()
@@ -437,7 +437,7 @@ Synchronisation between training worker and UI thread is done exclusively throug
 ## 6. Process architecture
 
 - **One main process** for the entire Studio.
-- **`nnstudio-runner` sidecar** (opt-in): a separate lightweight process for crash-isolated inference of untrusted plugins. Communicates via local Unix socket / named pipe. Disabled by default; enabled via `Settings → Advanced → Sandbox untrusted plugins`.
+- **`NNSpire-runner` sidecar** (opt-in): a separate lightweight process for crash-isolated inference of untrusted plugins. Communicates via local Unix socket / named pipe. Disabled by default; enabled via `Settings → Advanced → Sandbox untrusted plugins`.
 - **No background services** — nothing survives app exit.
 - **External runners** (Triton, TF Serving, KServe): Studio connects to them over gRPC/REST; Studio never launches or manages these processes, except the optional "launch local Triton Docker" helper which uses the Docker CLI.
 
@@ -452,13 +452,13 @@ Synchronisation between training worker and UI thread is done exclusively throug
 | DLL loading | `QPluginLoader` (cross-platform dlopen abstraction) |
 | Qt runtime distribution | `windeployqt` / `macdeployqt` / `linuxdeployqt` |
 | Linux distribution | AppImage (glibc ≥ 2.31 baseline) |
-| Qt version shim | `nnstudio/app/qt_version_helpers.h` wraps any Qt 6-only APIs |
+| Qt version shim | `NNSpire/app/qt_version_helpers.h` wraps any Qt 6-only APIs |
 | Old macOS / Linux | Qt 5.15 LTS CMake config (`-DNN_QT_VERSION=5`) |
 | Compiler portability | C++17 only; no compiler-specific extensions except `__has_builtin` guards |
 
 ### 7.1 UI frontend portability (desktop-first, web/mobile-ready)
 
-> **Planned guard — Phase 5.7 / ADR-043.** NNStudio ships as a desktop app, but the
+> **Planned guard — Phase 5.7 / ADR-043.** NNSpire ships as a desktop app, but the
 > **UI must stay convertible** to Android / iOS / Web (Qt for WebAssembly, `QtWebEngine`)
 > without a rewrite. **This applies to the UI only — runners are always a HW/VM/host
 > concern and stay native.** A phone or browser front-end would drive a *remote* engine
@@ -482,7 +482,7 @@ The enabling design rules (already mostly satisfied by the inside-out architectu
 All Studio features are registered with a tier:
 
 ```cpp
-// nnstudio/core/features/FeatureFlags.h
+// NNSpire/core/features/FeatureFlags.h
 enum class Tier { FREE, PRO, ENTERPRISE };
 
 struct FeatureFlag {
@@ -520,7 +520,7 @@ Source code `@kb:` comments (in-source cross-references) use the same path forma
 ## 10. Dependency management details
 
 ### Embeddable Python
-Python.org publishes an officially redistribution-approved embeddable ZIP package for Windows; `.tar.gz` equivalents exist for other platforms. NNStudio downloads and extracts this to `<install>/runtime/python/` on first use of any Python plugin. `pip` is bootstrapped into this isolated environment. The system Python is never modified.
+Python.org publishes an officially redistribution-approved embeddable ZIP package for Windows; `.tar.gz` equivalents exist for other platforms. NNSpire downloads and extracts this to `<install>/runtime/python/` on first use of any Python plugin. `pip` is bootstrapped into this isolated environment. The system Python is never modified.
 
 ### MinGW-w64 (Windows only)
 The MinGW-w64 project (GCC runtime exception — legal to bundle with non-GPL software) is offered as an optional download to `<install>/runtime/mingw64/`. It is used to compile C++ plugin sources within the Studio. MSVC is used if available; MinGW is the fallback for users without Visual Studio.
@@ -534,7 +534,7 @@ OpenSSL 3.x is required for `TrustVerifier`. On Windows it is bundled (Apache 2.
 
 | Component | Target size |
 |---|---|
-| `nnstudio-core` (static, strip+LTO) | < 8 MB |
+| `NNSpire-core` (static, strip+LTO) | < 8 MB |
 | Qt runtime (bundled) | ~80 MB |
 | Embeddable Python | ~15 MB |
 | Core app binary | < 20 MB |
@@ -549,7 +549,7 @@ OpenSSL 3.x is required for `TrustVerifier`. On Windows it is bundled (Apache 2.
 > live in [`TODO.md`](../TODO.md#phase-57--semantic-composition--macro-architecture-studio).
 > Conceptual grounding is in [`modern_ai_systems_ontology.md`](modern_ai_systems_ontology.md).
 
-NNStudio edits **one model graph at two zoom levels**:
+NNSpire edits **one model graph at two zoom levels**:
 
 - **Micro** (Phase 3 model editor) — the graph of *primitive* layers (`Dense`, `ReLU`,
   `GELU`, `Conv2D`, `MultiHeadAttention`). This is the `ILayer` / `IActivation` world
@@ -563,7 +563,7 @@ The organising claim (see the ontology document, §0 and chapters 1–2): **an L
 distinct kind of object from a diffuser — both are typed semantic message-passing graphs
 over tensors.** The autoregressive decode loop and the diffusion denoise loop are the same
 "learned transform inside a controller loop" pattern with different typed messages. Hence
-NNStudio represents every architecture family as a **preset** of one node-graph editor,
+NNSpire represents every architecture family as a **preset** of one node-graph editor,
 the way ComfyUI represents diffusion workflows — generalised across all families and
 across wrapping formats (`.onnx`, `.safetensors`, GGUF, `.nnsx`).
 
@@ -572,7 +572,7 @@ canvases nest recursively.** A concept that is a single network renders as a one
 canvas; a composite renders as a many-slot graph; and any canvas can be wrapped by an
 outer **`landscape`** canvas (a running/deployment scene) to arbitrary depth. This
 recursive nesting has no external-format equivalent, so it is persisted **only** in
-NNStudio project files (`.nnsp`/`.nnsx`); export to ONNX/GGUF flattens or extracts the
+NNSpire project files (`.nnsp`/`.nnsx`); export to ONNX/GGUF flattens or extracts the
 runnable leaf. See ADR-041 in `TODO.md`.
 
 ### 12.1 Four composition tiers
@@ -588,18 +588,18 @@ Each Tier B/C/D member is a typed, versioned, signable **template** with semanti
 and output ports drawn from ontology Level 5 (`TEXT`, `TOKENS`, `EMBEDDING[dim]`,
 `LATENT`, `CONDITIONING`, `IMAGE`, `TAGS`, `DOCS`, …). The same `CompatibilityChecker`
 that gates the cross-framework layer classifies each template as `torch_standard`,
-`keras_standard`, or `nnstudio_extended`.
+`keras_standard`, or `NNSpire_extended`.
 
 The `NN_bricks_overview.md` inventory maps onto these tiers (ADR-042): its **20 `Prim.X`
 primitives are Tier A**, each realised through one of three channels — **builtin**
-(`nnstudio::builtin::*`), a **native compiled plugin**, or a **script** (Python plugin,
+(`NNSpire::builtin::*`), a **native compiled plugin**, or a **script** (Python plugin,
 including deliberate builtin-duplicates that exercise the scripting engine). Its **21
 `Beh.X` behaviours are emergent functions, not single ops, and are realised as Tier B/C
 templates** (e.g. "Token Recognition" → `TokenEmbeddingBlock`).
 
 ### 12.2 Backing models and federated execution
 
-A Tier B/C node is backed by exactly one of: **(a)** a native NNStudio subgraph (drills
+A Tier B/C node is backed by exactly one of: **(a)** a native NNSpire subgraph (drills
 down to Tier A primitives, trainable in-engine), **(b)** imported weights
 (`.safetensors` / ONNX / GGUF / `.nnsx`, run or fine-tune where the format allows), or
 **(c)** a remote endpoint via a `ServiceConnector` plugin.

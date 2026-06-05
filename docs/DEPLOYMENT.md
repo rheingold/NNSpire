@@ -1,4 +1,4 @@
-# NNStudio — Deployment & Runners Whitepaper
+# NNSpire — Deployment & Runners Whitepaper
 
 **Version**: 0.1 (Phase 0 — design)  
 **Date**: 2026-03-31  
@@ -12,8 +12,8 @@
 
 - **Standards first**: use existing interchange formats (ONNX, TorchScript) wherever they are sufficient. Custom formats only cover the gaps.
 - **Dual-language**: every runner connector ships both a C++ implementation and a Python implementation with identical behaviour.
-- **No server bundling**: NNStudio is a *client* of inference servers. It does not bundle Triton, TF Serving, or KServe. It can assist launching a local Docker container, but does not own the server process.
-- **Portable bundles**: the `.nnsr` runner bundle is a self-contained zip that can be loaded anywhere that has the NNStudio runtime — no internet needed for inference.
+- **No server bundling**: NNSpire is a *client* of inference servers. It does not bundle Triton, TF Serving, or KServe. It can assist launching a local Docker container, but does not own the server process.
+- **Portable bundles**: the `.nnsr` runner bundle is a self-contained zip that can be loaded anywhere that has the NNSpire runtime — no internet needed for inference.
 
 ---
 
@@ -21,16 +21,16 @@
 
 ### 2.1 ONNX (`.onnx`)
 
-Primary standard export. Uses `OnnxIO::export()` from `nnstudio-core/formats/`.
+Primary standard export. Uses `OnnxIO::export()` from `NNSpire-core/formats/`.
 
 Procedure:
 1. Trace the `ComputeGraph` with a sample input to resolve all dynamic shapes
-2. Map each `Layer` to the closest ONNX operator (or `com.nnstudio.<layer>` custom op if no standard op covers it)
+2. Map each `Layer` to the closest ONNX operator (or `com.NNSpire.<layer>` custom op if no standard op covers it)
 3. Serialise to `ModelProto` protobuf
 4. Validate with ONNX runtime checker
 5. Write `.onnx` file
 
-Custom operators that have no ONNX equivalent are registered under the `com.nnstudio` domain. The Studio ships an ONNX Runtime custom op shared library for these.
+Custom operators that have no ONNX equivalent are registered under the `com.NNSpire` domain. The Studio ships an ONNX Runtime custom op shared library for these.
 
 Reference: KB doc 02 (ONNX), especially §Operator specs and §Custom ops.
 
@@ -44,7 +44,7 @@ Only available when PyTorch is installed in the embedded Python environment (fac
 
 Planned Phase 5. Conversion via the `tf.lite.TFLiteConverter` Python API. Full quantization (INT8, float16) supported through the converter's existing tooling.
 
-### 2.4 `.nns` (NNStudio native project file)
+### 2.4 `.nns` (NNSpire native project file)
 
 The native design-time format. Contains:
 - Embedded ONNX blob (model graph + weights — canonical weight storage)
@@ -52,7 +52,7 @@ The native design-time format. Contains:
 
 ```json
 {
-  "nnstudioVersion": "1.0.0",
+  "NNSpireVersion": "1.0.0",
   "modelId": "uuid-v4",
   "created": "2026-03-31T00:00:00Z",
   "pluginRefs": ["com.example.bpe-tokenizer@1.2.0"],
@@ -82,7 +82,7 @@ Anything ONNX covers is stored in the embedded ONNX blob only — never duplicat
 
 Serialisation: MessagePack for binary efficiency; a JSON-only mode available for human inspection and version control diffs.
 
-### 2.5 `.nnsr` (NNStudio Runner Bundle)
+### 2.5 `.nnsr` (NNSpire Runner Bundle)
 
 A deployment-time zip archive containing everything needed to run the model without the Studio:
 
@@ -236,7 +236,7 @@ The Studio Deployment panel provides:
 
 ## 5. Plugin Registry API
 
-The NNStudio Plugin Registry is a lightweight REST server (reference implementation: Python FastAPI).
+The NNSpire Plugin Registry is a lightweight REST server (reference implementation: Python FastAPI).
 
 ### Endpoints
 

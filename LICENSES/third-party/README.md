@@ -1,7 +1,7 @@
 # LICENSES/third-party — Third-party license texts
 
 This directory must contain a copy of every license and attribution notice for
-third-party libraries that are distributed with NNStudio (embedded or shipped
+third-party libraries that are distributed with NNSpire (embedded or shipped
 alongside the binary). It is displayed in the Studio `Help → About → Licenses`
 dialog.
 

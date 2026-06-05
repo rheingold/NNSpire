@@ -16,7 +16,7 @@ learnable parameter — backpropagation. There are two broad implementation stra
 | **Define-by-run (dynamic graph)** | Record the forward pass into a DAG on the fly; `backward()` traverses it | PyTorch, raw autograd |
 | Define-and-run (static graph) | Fully specify the graph before any data flows through it | Early TensorFlow, ONNX Runtime |
 
-NNStudio is simultaneously a **learning tool** (users must be able to inspect the graph,
+NNSpire is simultaneously a **learning tool** (users must be able to inspect the graph,
 pause at any node, visualise gradients) and a **design tool** (users build architectures
 interactively). Static graphs would make interactive construction and live inspection very
 difficult.
@@ -73,7 +73,7 @@ The DAG is serialisable to JSON for:
   use `shared_ptr` reference counting.
 
 **Follow-on**
-- `ComputeGraph`, `OpNode`, `backward_fn` in `nnstudio/core/graph/`.
-- `EvalTrace` struct in `nnstudio/core/graph/eval_trace.h`.
-- Graph JSON schema documented in `nnstudio/core/graph/README.md`.
-- Python binding: `nnstudio.graph.ComputeGraph` via pybind11.
+- `ComputeGraph`, `OpNode`, `backward_fn` in `NNSpire/core/graph/`.
+- `EvalTrace` struct in `NNSpire/core/graph/eval_trace.h`.
+- Graph JSON schema documented in `NNSpire/core/graph/README.md`.
+- Python binding: `NNSpire.graph.ComputeGraph` via pybind11.

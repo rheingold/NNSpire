@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio is a large system with many interdependent subsystems. The order in which
+NNSpire is a large system with many interdependent subsystems. The order in which
 subsystems are built determines how quickly working software is available, how easy
 it is to validate decisions, and how much rework occurs when upstream APIs change.
 
@@ -19,7 +19,7 @@ Two broad strategies were considered:
 | **Outside-in** | Start with the UI shell; fill in engine later | UI is built against undefined engine APIs; placeholder stubs everywhere; hard integration later |
 | **Inside-out** | Start with the engine maths; build outward | No UI demo early; but every layer is built on a tested, real foundation |
 
-NNStudio is first and foremost a learning tool about neural network **mathematics**.
+NNSpire is first and foremost a learning tool about neural network **mathematics**.
 If the mathematical engine is solid, everything else is I/O and presentation.
 If the UI is solid but the maths are wrong, nothing else matters.
 
@@ -27,13 +27,13 @@ If the UI is solid but the maths are wrong, nothing else matters.
 
 ## Decision
 
-NNStudio is built **inside-out** in six phases:
+NNSpire is built **inside-out** in six phases:
 
 | Phase | Scope | Key deliverable |
 |---|---|---|
 | **0** | Project scaffolding: docs, directory layout, `.gitignore`, CMake skeleton | Compilable empty project; all design documents |
-| **1** | NN engine core C++ library: `Tensor`, `Layer`, `ComputeGraph`, `Trainer`, formats | `nnstudio-core` static library; unit tests; CPU backend with Eigen |
-| **2** | Plugin SDK: C ABI, `TrustVerifier`, `TrustStore`, `PluginLoader`, pybind11 bridge | Loadable signed plugins; Python `nnstudio` package |
+| **1** | NN engine core C++ library: `Tensor`, `Layer`, `ComputeGraph`, `Trainer`, formats | `NNSpire-core` static library; unit tests; CPU backend with Eigen |
+| **2** | Plugin SDK: C ABI, `TrustVerifier`, `TrustStore`, `PluginLoader`, pybind11 bridge | Loadable signed plugins; Python `NNSpire` package |
 | **3** | Qt 6 QML Studio UI: layer editor, training dashboard, weight viewer, KB help | First runnable GUI backed by a real engine |
 | **4** | Full pipeline: input adapters, tokenisation, context DB, chained execution, output | End-to-end inference from raw input to raw output |
 | **5** | Deployment & runners: export wizards, runner connectors, `.nnsr` bundle, Registry API | Production-deployable model bundles |

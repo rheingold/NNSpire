@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio must build on Windows (MSVC), Linux (GCC/Clang), and macOS (Apple Clang).
+NNSpire must build on Windows (MSVC), Linux (GCC/Clang), and macOS (Apple Clang).
 The build system must integrate with:
 - Qt 6 (which requires CMake 3.21+ for its `qt_add_executable` / `qt_add_qml_module` commands).
 - pybind11 (ships its own CMake helpers).
@@ -29,20 +29,20 @@ Alternatives:
 
 ## Decision
 
-**CMake 3.21+** is the build system for NNStudio.
+**CMake 3.21+** is the build system for NNSpire.
 
-- Top-level `CMakeLists.txt` lives in `nnstudio/` (the source root).
+- Top-level `CMakeLists.txt` lives in `NNSpire/` (the source root).
 - Build directory: `build/` (gitignored).
 - `CMakePresets.json` provides named configurations:
   - `engine-ninja` (current) — Ninja generator, Debug, for engine development.
   - Additional presets for Release, MSVC, Clang, etc. to be added per phase.
 - CMake target names:
-  - `nnstudio-core` — static library
-  - `nnstudio-plugin-api` — interface (header-only) library
-  - `NNStudio` — executable (Qt 6 app)
-  - `nnstudio-runner` — optional sidecar executable
-  - `nnstudio-onnxrt-custom-ops` — ONNX Runtime custom-op shared library
-  - `nnstudio_py` — pybind11 Python extension module
+  - `NNSpire-core` — static library
+  - `NNSpire-plugin-api` — interface (header-only) library
+  - `NNSpire` — executable (Qt 6 app)
+  - `NNSpire-runner` — optional sidecar executable
+  - `NNSpire-onnxrt-custom-ops` — ONNX Runtime custom-op shared library
+  - `NNSpire_py` — pybind11 Python extension module
 - Qt binary path is stored in the developer's `ai_priv/ai_priv.md` (gitignored) and passed
   via `CMAKE_PREFIX_PATH`.
 

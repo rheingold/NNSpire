@@ -26,7 +26,7 @@ on a machine that does not have the Studio installed (runners, tokeniser vocabul
 
 Two custom formats are defined. ONNX is stored inside them — never reimplemented by them.
 
-### `.nns` — NNStudio Native Project File (design-time)
+### `.nns` — NNSpire Native Project File (design-time)
 
 A **MessagePack** (binary) envelope with a JSON-only inspection mode (for diffs/version control).
 
@@ -39,7 +39,7 @@ Contents:
 
 The embedded ONNX blob is extractable as a standalone `.onnx` via a single Studio menu action.
 
-### `.nnsr` — NNStudio Runner Bundle (deployment-time)
+### `.nnsr` — NNSpire Runner Bundle (deployment-time)
 
 A standard **ZIP archive** containing everything needed for offline inference:
 
@@ -70,6 +70,6 @@ model.nnsr  (zip)
 
 **Follow-on**
 - Define `.nns` JSON schema with JSON Schema or protobuf (decision deferred to Phase 1).
-- `NNSWriter` / `NNSReader` classes in `nnstudio-core/formats/`.
-- `BundleBuilder` and `BundleRunner` in `nnstudio/deployment/`.
+- `NNSWriter` / `NNSReader` classes in `NNSpire-core/formats/`.
+- `BundleBuilder` and `BundleRunner` in `NNSpire/deployment/`.
 - See DEPLOYMENT.md for the complete format specifications and manifest schemas.

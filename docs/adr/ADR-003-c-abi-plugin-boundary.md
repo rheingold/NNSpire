@@ -8,12 +8,12 @@
 
 ## Context
 
-NNStudio loads third-party plugins at runtime as shared libraries (`.dll` on Windows,
+NNSpire loads third-party plugins at runtime as shared libraries (`.dll` on Windows,
 `.so` on Linux, `.dylib` on macOS).
 
 C++ does not have a stable ABI: name mangling, vtable layout, and exception propagation
 differ between compiler versions and even between debug and release builds of the same
-version. Shipping a C++ virtual interface in `nnstudio-plugin-api/` would mean:
+version. Shipping a C++ virtual interface in `NNSpire-plugin-api/` would mean:
 
 - Plugins compiled with MSVC 2019 could silently corrupt vtables when loaded into a
   Studio compiled with MSVC 2022.
@@ -24,7 +24,7 @@ version. Shipping a C++ virtual interface in `nnstudio-plugin-api/` would mean:
 
 ## Decision
 
-The public plugin interface (`nnstudio_plugin.h`) uses **only C linkage**:
+The public plugin interface (`NNSpire_plugin.h`) uses **only C linkage**:
 
 - `extern "C"` on all exported symbols.
 - Only C-compatible types in all structs: plain integers, pointers, and function pointers.
@@ -33,7 +33,7 @@ The public plugin interface (`nnstudio_plugin.h`) uses **only C linkage**:
   not C++ virtual dispatch.
 - The single required export symbol is:
   ```c
-  const NNPluginDescriptor* nnstudio_plugin_descriptor(void);
+  const NNPluginDescriptor* NNSpire_plugin_descriptor(void);
   ```
 - `NNPluginDescriptor` carries a `void* vtable` pointer cast per plugin type.
 
@@ -56,8 +56,8 @@ pathway — they are logically C ABI compliant even though the bridge is C++.
 - Passing complex data (tensors, strings) requires agreed struct layouts (`NNTensorView`, etc.).
 
 **Follow-on**
-- `nnstudio_plugin.h` must include a `api_version` field in `NNPluginDescriptor`;
+- `NNSpire_plugin.h` must include a `api_version` field in `NNPluginDescriptor`;
   `PluginLoader` must reject plugins with incompatible versions.
-- Scaffold generators (`nnstudio-sign keygen --scaffold`) produce compliant boilerplate
+- Scaffold generators (`NNSpire-sign keygen --scaffold`) produce compliant boilerplate
   so authors do not need to understand the raw ABI.
 - See PLUGIN-SDK.md for the full header definition.

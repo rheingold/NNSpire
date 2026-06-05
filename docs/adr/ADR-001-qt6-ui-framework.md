@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio must run natively on Windows, macOS, and Linux with a single source tree.
+NNSpire must run natively on Windows, macOS, and Linux with a single source tree.
 The UI is expected to host complex, data-rich panels: real-time topology graphs,
 weight heatmaps, training loss charts, and neuron-level visualisations.
 The application must also integrate tightly with a C++ engine core.
@@ -27,11 +27,11 @@ Candidate frameworks considered:
 
 ## Decision
 
-**Qt 6.5 LTS** is the minimum primary target for NNStudio.
+**Qt 6.5 LTS** is the minimum primary target for NNSpire.
 
 - Primary UI language: QML + Qt Quick (see ADR-018).
 - All Qt-version-specific API calls are isolated behind
-  `nnstudio/app/qt_version_helpers.h`.
+  `NNSpire/app/qt_version_helpers.h`.
 - The codebase is written with disciplined version isolation so that **compiling against
   an older Qt version (including Qt 5.15 LTS) remains feasible** without a major rewrite,
   should that ever be needed for a specific platform or deployment target.
@@ -73,7 +73,7 @@ Pre-Win7 and pre-Catalina are out of scope — Qt 5.15 LTS itself dropped them.
 - Requires Qt installation on developer machines (recorded in `ai_priv/ai_priv.md`).
 
 **Follow-on**
-- `nnstudio/app/qt_version_helpers.h` must be created and kept up to date.
+- `NNSpire/app/qt_version_helpers.h` must be created and kept up to date.
 - Qt binary path must be recorded in `ai_priv/ai_priv.md` (gitignored).
 - When Qt 7 is released, revisit Qt 5 secondary config.
 - Windows 7 support via Qt 5.15 secondary must not introduce any workarounds in

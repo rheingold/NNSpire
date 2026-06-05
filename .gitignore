@@ -4,7 +4,7 @@ ai_priv/
 nnagent/
 # ─── Local developer overrides (never commit) ─────────────────────────────────
 CMakeUserPresets.json
-nnstudio/CMakeUserPresets.json
+NNSpire/CMakeUserPresets.json
 .vscode/.env
 # ─── Build artefacts ─────────────────────────────────────────────────────────
 build/
@@ -73,7 +73,7 @@ x86/
 Thumbs.db
 Desktop.ini
 
-# ─── NNStudio runtime data ───────────────────────────────────────────────────
+# ─── NNSpire runtime data ───────────────────────────────────────────────────
 runtime/python/
 truststore/
 settings/

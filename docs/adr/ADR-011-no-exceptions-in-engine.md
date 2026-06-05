@@ -8,7 +8,7 @@
 
 ## Context
 
-`nnstudio-core` is a C++ library that will be:
+`NNSpire-core` is a C++ library that will be:
 - Consumed by the Qt application layer.
 - Exposed to Python via pybind11.
 - Potentially embedded into a standalone runner sidecar.
@@ -28,7 +28,7 @@ reduce binary size and eliminate hidden control flow paths.
 
 ## Decision
 
-**C++ exceptions are disabled in `nnstudio-core`, `nnstudio-backends/`, and `nnstudio-plugin-api/`.**
+**C++ exceptions are disabled in `NNSpire-core`, `NNSpire-backends/`, and `NNSpire-plugin-api/`.**
 
 Error handling uses **`Result<T, Error>`** as the universal return type.
 
@@ -53,11 +53,11 @@ template<typename T>
 using Result = std::variant<T, Error>;
 ```
 
-The Qt application layer (`nnstudio/app/`) **may** use exceptions freely — it is not a
+The Qt application layer (`NNSpire/app/`) **may** use exceptions freely — it is not a
 shared library and operates within a single compiler environment.
 
 Python exception translation is handled at the pybind11 boundary: `Error` → `RuntimeError`
-(or a typed NNStudio Python exception subclass).
+(or a typed NNSpire Python exception subclass).
 
 ---
 
@@ -75,6 +75,6 @@ Python exception translation is handled at the pybind11 boundary: `Error` → `R
 - pybind11 exception translation layer must be maintained and tested.
 
 **Follow-on**
-- Define `Result<T, Error>` in `nnstudio/core/include/nnstudio/core/result.h`.
+- Define `Result<T, Error>` in `NNSpire/core/include/NNSpire/core/result.h`.
 - All public engine API functions must return `Result<T, Error>` or `void` (no-fail operations).
 - pybind11 bridge must install an exception translator via `pybind11::register_exception_translator`.

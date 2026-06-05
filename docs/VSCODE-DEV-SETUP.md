@@ -1,4 +1,4 @@
-# NNStudio — VS Code Developer Setup Guide
+# NNSpire — VS Code Developer Setup Guide
 
 **Target audience:** developer opening this repository for the first time.  
 **Goal:** build, run, and debug the engine tests and the Qt app in under 15 minutes.
@@ -86,8 +86,8 @@ Ctrl+Shift+X  →  search and install each ID:
 File → Open Folder → …/Studio
 ```
 
-VS Code opens the workspace root. The engine lives in `nnstudio/`. CMake Tools
-detects `nnstudio/CMakePresets.json` automatically (no manual configuration file
+VS Code opens the workspace root. The engine lives in `NNSpire/`. CMake Tools
+detects `NNSpire/CMakePresets.json` automatically (no manual configuration file
 path needed).
 
 On first open you will see a notification: **"Would you like to configure CMake?"**  
@@ -111,7 +111,7 @@ Switch kit: **status bar bottom → kit name → pick from list**.
 
 ### Presets
 
-`nnstudio/CMakePresets.json` defines the configure presets. CMake Tools reads them
+`NNSpire/CMakePresets.json` defines the configure presets. CMake Tools reads them
 and populates the **Configure Preset** picker in the status bar:
 
 | Preset | Description |
@@ -119,7 +119,7 @@ and populates the **Configure Preset** picker in the status bar:
 | `engine-ninja` | Ninja + GCC; engine library + tests; no Qt app |
 | `engine-clang-ninja` | Ninja + Clang; same targets |
 | `engine-vs` | Visual Studio 17 generator + MSVC; engine + tests |
-| `app-ninja` | Ninja + GCC; all targets including Qt app (`nnstudio/app/`) |
+| `app-ninja` | Ninja + GCC; all targets including Qt app (`NNSpire/app/`) |
 | `app-vs` | Visual Studio 17 + MSVC; all targets including Qt app |
 
 Select preset: **status bar → preset name → pick from list**.  
@@ -144,7 +144,7 @@ clangd reads the `compile_commands.json` that CMake generates:
 // .vscode/settings.json
 {
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/nnstudio/build/engine-ninja",
+    "--compile-commands-dir=${workspaceFolder}/NNSpire/build/engine-ninja",
     "--header-insertion=never",
     "--clang-tidy"
   ],
@@ -168,9 +168,9 @@ If you prefer the Microsoft C/C++ extension IntelliSense, edit
       "intelliSenseMode": "windows-gcc-x64",
       "cppStandard": "c++17",
       "includePath": [
-        "${workspaceFolder}/nnstudio/include/**",
-        "${workspaceFolder}/nnstudio/build/engine-ninja/_deps/eigen-src",
-        "${workspaceFolder}/nnstudio/build/engine-ninja/_deps/googletest-src/googletest/include",
+        "${workspaceFolder}/NNSpire/include/**",
+        "${workspaceFolder}/NNSpire/build/engine-ninja/_deps/eigen-src",
+        "${workspaceFolder}/NNSpire/build/engine-ninja/_deps/googletest-src/googletest/include",
         "C:/Users/${env:USERNAME}/Documents/Dev/Qt/6.10.1/mingw_64/include/**"
       ],
       "defines": ["_DEBUG", "UNICODE"]
@@ -181,8 +181,8 @@ If you prefer the Microsoft C/C++ extension IntelliSense, edit
       "intelliSenseMode": "windows-clang-x64",
       "cppStandard": "c++17",
       "includePath": [
-        "${workspaceFolder}/nnstudio/include/**",
-        "${workspaceFolder}/nnstudio/build/engine-ninja/_deps/eigen-src"
+        "${workspaceFolder}/NNSpire/include/**",
+        "${workspaceFolder}/NNSpire/build/engine-ninja/_deps/eigen-src"
       ]
     },
     {
@@ -191,8 +191,8 @@ If you prefer the Microsoft C/C++ extension IntelliSense, edit
       "intelliSenseMode": "windows-msvc-x64",
       "cppStandard": "c++17",
       "includePath": [
-        "${workspaceFolder}/nnstudio/include/**",
-        "${workspaceFolder}/nnstudio/build/engine-ninja/_deps/eigen-src"
+        "${workspaceFolder}/NNSpire/include/**",
+        "${workspaceFolder}/NNSpire/build/engine-ninja/_deps/eigen-src"
       ]
     }
   ],
@@ -217,10 +217,10 @@ Uses the `cppdbg` debug adapter from `ms-vscode.cpptools` driving `gdb.exe`.
   "name": "Engine tests (GDB/MinGW)",
   "type": "cppdbg",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/engine-ninja/tests/test-core.exe",
+  "program": "${workspaceFolder}/NNSpire/build/engine-ninja/tests/test-core.exe",
   "args": [],
   "stopAtEntry": false,
-  "cwd": "${workspaceFolder}/nnstudio",
+  "cwd": "${workspaceFolder}/NNSpire",
   "environment": [
     { "name": "PATH", "value": "C:\\msys64\\mingw64\\bin;${env:PATH}" }
   ],
@@ -235,10 +235,10 @@ Uses the `cppdbg` debug adapter from `ms-vscode.cpptools` driving `gdb.exe`.
   "name": "Engine tests — filter (GDB/MinGW)",
   "type": "cppdbg",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/engine-ninja/tests/test-core.exe",
+  "program": "${workspaceFolder}/NNSpire/build/engine-ninja/tests/test-core.exe",
   "args": ["--gtest_filter=${input:gtestFilter}"],
   "stopAtEntry": false,
-  "cwd": "${workspaceFolder}/nnstudio",
+  "cwd": "${workspaceFolder}/NNSpire",
   "environment": [
     { "name": "PATH", "value": "C:\\msys64\\mingw64\\bin;${env:PATH}" }
   ],
@@ -247,10 +247,10 @@ Uses the `cppdbg` debug adapter from `ms-vscode.cpptools` driving `gdb.exe`.
   "preLaunchTask": "Build engine-ninja"
 },
 {
-  "name": "NNStudio App (GDB/MinGW)",
+  "name": "NNSpire App (GDB/MinGW)",
   "type": "cppdbg",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/app-ninja/app/NNStudio.exe",
+  "program": "${workspaceFolder}/NNSpire/build/app-ninja/app/NNSpire.exe",
   "args": [],
   "cwd": "${workspaceFolder}",
   "environment": [
@@ -262,10 +262,10 @@ Uses the `cppdbg` debug adapter from `ms-vscode.cpptools` driving `gdb.exe`.
   "preLaunchTask": "Build app-ninja"
 },
 {
-  "name": "NNStudio App — CUDA backend (GDB/MinGW)",
+  "name": "NNSpire App — CUDA backend (GDB/MinGW)",
   "type": "cppdbg",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/app-ninja/app/NNStudio.exe",
+  "program": "${workspaceFolder}/NNSpire/build/app-ninja/app/NNSpire.exe",
   "args": [],
   "cwd": "${workspaceFolder}",
   "environment": [
@@ -292,9 +292,9 @@ the `engine-clang-ninja` preset.
   "name": "Engine tests (LLDB/Clang)",
   "type": "lldb",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/engine-clang-ninja/tests/test-core.exe",
+  "program": "${workspaceFolder}/NNSpire/build/engine-clang-ninja/tests/test-core.exe",
   "args": [],
-  "cwd": "${workspaceFolder}/nnstudio",
+  "cwd": "${workspaceFolder}/NNSpire",
   "env": {
     "PATH": "C:\\msys64\\mingw64\\bin;${env:PATH}"
   },
@@ -317,17 +317,17 @@ GCC/MinGW binaries — only MSVC-compiled executables.
   "name": "Engine tests (MSVC / cppvsdbg)",
   "type": "cppvsdbg",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/engine-vs/tests/Debug/test-core.exe",
+  "program": "${workspaceFolder}/NNSpire/build/engine-vs/tests/Debug/test-core.exe",
   "args": [],
-  "cwd": "${workspaceFolder}/nnstudio",
+  "cwd": "${workspaceFolder}/NNSpire",
   "environment": [],
   "preLaunchTask": "Build engine-vs"
 },
 {
-  "name": "NNStudio App (MSVC / cppvsdbg)",
+  "name": "NNSpire App (MSVC / cppvsdbg)",
   "type": "cppvsdbg",
   "request": "launch",
-  "program": "${workspaceFolder}/nnstudio/build/app-vs/app/Debug/NNStudio.exe",
+  "program": "${workspaceFolder}/NNSpire/build/app-vs/app/Debug/NNSpire.exe",
   "args": [],
   "cwd": "${workspaceFolder}",
   "environment": [
@@ -337,7 +337,7 @@ GCC/MinGW binaries — only MSVC-compiled executables.
 }
 ```
 
-> **NatVis:** `nnstudio.natvis` (in the repo root) is automatically loaded by
+> **NatVis:** `NNSpire.natvis` (in the repo root) is automatically loaded by
 > `cppvsdbg` and by Visual Studio. It makes `Tensor`, `Shape`, `Result<T>`, and
 > `Parameter` show meaningful summaries in Locals/Watch. No configuration needed.
 
@@ -402,7 +402,7 @@ Reference it in `launch.json`:
 "envFile": "${workspaceFolder}/.vscode/.env"
 ```
 
-**Option C — `windeployqt`**: run `windeployqt NNStudio.exe` once after build to
+**Option C — `windeployqt`**: run `windeployqt NNSpire.exe` once after build to
 copy all required Qt DLLs next to the executable. The app then runs without
 modifying `PATH`. Suitable for CI and distribution.
 
@@ -415,7 +415,7 @@ modifying `PATH`. Suitable for CI and distribution.
 | Change compiler (kit) | Status bar → kit name → pick new kit → CMake reconfigures |
 | Change preset | Status bar → preset name → pick preset → CMake reconfigures |
 | Force reconfigure | `Ctrl+Shift+P → CMake: Delete Cache and Reconfigure` |
-| Use `-O0 -g3` locally | Create `nnstudio/CMakeUserPresets.json` (gitignored) inheriting from a base preset; override `CMAKE_BUILD_TYPE=Debug` or add `CMAKE_CXX_FLAGS=-O0 -g3` |
+| Use `-O0 -g3` locally | Create `NNSpire/CMakeUserPresets.json` (gitignored) inheriting from a base preset; override `CMAKE_BUILD_TYPE=Debug` or add `CMAKE_CXX_FLAGS=-O0 -g3` |
 | Run ASan (Clang) | `engine-clang-ninja` preset + add `-fsanitize=address,undefined` to `CMAKE_CXX_FLAGS` in a local user preset |
 | Cross-compile | Create a new preset with `CMAKE_TOOLCHAIN_FILE` pointing to your cross-toolchain |
 
@@ -465,7 +465,7 @@ Add to `.gitignore`: `CMakeUserPresets.json`.
 Visual Studio 2022 supports "Open Folder" CMake projects natively — **no `.sln`
 file required**.
 
-1. `File → Open → Folder` → select `nnstudio/`
+1. `File → Open → Folder` → select `NNSpire/`
 2. VS detects `CMakePresets.json` and shows a **Configuration** dropdown in the
    toolbar. Select `engine-vs` or `app-vs`.
 3. **Build:** `Build → Build All` (or `Ctrl+Shift+B`)
@@ -475,7 +475,7 @@ file required**.
 
 ### NatVis pretty-printer
 
-`nnstudio.natvis` (repo root `docs/`) is loaded automatically by Visual Studio
+`NNSpire.natvis` (repo root `docs/`) is loaded automatically by Visual Studio
 when the project folder contains it. Verify: open a debug session, inspect a
 `Tensor` variable in **Locals** — you should see `shape=[4] data=[0.1, 0.2, ...]`
 instead of a raw struct dump.
@@ -497,14 +497,14 @@ add `C:\msys64\mingw64\bin` to the system or user `PATH` permanently.
 
 ### Qt Creator — full project
 
-1. `File → Open File or Project` → select `nnstudio/CMakeLists.txt`
+1. `File → Open File or Project` → select `NNSpire/CMakeLists.txt`
 2. Qt Creator asks to configure a kit. Select:
    - **Qt version:** Qt 6.10.1 MinGW (detected from your Qt installation)
    - **Compiler (C++):** MinGW GCC 15.2.0 (`C:\msys64\mingw64\bin\g++.exe`)
    - **Debugger:** GDB (`C:\msys64\mingw64\bin\gdb.exe`)
 3. Click **Configure** → CMake runs → project tree appears.
 4. **Build:** `Ctrl+B` (uses the `engine-ninja` or `app-ninja` preset mapped to the kit).
-5. **Run configuration:** click the green play button; select `test-core` or `NNStudio`
+5. **Run configuration:** click the green play button; select `test-core` or `NNSpire`
    from the run configuration dropdown.
 6. **Debug:** `F5`; breakpoints work as expected.
 
@@ -512,7 +512,7 @@ add `C:\msys64\mingw64\bin` to the system or user `PATH` permanently.
 
 Qt Design Studio is for pure UI/QML design work without building the C++ engine.
 
-1. Open the `.qmlproject` file in `nnstudio/app/ui/` (created in Phase 3.5).
+1. Open the `.qmlproject` file in `NNSpire/app/ui/` (created in Phase 3.5).
 2. Design Studio creates a live preview of `.qml` files using a mock
    `ModelController` QML singleton that provides stub data.
 3. Any `.qml` changes are immediately reflected in the live preview — no build needed.
@@ -534,4 +534,4 @@ Qt Design Studio is for pure UI/QML design work without building the C++ engine.
 | GTest tests not in Testing sidebar | CTest integration not enabled | Add `"cmake.ctest.testExplorerIntegration": true` to settings.json |
 | MSVC build fails on `__builtin_trap` | `QuantumBackend.cpp` uses GCC intrinsic | Replace with `__assume(false); __debugbreak();` in an MSVC `#ifdef` |
 | IntelliSense slow / incorrect | Competing with clangd | Set `"C_Cpp.intelliSenseEngine": "disabled"` when using clangd |
-| NatVis not loading in VS Code | `cppvsdbg` only loads `.natvis` from project | Add `"visualizerFile": "${workspaceFolder}/docs/nnstudio.natvis"` to the launch profile |
+| NatVis not loading in VS Code | `cppvsdbg` only loads `.natvis` from project | Add `"visualizerFile": "${workspaceFolder}/docs/NNSpire.natvis"` to the launch profile |

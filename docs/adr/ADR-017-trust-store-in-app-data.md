@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio maintains a live PKI trust store (ADR-007) that must be:
+NNSpire maintains a live PKI trust store (ADR-007) that must be:
 - **Writable at runtime** — Trust Update Packages (TUPs) add/update certificates and CRL caches.
 - **User-scoped** — different OS users on the same machine should have independent trust
   stores (enterprise policy may differ per user).
@@ -31,9 +31,9 @@ The trust store lives in the **platform user application-data directory**, never
 install directory.
 
 ```
-Windows:   %APPDATA%\NNStudio\truststore\
-macOS:     ~/Library/Application Support/NNStudio/truststore/
-Linux:     ~/.local/share/NNStudio/truststore/
+Windows:   %APPDATA%\NNSpire\truststore\
+macOS:     ~/Library/Application Support/NNSpire/truststore/
+Linux:     ~/.local/share/NNSpire/truststore/
 ```
 
 Structure:
@@ -63,7 +63,7 @@ install directory influences the trust store.
 ### Portable / enterprise override
 
 An enterprise administrator may override the trust store path via a registry key (Windows)
-or environment variable (`NNSTUDIO_TRUSTSTORE_PATH`) to redirect to a shared network
+or environment variable (`NNSpire_TRUSTSTORE_PATH`) to redirect to a shared network
 location for centralised management.
 
 ---
@@ -78,13 +78,13 @@ location for centralised management.
 
 **Negative / constraints**
 - Trust store is not backed up by default — users should be advised to include
-  `%APPDATA%\NNStudio\` in their backup strategy.
+  `%APPDATA%\NNSpire\` in their backup strategy.
 - `store.lock` must be correctly handled to avoid deadlock if Studio crashes mid-write.
 - The enterprise path override adds a security consideration: the redirected path must
   itself be protected against tampering.
 
 **Follow-on**
-- `TrustStore` class in `nnstudio/plugin-api/trust/`.
+- `TrustStore` class in `NNSpire/plugin-api/trust/`.
 - Path resolution in `TrustStore::defaultPath()` using `QStandardPaths::AppDataLocation`.
 - Lock implementation: `QLockFile` (Qt) or platform `flock`/`LockFileEx`.
 - See TRUST-ARCHITECTURE.md §3 for the full trust store specification.

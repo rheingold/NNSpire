@@ -3234,22 +3234,22 @@ AI systems are semantic tensor-message pipelines wrapped in service orchestratio
 
 ---
 
-# Application to NNStudio
+# Application to NNSpire
 
-This ontology is not only descriptive — it is the design basis for NNStudio's
+This ontology is not only descriptive — it is the design basis for NNSpire's
 **semantic composition layer** (Phase 5.7; see
 [`../TODO.md`](../TODO.md#phase-57--semantic-composition--macro-architecture-studio) and
 [`ARCHITECTURE.md` §12](ARCHITECTURE.md)).
 
 The central consequence of Levels 3–5 is that a node-graph editor for diffusion (the
 ComfyUI model) and a builder for LLMs are the **same tool**. Both compose Level-4
-transformation modules that exchange Level-5 typed messages. NNStudio therefore treats
+transformation modules that exchange Level-5 typed messages. NNSpire therefore treats
 every architecture family as a **preset** of one editor rather than as a separate model
 class — "an LLM is a preset, not a type".
 
-### Ontology levels → NNStudio composition tiers
+### Ontology levels → NNSpire composition tiers
 
-| Ontology level | NNStudio tier / component | Where |
+| Ontology level | NNSpire tier / component | Where |
 |---|---|---|
 | L1 — tensor runtime | `IBackend` (`CpuBackend`, `CudaBackend`, `RemoteBackend`) | engine |
 | L2 — packaging format | `.onnx` / GGUF / `.safetensors` import + `.nnsp` / `.nnsx` | formats |
@@ -3259,13 +3259,13 @@ class — "an LLM is a preset, not a type".
 | L4 (non-NN modules) | tokenizer / scheduler / sampler / retriever as nodes | Phase 4 / 5.7 |
 | L6 — application platform | ecosystem canvas + `ServiceConnector` plugins + offload | Phase 5.5 / 5.7 |
 
-> **Numbering note.** The NNStudio design doc (`TODO.md` Phase 5.7) numbers its user-facing
+> **Numbering note.** The NNSpire design doc (`TODO.md` Phase 5.7) numbers its user-facing
 > layers *top-down* ("0" = outermost Client/Foundry/Agents), which is the **inverse** of
 > this ontology's bottom-up levels (L0 = hardware, L6 = platform). The doc's "layer 0" is
 > therefore ontology **L6**, and it lives in the separate `nnagent` project, *outside*
-> NNStudio, embeddable only as a typed orchestration-boundary node.
+> NNSpire, embeddable only as a typed orchestration-boundary node.
 >
-> **Axes vs. tree.** NNStudio renders the composition as one navigable tree (landscape →
+> **Axes vs. tree.** NNSpire renders the composition as one navigable tree (landscape →
 > pipeline → model role → block → primitive → functoid). The ontology levels that are
 > *not* structural containment — L0/L1 (execution substrate), L2 (packaging format) — are
 > modelled as **orthogonal node attributes** (execution binding, export wrapper), together
@@ -3281,7 +3281,7 @@ LLM      :  TEXT → (tokenizer) → TOKENS → (embedding) → [ TransformerBlo
 
 Both are "a learned transform inside a controller loop"; only the typed messages and the
 block preset differ. The encoder/decoder/dataset nodes at each end are instances of
-NNStudio's single **Universal Client** component, whose editor UI adapts to the declared
+NNSpire's single **Universal Client** component, whose editor UI adapts to the declared
 port type (`TEXT` → text box, `TAGS` → chip editor, `IMAGE` → picker, dataset → loader).
 Any node may be bound to local CPU/GPU, a remote GPU job, or an external API service, so a
 single project can run part of the graph locally and offload the rest.

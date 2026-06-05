@@ -1,6 +1,6 @@
 # Code Onboarding, Repository Navigation, and the Documentation Gap
 
-*Written April 2026. Context: NNStudio project discussions.*  
+*Written April 2026. Context: NNSpire project discussions.*  
 *Two parts: (1) the developer navigation problem; (2) the broader stakeholder and AI-continuity problem.*
 
 ---
@@ -183,7 +183,7 @@ They skip Explanation (which is what ADRs + `CONTRIBUTING.md` provide) and Tutor
 (which is what a `QUICK-START.md` provides). The absence of Explanation is exactly
 what makes projects hard to navigate — for developers and non-developers alike.
 
-### Practical minimum for a project like NNStudio
+### Practical minimum for a project like NNSpire
 
 With the constraint of minimum developer burden and maximum coverage:
 
@@ -206,7 +206,7 @@ The practical recommendation:
 > *before* that AI session ends — while the context is present to write it in 20 minutes.
 > If the AI is gone tomorrow and the ADR was not written, the decision is effectively undocumented.
 
-NNStudio already does a version of this: `blueprints.md` serves the explanation role,
+NNSpire already does a version of this: `blueprints.md` serves the explanation role,
 `TODO.md` tracks the forward decisions, and the `CONTRIBUTING.md` files record the structural rationale.
 The missing piece is a formal `decisions/` folder with numbered ADRs for the major
 architectural choices (namespace tier design, `backends/`-as-sibling, Plugin SDK ABI plan, etc.).

@@ -1,4 +1,4 @@
-# NNStudio — Trust Architecture Whitepaper
+# NNSpire — Trust Architecture Whitepaper
 
 **Version**: 0.1 (Phase 0 — design)  
 **Date**: 2026-03-31  
@@ -8,7 +8,7 @@
 
 ## 1. Motivation
 
-NNStudio loads third-party plugins at runtime. Plugins execute arbitrary code inside the Studio process (or optionally in the `nnstudio-runner` sidecar). Without a trust framework, any malicious plugin could compromise the user's system, exfiltrate model weights, or corrupt training data.
+NNSpire loads third-party plugins at runtime. Plugins execute arbitrary code inside the Studio process (or optionally in the `NNSpire-runner` sidecar). Without a trust framework, any malicious plugin could compromise the user's system, exfiltrate model weights, or corrupt training data.
 
 The trust framework solves three problems simultaneously:
 1. **Security**: prevent unsigned or compromised plugins from loading silently.
@@ -25,29 +25,29 @@ Root CA  (project owner — kept offline, HSM recommended)
 │  Published openly as seed_root_ca.pem
 │  Embedded in Studio binary as trust seed
 │
-├── NNStudio Plugin Registry CA  (Intermediate)
+├── NNSpire Plugin Registry CA  (Intermediate)
 │   │  Signed by Root CA; validity 5 years
 │   │  Used to issue Vendor and Community signing certs
 │   │
 │   ├── Community Signing Cert  (issued per open-source plugin author)
 │   │   Validity: 2 years, auto-renewable
 │   │   NameConstraints: O = author's registered handle
-│   │   EKU: NNStudioPluginSigning (OID 1.3.6.1.4.1.NNSTUDIO.1.1)
+│   │   EKU: NNSpirePluginSigning (OID 1.3.6.1.4.1.NNSpire.1.1)
 │   │
 │   ├── Vendor Signing Cert  (issued per commercial plugin author)
 │   │   Validity: 1–3 years, manually renewed
 │   │   NameConstraints: O = company name
-│   │   EKU: NNStudioPluginSigning
+│   │   EKU: NNSpirePluginSigning
 │   │
 │   └── Trust Update Package Signing Cert
 │       Validity: 3 years
-│       EKU: NNStudioTrustUpdate (OID 1.3.6.1.4.1.NNSTUDIO.1.2)
+│       EKU: NNSpireTrustUpdate (OID 1.3.6.1.4.1.NNSpire.1.2)
 │
 └── Enterprise Intermediate CA  (issued per qualifying organisation)
     │  Signed by Root CA; validity 1–3 years
     │  PathLenConstraint: 0 (no further sub-CAs)
     │  NameConstraints: O = <company name exactly>
-    │  EKU: NNStudioPluginSigning, NNStudioEnterpriseCA (OID 1.3.6.1.4.1.NNSTUDIO.1.3)
+    │  EKU: NNSpirePluginSigning, NNSpireEnterpriseCA (OID 1.3.6.1.4.1.NNSpire.1.3)
     │
     └── Enterprise Plugin Signing Cert  (self-issued by the enterprise)
         Validity: enterprise's choice
@@ -58,11 +58,11 @@ Root CA  (project owner — kept offline, HSM recommended)
 
 | OID | Name | Purpose |
 |---|---|---|
-| `1.3.6.1.4.1.NNSTUDIO.1.1` | `NNStudioPluginSigning` | EKU: authorises signing plugin binaries |
-| `1.3.6.1.4.1.NNSTUDIO.1.2` | `NNStudioTrustUpdate` | EKU: authorises signing Trust Update Packages |
-| `1.3.6.1.4.1.NNSTUDIO.1.3` | `NNStudioEnterpriseCA` | EKU: marks an Enterprise Intermediate CA cert |
+| `1.3.6.1.4.1.NNSpire.1.1` | `NNSpirePluginSigning` | EKU: authorises signing plugin binaries |
+| `1.3.6.1.4.1.NNSpire.1.2` | `NNSpireTrustUpdate` | EKU: authorises signing Trust Update Packages |
+| `1.3.6.1.4.1.NNSpire.1.3` | `NNSpireEnterpriseCA` | EKU: marks an Enterprise Intermediate CA cert |
 
-> NNSTUDIO placeholder IANA PEN — obtain a real Private Enterprise Number at https://www.iana.org/assignments/enterprise-numbers before first release.
+> NNSpire placeholder IANA PEN — obtain a real Private Enterprise Number at https://www.iana.org/assignments/enterprise-numbers before first release.
 
 ---
 
@@ -71,7 +71,7 @@ Root CA  (project owner — kept offline, HSM recommended)
 The live trust store is maintained in the user's application data directory, never inside the installation folder (which may be read-only).
 
 ```
-<app_data>/nnstudio/truststore/
+<app_data>/NNSpire/truststore/
 ├── roots/
 │   └── root_ca_v1.pem          ← seeded on first run from embedded seed_root_ca.pem
 ├── intermediates/
@@ -118,7 +118,7 @@ PluginLoader::load(manifestPath)
     │
     ├─ 3. TrustVerifier::verify(manifest_bytes, signature, trustStore)
     │       ├─ OpenSSL CMS_verify: validate PKCS#7 against chain in trust store
-    │       ├─ Check EKU = NNStudioPluginSigning
+    │       ├─ Check EKU = NNSpirePluginSigning
     │       ├─ CRL check: look up issuer CRL in crls/ (download if stale, skip if offline)
     │       ├─ OCSP check (if not offline): consult issuer OCSP responder; cache result
     │       ├─ Timestamp check: signing time ≤ now ≤ cert expiry (+ 3-day clock skew tolerance)
@@ -147,7 +147,7 @@ The `TrustUpdateHandler` is NOT part of `PluginLoader`. It is a separate class c
 
 ### File format
 
-A TUP is a signed zip archive with the extension `.nnstudio-trust`:
+A TUP is a signed zip archive with the extension `.NNSpire-trust`:
 
 ```
 trust-update-package/
@@ -167,7 +167,7 @@ trust-update-package/
   "type": "TRUST_UPDATE",
   "id": "uuid-v4",
   "timestamp": "2026-03-31T00:00:00Z",        ← must be > last applied TUP timestamp
-  "issuer": "CN=NNStudio Plugin Registry CA",
+  "issuer": "CN=NNSpire Plugin Registry CA",
   "purpose": "Add Enterprise CA for ACME Corp",
   "certsToAdd": [
     { "file": "certs/add/acme_corp_intermediate.pem", "sha256": "<hex>", "type": "ENTERPRISE_CA" }
@@ -181,7 +181,7 @@ trust-update-package/
 
 | # | Rule | Rationale |
 |---|---|---|
-| 1 | Signature valid against current trust store | TUP must be signed by a currently trusted cert with EKU `NNStudioTrustUpdate` |
+| 1 | Signature valid against current trust store | TUP must be signed by a currently trusted cert with EKU `NNSpireTrustUpdate` |
 | 2 | `timestamp` > last applied TUP timestamp | Prevents replay/downgrade attacks |
 | 3 | No cert being added is the signing cert itself | Prevents self-escalation |
 | 4 | A TUP cannot revoke the cert it was signed with | Prevents lockout |
@@ -210,13 +210,13 @@ trust-update-package/
 
 1. Organisation generates a key pair and CSR:
    ```bash
-   nnstudio-sign keygen --type enterprise-ca --org "ACME Corp" --out acme-ca/
+   NNSpire-sign keygen --type enterprise-ca --org "ACME Corp" --out acme-ca/
    ```
 
-2. Organisation submits CSR to NNStudio Plugin Registry via `nnstudio-sign issue-enterprise-ca` or the registry web portal (admin-reviewed, commercial process):
+2. Organisation submits CSR to NNSpire Plugin Registry via `NNSpire-sign issue-enterprise-ca` or the registry web portal (admin-reviewed, commercial process):
    ```bash
-   nnstudio-sign issue-enterprise-ca --csr acme-ca/enterprise.csr \
-     --registry https://registry.nnstudio.dev --token <admin-token>
+   NNSpire-sign issue-enterprise-ca --csr acme-ca/enterprise.csr \
+     --registry https://registry.NNSpire.dev --token <admin-token>
    ```
 
 3. Project owner reviews, approves, and the registry returns a TUP containing the issued Enterprise Intermediate CA cert.
@@ -225,7 +225,7 @@ trust-update-package/
 
 5. Organisation self-signs their internal plugins:
    ```bash
-   nnstudio-sign sign --manifest plugin.manifest.json \
+   NNSpire-sign sign --manifest plugin.manifest.json \
      --cert acme-intermediate.crt --key acme-intermediate.key \
      --out signed/
    ```
@@ -259,6 +259,6 @@ If the Root CA key is compromised or reaches end-of-life:
 - [ ] Root CA private key never touches a networked machine (documented requirement)
 - [ ] CRL refresh is silent and non-blocking; offline operation never blocked
 - [ ] OCSP responses cached with `nextUpdate` expiry; stale cache used if network unavailable
-- [ ] `nnstudio-runner` sidecar (when enabled) runs with reduced OS privileges (AppContainer on Windows, seccomp on Linux, App Sandbox on macOS)
+- [ ] `NNSpire-runner` sidecar (when enabled) runs with reduced OS privileges (AppContainer on Windows, seccomp on Linux, App Sandbox on macOS)
 - [ ] SBOM generated for each release including OpenSSL version
 - [ ] Reproducible builds goal: same source + toolchain → byte-identical binary (important for auditing embedded `seed_roots/root_ca.pem` and trust seed logic)

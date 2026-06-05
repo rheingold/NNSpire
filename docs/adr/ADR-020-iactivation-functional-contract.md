@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio currently implements activation functions (`ReLU`, `LeakyReLU`, `Sigmoid`,
+NNSpire currently implements activation functions (`ReLU`, `LeakyReLU`, `Sigmoid`,
 `TanhAct`, `Softmax`, `GELU`) as full `ILayer` descendants via the intermediate
 class `ActivationBase`.  Each activation stores the input or output of its last
 `forward()` call as a private member (`lastInput_` or `lastOutput_`) so that
@@ -63,7 +63,7 @@ The **published `IActivation` interface** (Phase 2 Plugin SDK) shall use **Optio
 — the functional pair contract:
 
 ```cpp
-namespace nnstudio {
+namespace NNSpire {
 
 struct ActivationForward {
     Tensor output;   // result of apply(x), passed to the next layer
@@ -88,7 +88,7 @@ public:
     virtual Tensor gradient(const Tensor& ctx, const Tensor& gradOut) = 0;
 };
 
-} // namespace nnstudio
+} // namespace NNSpire
 ```
 
 A companion `FunctionLayer` adapter wraps any `IActivation` into a full `ILayer`
@@ -132,7 +132,7 @@ A minimal custom activation implementing `IActivation`:
 
 ```cpp
 // ReLU written to the new interface — no state, no ILayer boilerplate
-class MyReLU : public nnstudio::IActivation {
+class MyReLU : public NNSpire::IActivation {
 public:
     std::string name() const override { return "my_relu"; }
 
@@ -185,7 +185,7 @@ appear in every piece of plugin documentation and every forum question.
 
 ### Follow-on work
 
-- [ ] `core/include/nnstudio/core/IActivation.h` — add new header
+- [ ] `core/include/NNSpire/core/IActivation.h` — add new header
 - [ ] `FunctionLayer.h / .cpp` — adapter implementation  
 - [ ] Migrate `ReLU`, `LeakyReLU`, `Sigmoid`, `TanhAct`, `Softmax`, `GELU` to the new interface
 - [ ] Update `PLUGIN-SDK.md` to document `IActivation` as the extension point for activations

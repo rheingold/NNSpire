@@ -1,8 +1,8 @@
-# Doxyfile — NNStudio API Documentation
+# Doxyfile — NNSpire API Documentation
 # Run: doxygen docs/Doxyfile  (from project root)
 # Output: docs/generated/html/index.html
 
-PROJECT_NAME           = "NNStudio"
+PROJECT_NAME           = "NNSpire"
 PROJECT_NUMBER         = 0.1.0
 PROJECT_BRIEF          = "Neural Network design, training, deployment and learning workbench"
 
@@ -11,12 +11,12 @@ CREATE_SUBDIRS         = YES
 OUTPUT_LANGUAGE        = English
 
 # Input
-INPUT                  = nnstudio/core/include \
-                         nnstudio/plugin-api/include \
-                         nnstudio/backends \
-                         nnstudio/pipeline/include \
-                         nnstudio/deployment/include \
-                         nnstudio/python-bridge
+INPUT                  = NNSpire/core/include \
+                         NNSpire/plugin-api/include \
+                         NNSpire/backends \
+                         NNSpire/pipeline/include \
+                         NNSpire/deployment/include \
+                         NNSpire/python-bridge
 RECURSIVE              = YES
 FILE_PATTERNS          = *.h *.hpp *.cpp *.md
 EXTENSION_MAPPING      = md=Markdown

@@ -1,7 +1,7 @@
-# Architecture Decision Records — NNStudio
+# Architecture Decision Records — NNSpire
 
-This directory contains Architecture Decision Records (ADRs) for the NNStudio project.
-Each ADR documents a significant architectural choice made during the design and development of NNStudio.
+This directory contains Architecture Decision Records (ADRs) for the NNSpire project.
+Each ADR documents a significant architectural choice made during the design and development of NNSpire.
 
 ## Format
 

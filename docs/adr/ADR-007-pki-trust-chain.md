@@ -8,7 +8,7 @@
 
 ## Context
 
-NNStudio loads third-party plugin shared libraries at runtime. Without authentication,
+NNSpire loads third-party plugin shared libraries at runtime. Without authentication,
 any malicious actor could distribute a plugin that executes arbitrary code inside the
 Studio process, exfiltrates model weights, or corrupts training data.
 
@@ -38,10 +38,10 @@ Root CA  (project owner, HSM-recommended, kept offline)
     └── Enterprise Plugin Signing Cert (self-issued by enterprise)
 ```
 
-Custom OIDs are registered under the NNStudio IANA PEN:
-- `NNStudioPluginSigning` — EKU for plugin binaries
-- `NNStudioTrustUpdate` — EKU for Trust Update Packages
-- `NNStudioEnterpriseCA` — EKU marking an Enterprise Intermediate CA
+Custom OIDs are registered under the NNSpire IANA PEN:
+- `NNSpirePluginSigning` — EKU for plugin binaries
+- `NNSpireTrustUpdate` — EKU for Trust Update Packages
+- `NNSpireEnterpriseCA` — EKU marking an Enterprise Intermediate CA
 
 The Root CA certificate is **embedded** in the Studio binary at compile time as a trust seed.
 No plugin code executes before `TrustVerifier` has validated the full certificate chain.
@@ -64,10 +64,10 @@ future key rotation from stranding installed Studio versions permanently.
 - Requires the project owner to operate a CA (Root + Intermediate), even if minimal.
 - An IANA Private Enterprise Number must be obtained before first public release.
 - CRL distribution points and OCSP responder URLs must be high-availability services.
-- Plugin development flow requires running `nnstudio-sign` CLI to produce signed artefacts.
+- Plugin development flow requires running `NNSpire-sign` CLI to produce signed artefacts.
 
 **Follow-on**
 - Obtain a real IANA PEN before release (placeholder used during development).
-- `TrustVerifier`, `TrustStore`, `TrustUpdateHandler` implemented in `nnstudio/plugin-api/`.
-- Trust store location: `<app_data>/nnstudio/truststore/` — see ADR-017.
+- `TrustVerifier`, `TrustStore`, `TrustUpdateHandler` implemented in `NNSpire/plugin-api/`.
+- Trust store location: `<app_data>/NNSpire/truststore/` — see ADR-017.
 - See TRUST-ARCHITECTURE.md for the complete specification.
