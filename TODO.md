@@ -2,6 +2,16 @@
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/decision needed
 
+> **Product pillars** — three components, one repo, clearly separated:
+>
+> | Pillar | Folder | Status (June 2026) |
+> |---|---|---|
+> | **NNSpire Engine** | `nnspire/` (excl. `app/`) | ✅ Phases 1–2 complete — 170/170 tests green |
+> | **NNSpire Studio** | `nnspire/app/` | ⏳ Phase 3 starting — ADR-030–033 decisions gate all UI work |
+> | **NNSpire Agent** | `nnagent/` | ⏳ Phase 0 starting — parallel with Studio |
+>
+> Studio and Agent develop **in parallel**. See the _Parallel Development Tracks_ section below.
+
 ---
 
 ## Phase 0 — Project Scaffolding
@@ -381,7 +391,43 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/de
 
 ---
 
-## Phase 3 — Qt 6 QML Studio UI
+## 🏗️ Parallel Development Tracks — Studio + Agent
+
+> **Where we are (June 2026):** Engine (Phases 1–2) is complete and fully tested.
+> Studio and Agent now develop **in parallel** — they share integration seams that gate
+> each other at the points listed below. Neither blocks the other for its own internal work.
+
+### Cross-pillar integration seams (delivery order)
+
+| Seam | NNSpire Studio deliverable | NNSpire Agent deliverable | Unlocks |
+|---|---|---|---|
+| **S1 — NMID + Runner** | Runner sidecar serving `.nnsp` inference (Studio Phase 5) | NMID reader + Runner API client (Agent Phase 9) | Agent headlessly tests any Studio model |
+| **S2 — Agent Panel in Studio** | Embedded Agent Panel QML host (Studio Phase 3.5) | `nnagent-core` packaged as embeddable library | User chats with LLM while editing a model |
+| **S3 — MCP boundary node** | Studio exposes MCP server (ADR-044, Studio Phase 5.7) | Agent connects as MCP client (Agent Phase 9–10) | Agent triggers training / export / inspection |
+| **S4 — Orchestration driver** | Studio pipeline canvas hosts Agent orchestration node | Agent L6 orchestration engine (Agent Phase 10) | Full bidirectional Studio ↔ Agent control |
+
+### What to build right now (parallel)
+
+**Studio track — start with Phase 3:**
+- Resolve ADR-030 (canonical representation), ADR-031 (metadata storage), ADR-032 (unrecognized code), ADR-033 (two-way WYSIWYG)
+- First working window: project open/close, layer list panel, basic canvas render
+- Record ADR decisions in `ARCHITECTURE.md` and unblock the editor implementation
+
+**Agent track — start with Phase 0–1:**
+- `CMakeLists.txt` scaffold for `nnagent-core` (mirrors `nnspire/` preset conventions)
+- NMID parser (`nmid_reader.h/cpp`) — needed for Seam S1
+- LLM API client stub (OpenAI-compatible streaming via chunked HTTP)
+- `nnagent-core` GTest suite (mirrors `nnspire/tests/` patterns)
+- CLI shell stub (Phase 2): stdin/stdout JSON line-protocol, static binary target
+
+**Shared / cross-cutting:**
+- Finalise `.nnsp` project format (gates Studio file-open _and_ Agent NMID load)
+- Define Runner sidecar protocol — document as `docs/RUNNER-PROTOCOL.md` (gates Seam S1)
+- Draft ADR-044: MCP typed boundary node spec (gates Seams S2–S4)
+
+---
+
+## Phase 3 — NNSpire Studio (Qt 6 QML)
 
 > ⚠️ **DESIGN PRINCIPLE — resolve this before writing a single line of UI code**
 >

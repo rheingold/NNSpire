@@ -12,6 +12,44 @@ NNSpire is a multiplatform (Qt 6) neural-network design, training, deployment, a
 
 The guiding constraint throughout is **dual-language**: every computable artefact (plugin, export, runner client, sample) exists in both C++17 and Python 3.10+ forms, with identical behaviour. The C++ API is defined first; pybind11 provides the Python mirror.
 
+### 1.1 Product Pillars
+
+NNSpire is delivered as **three named product pillars** that share one repository and one build system, but are strictly separated by responsibility and ontology level:
+
+| Pillar | Folder | What it is | Ontology level |
+|---|---|---|---|
+| **NNSpire Engine** | `nnspire/` (excl. `app/`) | C++17 compute core — tensor math, layers, autograd, training loop, plugin SDK, format I/O, CLI tools | L1–L2 numeric computation |
+| **NNSpire Studio** | `nnspire/app/` | Qt 6 / QML desktop application — model editor, visual canvas, training dashboard, plugin manager, pipeline view | L3 semantic model composition |
+| **NNSpire Agent** | `nnagent/` | Conversational + orchestration agent — LLM client, NMID test harness, L6 task-flow designer, platform shells | L6 application task flow |
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  NNSpire Studio  (Qt 6 / QML — nnspire/app/)                   │
+│  Model editor · Visual canvas · Training dashboard              │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Embedded Agent Panel  (Phase 3.5)                       │   │
+│  │  Chat with LLM · NMID test harness · Orchestration view  │   │
+│  └───────────────────────┬──────────────────────────────────┘   │
+└──────────────────────────┼──────────────────────────────────────┘
+         MCP typed boundary node (ADR-044)   ↑ in-process call
+┌──────────────────────────┴──────────────────────────────────────┐
+│  NNSpire Agent  (nnagent/)                                      │
+│  LLM router · NMID renderer · MCP client · Orchestration engine │
+│  Platform shells: Win / macOS / iOS / Android / CLI / Web       │
+└──────────────────────────────────────────────────────────────────┘
+         loads .nnsp · calls inference via Runner API
+┌─────────────────────────────────────────────────────────────────┐
+│  NNSpire Engine  (nnspire/ excl. app/)                          │
+│  Tensor · Layers · ComputeGraph · Trainer · Backends · Plugins  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Engine ↔ Studio**: Studio calls Engine APIs directly (in-process, same binary). Engine has zero Qt or UI dependencies — it is fully usable as a headless library.
+
+**Studio ↔ Agent**: Agent is callable *from within* Studio via an **Embedded Agent Panel** (planned Phase 3.5). The boundary protocol is the **MCP typed boundary node** (ADR-044): Studio exposes an MCP server interface; Agent connects as a client. This is symmetric — Agent can also drive Studio model operations as MCP tools.
+
+**Agent ↔ Engine**: Agent reaches Engine through the **NNSpire Runner API** (HTTP/IPC) — the same deployment channel used for production serving. It never calls Engine internals directly.
+
 ---
 
 ## 2. Component diagram
