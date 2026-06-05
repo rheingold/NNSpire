@@ -1988,6 +1988,18 @@ a QML node card, a KB reference, and a configuration panel.
 - [ ] No eval / dynamic code execution in the Qt app process without sandbox
 - [ ] OpenSSL kept up to date; SBOM generated for each release
 
+### Legal, licensing & branding
+> Refs: `LICENSING.md` §4–6, `LICENSES/third-party/README.md`
+
+- [ ] **LICENSES/third-party/** — populate with required license texts as each dep is vendored (see checklist in `LICENSES/third-party/README.md`); wire into `Help → About → Licenses` dialog
+- [ ] **CUDA attribution** *(Phase 4)* — when CudaBackend ships: add NVIDIA CUDA Toolkit attribution to `Help → About`; confirm EULA redistribution terms; do NOT vendor NVIDIA runtime files without legal review; add `LICENSES/third-party/NVIDIA-CUDA-EULA.txt`
+- [ ] **Qiskit attribution** *(Phase 6)* — when QuantumBackend ships: add `Qiskit-LICENSE` + `Qiskit-NOTICE` to `LICENSES/third-party/`; add attribution to `Help → About`
+- [ ] **CLA tooling** — set up GitHub CLA bot or DCO sign-off (`Signed-off-by:`) before first external contribution is accepted; CLA text must include the patent warranty clause (see `LICENSING.md §5`)
+- [ ] **Trademark search** *(before public beta)* — perform formal USPTO / EUIPO / WIPO wordmark search for "NNStudio" in Nice classes 9 + 42; see `LICENSING.md §6` for findings and action items
+- [ ] **Domain registration** *(before public marketing)* — `nnstudio.com` is taken (graphic design freelancer, different field); register `nnstudio.io` / `.ai` / `.dev` or chosen alternative; align with trademark filing
+- [ ] **Trademark filing** *(before commercial plugin sales)* — file in US (class 9 + 42) and EU; engage IP attorney
+- [ ] **GELU patent watch** — US application 20210110229A1 (Hendrycks 2019); confirm current prosecution status with attorney before commercial release; consensus is non-patentable as a mathematical function but confirm
+
 ---
 
 ## External Compute Services

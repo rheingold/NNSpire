@@ -108,8 +108,10 @@ This policy is recorded here as a public commitment, enforceable by the open-sou
 | Eigen | MPL 2.0 | Headers-only; include MPL 2.0 text; do not distribute modified Eigen files without source |
 | GoogleTest | BSD 3-Clause | Test builds only; not in release distributions |
 | OpenSSL 3.x | Apache 2.0 | Include attribution |
+| **NVIDIA CUDA Toolkit** (cuBLAS, cuDNN) | CUDA EULA (proprietary, free-to-use) | **Phase 4+ only.** Include NVIDIA attribution in `Help → About`; do NOT redistribute CUDA runtime libraries directly — declare a user-installed runtime dependency instead; review EULA redistribution section before any release. Add `LICENSES/third-party/NVIDIA-CUDA-EULA.txt` when the backend ships. |
+| **IBM Qiskit** | Apache 2.0 | **Phase 6+ only.** Include `Qiskit-LICENSE` and `Qiskit-NOTICE` from the Qiskit distribution in `LICENSES/third-party/` when the quantum backend ships. |
 
-All third-party license texts are collected in `LICENSES/third-party/` and displayed in the Studio `Help → About → Licenses` dialog.
+All third-party license texts are collected in `LICENSES/third-party/` and displayed in the Studio `Help → About → Licenses` dialog. **The directory is currently a placeholder** — see `LICENSES/third-party/README.md` for the checklist of files to populate as each dependency is vendored.
 
 ---
 
@@ -118,7 +120,30 @@ All third-party license texts are collected in `LICENSES/third-party/` and displ
 All contributors to `nnstudio-core`, `nnstudio/app/`, and `nnstudio/plugin-api/` must sign a CLA (to be drafted) granting the project owner:
 - The right to dual-license the contribution (e.g., release a future commercial SDK build).
 - Confirmation that the contribution is the contributor's own original work.
+- Confirmation that the contribution is **not encumbered by third-party patents** that would restrict NNStudio's ability to use, modify, or distribute it under the project's chosen licenses.
 
 The CLA does not affect the open-source license of the project — contributions remain LGPL/GPL. It only grants additional rights to the project owner to enable the commercial plugin economy described above.
 
 A lightweight CLA process (GitHub CLA bot or DCO sign-off) will be decided before the first public contribution is accepted.
+
+---
+
+## 6. Trademark & name status
+
+**Search performed: 2026-06-05.** Sources: GitHub full-text search, `nnstudio.com` live site, USPTO TESS (interactive — automated query not available from tooling).
+
+### Findings
+
+| Entity | URL / handle | Nature | Conflict assessment |
+|---|---|---|---|
+| Nathan (freelancer) | `nnstudio.com`, GitHub org `nnstudio358` | Senior graphic/marketing design partner — completely unrelated to ML software | **Domain taken.** Different goods/services class (design services vs. software tools); likelihood-of-confusion is low but non-zero — legal opinion required before commercial launch. |
+| johnjg75dev | `github.com/johnjg75dev/NNStudio` | Hobby Python/Flask neural-network trainer (0 stars, no commercial presence, no trademark filing) | **Name collision** in ML/software space; no current legal risk, but creates brand confusion in GitHub search. |
+| NNStudiozZ / srdjannoname / dongfangbotao | Various GitHub repos | Personal profile configs / unrelated pages | No conflict. |
+
+### Actions required before commercial launch
+
+- [ ] **Formal USPTO / EUIPO / WIPO search**: run a proper wordmark search for "NNStudio" in Nice classes 9 (software) and 42 (SaaS / tech services) — see `tmsearch.uspto.gov`, `euipo.europa.eu/eSearch`, `branddb.wipo.int`. Automated search was not possible from build tooling; must be done manually or via an attorney.
+- [ ] **Domain strategy**: `nnstudio.com` is taken (graphic design freelancer). Register an alternative before any public marketing — candidates: `nnstudio.io`, `nnstudio.ai`, `nnstudio.dev`.
+- [ ] **File trademark application** for the chosen name in key markets (US, EU) in classes 9 + 42 before public beta or commercial plugin sales.
+- [ ] **GELU patent watch**: US application 20210110229A1 (Hendrycks, filed 2019). Mathematical functions are not patentable post-*Alice Corp. v. CLS Bank Int'l* (US 2014); however, confirm current prosecution status and any grant/rejection before commercial release.
+- [ ] If name conflicts are judged unacceptable, consider renaming to a unique coined identifier before any public release (renaming post-launch is significantly more expensive).
