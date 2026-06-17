@@ -1,0 +1,3 @@
+^(\w+)\s+is\s+capital of\s+((?!Czech).+)\.\R(\w+)\s+is\s+capital of\s+(Czech.+)\.$|^(\w+)\s+is\s+capital of\s+(Czech.+)\.\R(\w+)\s+is\s+capital of\s+((?!Czech).+)\.$
+
+It is certainly not true that \1\7 is capital of \2\8\r\n\3\5 is indeed the capital of \4\6, that is correct.
