@@ -395,7 +395,20 @@ const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
 
 export const ConversationSidebar: React.FC = () => {
   const { state, dispatch, deleteConversation, renameConversation, createFolder, createConversation, exportConversation, exportFolder, importFromFile } = useChat()
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  // Auto-expand all folders by default so conversations inside are visible
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
+    // Initialize with all folder IDs so nothing appears empty
+    return new Set(state.folders.map((f) => f.id))
+  })
+  // Keep expandedFolders synced when folders are added/removed
+  useEffect(() => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev)
+      // Auto-expand newly created folders
+      state.folders.forEach((f) => next.add(f.id))
+      return next
+    })
+  }, [state.folders.length])
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,

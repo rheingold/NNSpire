@@ -111,17 +111,11 @@ describe('ConversationSidebar Integration Tests', () => {
       expect(screen.getByText('New Folder')).toBeInTheDocument()
     })
 
-    // Click folder to expand
-    const folderHeader = screen.getByText('New Folder').closest('.folder-header')
-    if (folderHeader) {
-      fireEvent.click(folderHeader)
-
-      // Folder should now be expanded (showing content area)
-      await rtlWaitFor(() => {
-        const folderContent = document.querySelector('.folder-content')
-        expect(folderContent).toBeInTheDocument()
-      })
-    }
+    // Folders are auto-expanded by default, so .folder-content should exist immediately
+    await rtlWaitFor(() => {
+      const folderContent = document.querySelector('.folder-content')
+      expect(folderContent).toBeInTheDocument()
+    })
   })
 
   it('displays conversation count in folder badge', async () => {
