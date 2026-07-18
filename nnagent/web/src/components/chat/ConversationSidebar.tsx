@@ -409,7 +409,7 @@ export const ConversationSidebar: React.FC = () => {
     id: string
     name: string
   }>({ visible: false, type: 'conversation', id: '', name: '' })
-  const [dragState, setDragState] = useState<DragState | null>(null)
+  // dragState moved to dragStateRef to avoid stale closure in handleDrop
   const [clipboard, setClipboard] = useState<{ action: 'copy' | 'cut'; conversationId: string } | null>(null)
   const [importResult, setImportResult] = useState<{ count: number; success: boolean } | null>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
@@ -543,31 +543,40 @@ export const ConversationSidebar: React.FC = () => {
     setDeleteConfirm((prev) => ({ ...prev, visible: false }))
   }, [deleteConfirm, deleteConversation, handleDeleteFolder])
 
-  // Drag and drop handlers
+  // Drag and drop handlers -- use refs to avoid stale closures
+  const dragStateRef = useRef<DragState | null>(null)
+
   const handleDragStart = useCallback((item: DragState) => {
-    setDragState(item)
+    dragStateRef.current = item
   }, [])
 
   const handleDrop = useCallback(
     (targetFolderId: string | null) => {
-      if (dragState) {
-        if (dragState.type === 'conversation') {
+      const currentDrag = dragStateRef.current
+      if (currentDrag) {
+        if (currentDrag.type === 'conversation') {
           dispatch({
             type: 'MOVE_CONVERSATION',
-            payload: { conversationId: dragState.id, folderId: targetFolderId },
+            payload: { conversationId: currentDrag.id, folderId: targetFolderId },
           })
         }
         // Note: Moving folders is more complex (need to move children too)
         // For now, only conversation moves are supported
       }
-      setDragState(null)
+      dragStateRef.current = null
     },
-    [dragState, dispatch]
+    [dispatch]
   )
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts -- scoped to sidebar element only
   useEffect(() => {
+    const sidebarEl = sidebarRef.current
+    if (!sidebarEl) return
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when sidebar has focus (not when typing in chat input)
+      if (!sidebarEl.contains(document.activeElement)) return
+
       // Ctrl+C / Cmd+C - Copy selected conversation
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !window.getSelection()?.toString()) {
         if (state.activeConversationId) {
@@ -622,8 +631,10 @@ export const ConversationSidebar: React.FC = () => {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    sidebarEl.addEventListener('keydown', handleKeyDown)
+    return () => {
+      sidebarEl.removeEventListener('keydown', handleKeyDown)
+    }
   }, [state.activeConversationId, state.conversations, clipboard, dispatch])
 
   // Close context menu on click outside
@@ -686,7 +697,7 @@ export const ConversationSidebar: React.FC = () => {
   }, [importResult])
 
   return (
-    <div className="conversation-sidebar" ref={sidebarRef}>
+    <div className="conversation-sidebar" ref={sidebarRef} tabIndex={0}>
       {/* Sidebar Header */}
       <div className="sidebar-header">
         <h3>Conversations</h3>
