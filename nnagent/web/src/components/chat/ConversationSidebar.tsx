@@ -37,8 +37,10 @@ interface FolderTreeNodeProps {
   allFolders: ConversationFolder[]
   conversations: Conversation[]
   activeConversationId: string | null
+  selectedFolderId: string | null
   expandedFolders: Set<string>
   onToggleFolder: (folderId: string) => void
+  onSelectFolder: (folderId: string | null) => void
   onSelectConversation: (id: string) => void
   onRenameFolder: (folderId: string, newName: string) => void
   onDeleteFolder: (folderId: string) => void
@@ -56,8 +58,10 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   allFolders,
   conversations,
   activeConversationId,
+  selectedFolderId,
   expandedFolders,
   onToggleFolder,
+  onSelectFolder,
   onSelectConversation,
   onRenameFolder,
   onDeleteFolder,
@@ -87,6 +91,8 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
     onToggleFolder(folder.id)
+    // Also select this folder so new conversations go inside
+    onSelectFolder(folder.id)
   }
 
   const handleSaveRename = () => {
@@ -175,8 +181,10 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
                 allFolders={allFolders}
                 conversations={conversations}
                 activeConversationId={activeConversationId}
+                selectedFolderId={selectedFolderId}
                 expandedFolders={expandedFolders}
                 onToggleFolder={onToggleFolder}
+                onSelectFolder={onSelectFolder}
                 onSelectConversation={onSelectConversation}
                 onRenameFolder={onRenameFolder}
                 onDeleteFolder={onDeleteFolder}
@@ -422,6 +430,8 @@ export const ConversationSidebar: React.FC = () => {
     id: string
     name: string
   }>({ visible: false, type: 'conversation', id: '', name: '' })
+  // Track which folder is currently "active" - new conversations go here
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   // dragState moved to dragStateRef to avoid stale closure in handleDrop
   const [clipboard, setClipboard] = useState<{ action: 'copy' | 'cut'; conversationId: string } | null>(null)
   const [importResult, setImportResult] = useState<{ count: number; success: boolean } | null>(null)
@@ -461,6 +471,10 @@ export const ConversationSidebar: React.FC = () => {
       }
       return next
     })
+  }, [])
+
+  const handleSelectFolder = useCallback((folderId: string | null) => {
+    setSelectedFolderId(folderId)
   }, [])
 
   // Rename folder
@@ -662,7 +676,8 @@ export const ConversationSidebar: React.FC = () => {
   }, [contextMenu.visible, handleCloseContextMenu])
 
   const handleNewConversation = () => {
-    createConversation()
+    // Create conversation in selected folder (or root if none selected)
+    createConversation(selectedFolderId)
   }
 
   const handleNewFolder = () => {
@@ -786,8 +801,10 @@ export const ConversationSidebar: React.FC = () => {
                     allFolders={state.folders}
                     conversations={state.conversations}
                     activeConversationId={state.activeConversationId}
+                    selectedFolderId={selectedFolderId}
                     expandedFolders={expandedFolders}
                     onToggleFolder={handleToggleFolder}
+                    onSelectFolder={handleSelectFolder}
                     onSelectConversation={(id) =>
                       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id })
                     }
