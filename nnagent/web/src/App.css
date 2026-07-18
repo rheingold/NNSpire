@@ -1,0 +1,156 @@
+/* App-specific styles — page content is in index.css */
+
+/* ─── Chat Page Layout ───────────────────────────────────────────────────── */
+
+.chat-page {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+
+.chat-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.new-conversation-btn {
+  padding: 0.4rem 0.8rem;
+  background-color: var(--color-primary);
+  border: none;
+  color: white;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.new-conversation-btn:hover {
+  background-color: #006cbd;
+}
+
+.conversation-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.empty-list-message {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.conversation-item {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 0.25rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.conversation-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-border);
+}
+
+.conversation-item.active {
+  background-color: rgba(0, 120, 212, 0.2);
+  border-color: var(--color-primary);
+}
+
+.conversation-title {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversation-date {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ─── Sidebar Toggle ─────────────────────────────────────────────────────── */
+
+.sidebar-toggle {
+  position: absolute;
+  top: 0.5rem;
+  left: 280px;
+  padding: 0.5rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  color: var(--color-text);
+  cursor: pointer;
+  z-index: 10;
+  transition: left 0.2s;
+}
+
+.sidebar-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* When sidebar is hidden, toggle moves to left edge */
+.chat-page:not(:has(.chat-sidebar)) .sidebar-toggle {
+  left: 0;
+}
+
+/* ─── Chat Main Area ─────────────────────────────────────────────────────── */
+
+.chat-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .chat-sidebar {
+    position: absolute;
+    z-index: 100;
+    height: 100%;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar-toggle {
+    left: 0;
+  }
+
+  .chat-page:has(.chat-sidebar) .sidebar-toggle {
+    left: 280px;
+  }
+}

@@ -1,0 +1,652 @@
+/* ========================================
+   NNSpire Agent — Chat Interface Styles
+   ======================================== */
+
+/* ─── Chat Window ──────────────────────────────────────────────────────────── */
+
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.chat-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.chat-model-badge {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  background-color: var(--color-primary);
+  border-radius: 12px;
+  color: white;
+}
+
+/* ─── Chat Messages Area ───────────────────────────────────────────────────── */
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ─── Chat Message ─────────────────────────────────────────────────────────── */
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-message-user {
+  align-self: flex-end;
+}
+
+.chat-message-assistant,
+.chat-message-system,
+.chat-message-tool {
+  align-self: flex-start;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.message-icon {
+  font-size: 1.2rem;
+}
+
+.message-role {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.message-model {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0.1rem 0.4rem;
+  background-color: var(--color-surface);
+  border-radius: 4px;
+}
+
+.message-timestamp {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.message-body {
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  line-height: 1.6;
+}
+
+.chat-message-user .message-body {
+  background-color: var(--color-primary);
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-message-assistant .message-body,
+.chat-message-system .message-body,
+.chat-message-tool .message-body {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 2px;
+}
+
+/* ─── Message Text ─────────────────────────────────────────────────────────── */
+
+.message-text {
+  white-space: pre-wrap;
+}
+
+.message-text-line {
+  margin: 0.25rem 0;
+}
+
+.message-text-line:first-child {
+  margin-top: 0;
+}
+
+.message-text-line:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── Thinking Block ───────────────────────────────────────────────────────── */
+
+.message-thinking {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.thinking-toggle {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.thinking-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.thinking-content {
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.thinking-content pre {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+/* ─── MCP Call Block ───────────────────────────────────────────────────────── */
+
+.message-mcp-call {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.message-mcp-call.success {
+  border-color: #4caf50;
+}
+
+.message-mcp-call.error {
+  border-color: #f44336;
+}
+
+.mcp-call-toggle {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.mcp-call-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.mcp-call-details {
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.mcp-call-section {
+  margin-bottom: 0.75rem;
+}
+
+.mcp-call-section:last-child {
+  margin-bottom: 0;
+}
+
+.mcp-call-section strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.mcp-call-section pre {
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+/* ─── Error Block ──────────────────────────────────────────────────────────── */
+
+.message-error {
+  border: 1px solid #f44336;
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  background-color: rgba(244, 67, 54, 0.1);
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-icon {
+  font-size: 1.2rem;
+}
+
+.error-message {
+  color: #f44336;
+  font-weight: 500;
+}
+
+.error-code {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.error-details-toggle {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.error-details-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.error-details {
+  margin-top: 0.5rem;
+}
+
+.error-details pre {
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+/* ─── Code Block ───────────────────────────────────────────────────────────── */
+
+.code-block {
+  margin: 0.5rem 0;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background-color: #282c34;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.code-block-language {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: lowercase;
+}
+
+.code-block-copy {
+  padding: 0.25rem 0.75rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.code-block-copy:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.code-block-pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.code-block-pre code {
+  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ─── Raw JSON Toggle ──────────────────────────────────────────────────────── */
+
+.message-json-toggle {
+  margin-top: 0.5rem;
+}
+
+.message-json-toggle button {
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.message-json-toggle button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.message-json-content {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* ─── Chat Input ───────────────────────────────────────────────────────────── */
+
+.chat-input-container {
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.chat-input-wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 0.5rem;
+  transition: border-color 0.2s;
+}
+
+.chat-input-wrapper:focus-within {
+  border-color: var(--color-primary);
+}
+
+.chat-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 1rem;
+  resize: none;
+  outline: none;
+  max-height: 200px;
+  min-height: 24px;
+  line-height: 1.5;
+}
+
+.chat-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+}
+
+.chat-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.char-count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  min-width: 2ch;
+}
+
+.send-button {
+  padding: 0.5rem;
+  background-color: var(--color-primary);
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  min-width: 40px;
+}
+
+.send-button:hover:not(:disabled) {
+  background-color: #006cbd;
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-input-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.chat-input-hint kbd {
+  padding: 0.1rem 0.3rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.7rem;
+}
+
+/* ─── Loading Indicator ────────────────────────────────────────────────────── */
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.loading-dots span {
+  animation: blink 1.4s infinite both;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0%, 80%, 100% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* ─── Empty State ──────────────────────────────────────────────────────────── */
+
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.chat-empty-state h3 {
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.chat-empty-state p {
+  max-width: 400px;
+}
+
+/* ─── Chat Header Controls (Model Selector + Settings) ───────────────────── */
+
+.chat-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chat-model-selector {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  outline: none;
+}
+
+.chat-model-selector:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.chat-settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.chat-settings-btn:hover {
+  background-color: var(--color-border);
+}
+
+/* ─── Chat Settings Panel (Icon Customization) ───────────────────────────── */
+
+.chat-settings-panel {
+  padding: 1rem 1.5rem;
+  background-color: var(--color-surface-alt, var(--color-surface));
+  border-bottom: 1px solid var(--color-border);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-settings-panel h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-row label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-width: 70px;
+  color: var(--color-text-secondary, var(--color-text));
+}
+
+.icon-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.icon-btn {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 0.25rem 0.4rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+  background-color: var(--color-border);
+}
+
+.icon-btn.active {
+  border-color: var(--color-primary);
+  background-color: rgba(59, 130, 246, 0.1);
+}

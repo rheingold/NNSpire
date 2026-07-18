@@ -1,0 +1,124 @@
+/* ─── CSS Reset & Base ─────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Theme tokens — per ADR-052 D13 */
+  --color-primary: #0078d4;
+  --color-background: #1e1e1e;
+  --color-surface: #2d2d2d;
+  --color-text: #e0e0e0;
+  --color-text-muted: #a0a0a0;
+  --color-border: #404040;
+  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-size-base: 14px;
+  --border-radius: 6px;
+}
+
+html, body {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+/* ─── App Shell Layout ─────────────────────────────────────────────────────── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-header {
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+}
+
+.app-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.app-nav a {
+  color: var(--color-text);
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s;
+}
+
+.app-nav a:hover {
+  background-color: var(--color-primary);
+}
+
+.app-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-footer {
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+/* ─── Page Styles ──────────────────────────────────────────────────────────── */
+
+.home-page,
+.settings-page,
+.about-page {
+  text-align: center;
+  padding: 2rem;
+}
+
+.home-page h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.version {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.welcome {
+  max-width: 600px;
+  margin: 0 auto;
+}
