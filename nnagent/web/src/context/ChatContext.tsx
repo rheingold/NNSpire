@@ -329,14 +329,34 @@ export function ChatProvider({ children }: ChatProviderProps) {
     const load = async () => {
       try {
         if (isTauri()) {
-          // Try loading from Tauri backend
-          const data = await invoke<ChatState>('load_chat_state')
-          if (data) {
-            dispatch({ type: 'LOAD_STATE', payload: data })
+          // Try loading from Tauri backend (file-based storage)
+          const fileStateJson = await invoke<string>('load_chat_state')
+          if (fileStateJson) {
+            const parsed = JSON.parse(fileStateJson)
+            dispatch({ type: 'LOAD_STATE', payload: parsed })
+            return
+          }
+          // No file state — check if we need to migrate from localStorage
+          const migrated = await invoke<boolean>('is_migration_complete')
+          if (!migrated) {
+            const saved = localStorage.getItem('nnagent_chat_state')
+            if (saved) {
+              const parsed = JSON.parse(saved)
+              dispatch({ type: 'LOAD_STATE', payload: parsed })
+              // Migrate: save to file storage and clear localStorage
+              try {
+                await invoke('save_chat_state', { stateJson: saved })
+                await invoke('mark_migration_complete')
+                localStorage.removeItem('nnagent_chat_state')
+                console.info('[ChatContext] Successfully migrated chat state from localStorage to file storage')
+              } catch (migrationError) {
+                console.error('[ChatContext] Migration to file storage failed, keeping localStorage:', migrationError)
+              }
+            }
             return
           }
         }
-        // Fallback to localStorage
+        // Fallback to localStorage (non-Tauri or migration already done)
         const saved = localStorage.getItem('nnagent_chat_state')
         if (saved) {
           const parsed = JSON.parse(saved)
@@ -357,11 +377,17 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
   useEffect(() => {
     // Debounce saves
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       try {
-        localStorage.setItem('nnagent_chat_state', JSON.stringify(state))
+        const stateJson = JSON.stringify(state)
+        if (isTauri()) {
+          // Primary: save to file storage via Tauri backend
+          await invoke('save_chat_state', { stateJson })
+        }
+        // Fallback: always keep localStorage in sync
+        localStorage.setItem('nnagent_chat_state', stateJson)
       } catch (error) {
-        console.error('[ChatContext] Failed to save chat state to localStorage:', error)
+        console.error('[ChatContext] Failed to save chat state:', error)
       }
     }, 500)
     return () => clearTimeout(timer)
@@ -460,10 +486,11 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
   const saveState = useCallback(async () => {
     try {
+      const stateJson = JSON.stringify(state)
       if (isTauri()) {
-        await invoke('save_chat_state', { state: JSON.stringify(state) })
+        await invoke('save_chat_state', { stateJson })
       }
-      localStorage.setItem('nnagent_chat_state', JSON.stringify(state))
+      localStorage.setItem('nnagent_chat_state', stateJson)
     } catch (error) {
       console.error('[ChatContext] saveState failed:', error)
       throw new Error(`Failed to save chat state: ${error instanceof Error ? error.message : String(error)}`)
@@ -473,9 +500,10 @@ export function ChatProvider({ children }: ChatProviderProps) {
   const loadState = useCallback(async () => {
     try {
       if (isTauri()) {
-        const data = await invoke<ChatState>('load_chat_state')
-        if (data) {
-          dispatch({ type: 'LOAD_STATE', payload: data })
+        const fileStateJson = await invoke<string>('load_chat_state')
+        if (fileStateJson) {
+          const parsed = JSON.parse(fileStateJson)
+          dispatch({ type: 'LOAD_STATE', payload: parsed })
           return
         }
       }

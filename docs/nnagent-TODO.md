@@ -1,9 +1,9 @@
 # NNSpire Agent (`nnagent`) — Implementation TODO
 
 > **Created:** 2026-07-16
-> **Updated:** 2026-07-18 (PH2-1 Basic Chat Interface completed, 27 tests passing)
+> **Updated:** 2026-07-21 (PH2-1 Complete, PH2-2 Storage Backend Complete, 99 tests passing total)
 > **Source:** [`docs/nnagent-requirements-summary.md`](docs/nnagent-requirements-summary.md)
-> **Status:** ✅ **PH1 Foundation COMPLETE** — ✅ **PH2-1 Chat Interface COMPLETE** — PH2-2 in progress
+> **Status:** ✅ **PH1 Foundation COMPLETE** — ✅ **PH2-1 Chat Interface COMPLETE** — ✅ **PH2-2 Storage Backend COMPLETE** — PH2-2 remaining features in progress
 > **ADRs:** [`ADR-050`](adr/ADR-050-nnagent-ui-framework-tauri.md), [`ADR-051`](adr/ADR-051-nnagent-implementation-language-scoped.md), [`ADR-052`](adr/ADR-052-nnagent-structural-architecture.md)
 
 ---
@@ -110,15 +110,28 @@
 - [ ] Windows distributable: Requires Rust/Cargo toolchain (not in current env)
 
 ### PH2-2: Chat History Management
-- [ ] Implement conversation list sidebar
-- [ ] Folder/category organization
-- [ ] Multi-level folder support
-- [ ] Auto-generate conversation titles from first prompt
-- [ ] Rename conversations/folders
-- [ ] Delete conversations/folders
-- [ ] Ctrl+C/X/V for conversations
-- [ ] Drag-and-drop reorganization
-- [ ] Tests: CRUD operations on conversations
+#### Storage Backend ✅ COMPLETE (2026-07-21)
+- [x] Implement `save_chat_state` Tauri command (Rust)
+- [x] Implement `load_chat_state` Tauri command (Rust)
+- [x] Use `dirs::data_dir()` for storage location (`%APPDATA%/NNSpire/nnagent/`)
+- [x] Create directory structure on first run
+- [x] Atomic file writes (temp file + rename pattern)
+- [x] Migration from localStorage to file-based storage
+- [x] Migration flag tracking (`is_migration_complete` / `mark_migration_complete`)
+- [x] Error handling with proper context messages
+- [x] Rust unit tests: 2 tests passing (storage module)
+- [x] Frontend tests: 97 tests passing (all suites)
+- [x] Build: `cargo check` and `cargo test` pass
+
+#### Remaining Tasks
+- [ ] Conversation search/filter in sidebar
+- [ ] Conversation pinning (pinned items stay at top)
+- [ ] Archive functionality
+- [ ] Conversation tags/labels
+- [ ] Bulk operations (select multiple, delete all, export all)
+- [ ] Split state into per-conversation files
+- [ ] Implement `folders.json` index
+- [ ] Add `.config` files per folder for sync settings
 
 ### PH2-3: Chat Export/Import — ✅ COMPLETE (2026-07-18)
 - [x] Export single conversation — ✅ exportConversation in ChatContext
@@ -350,6 +363,45 @@
 - [ ] Background worker support
 - [ ] Tests: scheduling
 
+### PH9-6: Multi-Model Chat (Model-to-Model Communication)
+- [ ] Define inter-model message passing protocol
+- [ ] Allow one AI block to trigger another AI block within automation flow
+- [ ] Support chained model conversations (model A → model B → model A ...)
+- [ ] Configure model-to-model dialogue boundaries and turn-taking
+- [ ] Display multi-model conversation threads in chat UI with distinct model avatars/icons
+- [ ] Sub-loop visualization in automation editor (showing inter-model "chat" as nested block group)
+- [ ] Tests: multi-model dialogue execution, message routing, turn management
+
+### PH9-7: Validation Log Tree (Semaphores)
+- [ ] Define validation log entry schema (operation ID, type, confidence %, status, message, timestamp)
+- [ ] Implement hierarchical/tree log structure (parent-child relationship between operations)
+- [ ] Confidence percentage calculation per operation (script execution, model call, MCP tool, etc.)
+- [ ] Status classification: OK (≥90%), Warning (60-89%), Problem (30-59%), Error (<30% or failure)
+- [ ] Color-coded semaphore indicators (green/yellow/orange/red) based on confidence thresholds
+- [ ] Log tree viewer UI component (collapsible tree with semaphore icons per node)
+- [ ] Aggregate confidence computation for parent nodes (weighted average of children)
+- [ ] Review mode: user can browse automation execution logs with visual semaphore overview
+- [ ] Configurable confidence thresholds in settings
+- [ ] Tests: log tree construction, confidence aggregation, threshold classification
+
+### PH9-8: Automation MCP Editor (AI-Facilitated Automation Editing)
+- [ ] Design popup toolbox/panel UI (mirroring main chat interface)
+- [ ] Integrate MCP client into the popup panel for model access
+- [ ] Implement MCP tools for automation graph manipulation:
+  - `create_block` — add new block (type, position, parameters)
+  - `delete_block` — remove block by ID
+  - `move_block` — reposition block on canvas
+  - `resize_block` — adjust block size
+  - `create_connection` — link output of one block to input of another
+  - `delete_connection` — remove connection between blocks
+  - `set_block_property` — modify block parameters
+  - `get_automation_state` — read current automation graph structure
+- [ ] Model can invoke these MCP tools to edit automation on behalf of the user
+- [ ] Natural language interface: user describes desired change, model executes MCP calls
+- [ ] Undo/redo support for MCP-initiated edits
+- [ ] Confirmation prompts for destructive operations (delete block/connection)
+- [ ] Tests: MCP tool execution for each graph operation, undo/redo integrity
+
 ---
 
 ## PHASE 10: Multi-User & Authorization
@@ -411,6 +463,22 @@
 ---
 
 ## PHASE 12: Deployment & Packaging
+
+### PH12-0: Application Icon & Branding Assets
+- [ ] Design NNSpire Agent application icon (vector source in SVG)
+- [ ] Generate icon variants for all target platforms:
+  - Windows: 16x16, 24x24, 32x32, 48x48, 64x64, 128x128, 256x256 PNG + ICO
+  - macOS: Iconset (16, 32, 48, 64, 128, 256, 512, 1024 PNG + .icns)
+  - Linux: hicolor icon theme (16, 22, 24, 32, 48, 64, 128, 256, 512, 1024 PNG)
+  - Web/PWA: 192x192, 512x512 PNG + maskable variant
+  - iOS: 20, 29, 40, 60, 76, 83.5, 1024 PNG
+  - Android: adaptive icon (foreground/background 108x108, anydpi 432x432)
+  - Tray/Status bar: 16x16, 22x22, 24x24
+- [ ] Embed icon in Tauri desktop configuration
+- [ ] Embed icon in installer packages (NSIS/MSI, DMG, Deb, AppImage)
+- [ ] Embed icon in Docker/container metadata
+- [ ] Favicon set for web UI (favicon.ico, apple-touch-icon.png, site.webmanifest)
+- [ ] Tests: icon presence verification in packaged artifacts
 
 ### PH12-1: Desktop Packaging
 - [ ] Windows installer
@@ -510,12 +578,17 @@
 - [ ] API endpoints
 - [ ] Provider integrations
 - [ ] MCP tool execution
+- [ ] MCP-based automation graph editing
 - [ ] File parser pipeline
 - [ ] RAG pipeline
+- [ ] Validation log tree pipeline (log generation → aggregation → UI display)
 
 ### End-to-End Tests
 - [ ] Chat workflow
 - [ ] Automation execution
+- [ ] Multi-model chat dialogue chain
+- [ ] Validation log tree generation and semaphore display
+- [ ] MCP-facilitated automation editing
 - [ ] Profile switching
 - [ ] Theme switching
 
@@ -534,8 +607,12 @@
 | PH7-* | PH5-*, PH8-* |
 | PH8-* | PH1-* |
 | PH9-* | PH2-*, PH3-*, PH5-* |
+| PH9-6 | PH9-1 to PH9-5 (automation runner must exist for multi-model chains) |
+| PH9-7 | PH9-4 (automation runner generates the logs) |
+| PH9-8 | PH9-2, PH5-1 (MCP client + automation editor must exist) |
 | PH10-* | PH1-* |
 | PH11-* | PH2-*, PH3-*, PH9-* |
+| PH12-0 | PH1-* (icon assets needed early for all packaging) |
 | PH12-* | All previous |
 | PH13-* | PH1-* |
 | PH14-* | PH5-* |
