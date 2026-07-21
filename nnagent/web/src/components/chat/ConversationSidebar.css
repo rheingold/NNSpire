@@ -2,6 +2,67 @@
    NNSpire Agent — Conversation Sidebar Styles
    ======================================== */
 
+/* ─── dnd-kit Draggable/Droppable Wrappers ──────────────────────────────────── */
+
+.draggable-wrapper {
+  display: contents;  /* Don't interfere with layout */
+}
+
+.draggable-wrapper.dragging {
+  opacity: 0.5;
+}
+
+.droppable-wrapper {
+  display: contents;
+  transition: background-color 0.2s;
+}
+
+.droppable-wrapper.drop-active {
+  background-color: var(--color-primary, #4a90d9);
+  background-opacity: 0.1;
+  border-radius: 4px;
+}
+
+/* Ensure conversation items are draggable */
+.conversation-item {
+  cursor: grab;
+  user-select: contain;
+  transition: border-top-color 0.15s, background-color 0.15s;
+}
+
+/* Drop target highlight - blue top border indicates drop position */
+.conversation-item.drag-drop-target {
+  border-top: 2px solid var(--color-primary, #4a90d9);
+  background-color: rgba(74, 144, 217, 0.15);
+}
+
+.folder-header {
+  transition: border-top-color 0.15s, background-color 0.15s;
+}
+
+/* Drop target highlight on folder headers */
+.folder-header.drag-drop-target {
+  border-top: 2px solid var(--color-primary, #4a90d9);
+  background-color: rgba(74, 144, 217, 0.15);
+}
+
+/* Drop position indicator line */
+.drag-drop-line {
+  position: fixed;
+  height: 3px;
+  background: var(--color-primary, #4a90d9);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 0 6px rgba(74, 144, 217, 0.6);
+  display: none;
+  transition: top 0.1s ease;
+}
+
+.conversation-item:active {
+  cursor: grabbing;
+}
+
 /* ─── Sidebar Container ────────────────────────────────────────────────────── */
 
 .conversation-sidebar {
@@ -77,6 +138,19 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.5rem;
+  overscroll-behavior: contain;
+}
+
+/* Allow drag operations through overflow containers */
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
 }
 
 .sidebar-section {
@@ -161,13 +235,18 @@
   border: 1px solid transparent;
   border-radius: var(--border-radius);
   color: var(--color-text);
-  cursor: pointer;
+  cursor: grab;
   text-align: left;
   transition: all 0.2s;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   position: relative;
+  user-select: contain;
+}
+
+.conversation-item:active {
+  cursor: grabbing;
 }
 
 .conversation-item:hover {
@@ -247,7 +326,7 @@
   border-radius: var(--border-radius);
   cursor: pointer;
   transition: background-color 0.2s;
-  user-select: none;
+  user-select: contain;
 }
 
 .folder-header:hover {

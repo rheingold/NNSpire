@@ -231,6 +231,33 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, conversations: updatedConvs }
     }
 
+    case 'MOVE_FOLDER': {
+      const { folderId, parentId } = action.payload
+      const folderIdx = state.folders.findIndex((f) => f.id === folderId)
+      if (folderIdx === -1) {
+        console.warn(`[ChatContext] MOVE_FOLDER: Folder ${folderId} not found`)
+        return state
+      }
+      // Prevent moving folder into itself or its own descendant (infinite loop)
+      const isSelfOrDescendant = (candidateId: string, targetId: string): boolean => {
+        if (candidateId === targetId) return true
+        const children = state.folders.filter((f) => f.parentId === candidateId)
+        return children.some((child) => isSelfOrDescendant(child.id, targetId))
+      }
+      // Check if target (parentId) is the same as source or a descendant of source
+      if (parentId !== null && isSelfOrDescendant(folderId, parentId)) {
+        console.warn(`[ChatContext] MOVE_FOLDER: Cannot move folder ${folderId} into itself or descendant ${parentId}`)
+        return state
+      }
+      const updatedFolders = [...state.folders]
+      updatedFolders[folderIdx] = {
+        ...updatedFolders[folderIdx],
+        parentId,
+        createdAt: new Date().toISOString(),
+      }
+      return { ...state, folders: updatedFolders }
+    }
+
     case 'SET_MODEL': {
       const convIdx = state.conversations.findIndex((c) => c.id === action.payload.conversationId)
       if (convIdx === -1) {

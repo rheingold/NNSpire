@@ -5,22 +5,17 @@
  * - Multi-level folder nesting with expand/collapse
  * - Rename conversations and folders (inline editing)
  * - Delete conversations and folders with confirmation
- * - Drag-and-drop reorganization
+ * - Drag-and-drop reorganization (custom pointer-based for WebView2 compat)
  * - Keyboard shortcuts (Ctrl+C/X/V for copy/cut/paste)
  * - Context menu for actions
  * - Auto-generated titles from first prompt
  */
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useChat } from '@/context/ChatContext'
 import { Conversation, ConversationFolder, formatTimestamp } from '@/types/chat'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface DragState {
-  type: 'conversation' | 'folder'
-  id: string
-}
 
 interface ContextMenuState {
   visible: boolean
@@ -30,8 +25,23 @@ interface ContextMenuState {
   targetId: string | null
 }
 
+/**
+ * Internal drag state for our custom pointer-based drag system.
+ * Uses mutable ref to avoid stale closures during pointermove.
+ */
+interface DraggingInfo {
+  type: 'conversation' | 'folder'
+  id: string
+  startFolderId: string | null  // original folder of dragged conv, or parent of dragged folder
+  targetFolderId?: string | null  // current hover target for visual feedback
+}
+
 // ─── Folder Tree Node ─────────────────────────────────────────────────────────
 
+/**
+ * Props for FolderTreeNode. The onDragStart / onDrop callbacks allow the
+ * custom drag system to hook into folder headers and content areas.
+ */
 interface FolderTreeNodeProps {
   folder: ConversationFolder
   allFolders: ConversationFolder[]
@@ -46,11 +56,15 @@ interface FolderTreeNodeProps {
   onDeleteFolder: (folderId: string) => void
   onRenameConversation: (convId: string, newTitle: string) => void
   onDeleteConversation: (convId: string) => void
-  onDragStart: (item: DragState) => void
-  onDrop: (targetFolderId: string | null) => void
   contextMenu: ContextMenuState
   onContextMenu: (e: React.MouseEvent, type: 'conversation' | 'folder', id: string) => void
   onCloseContextMenu: () => void
+  /** Called when mouse down on folder header starts a potential drag */
+  onDragStart: (e: React.MouseEvent, type: 'conversation' | 'folder', id: string) => void
+  /** The current drag state (used to highlight drop targets) */
+  dragState: DraggingInfo | null
+  /** Ref to check if drag was activated (prevents click after drag) */
+  dragActivatedRef: React.MutableRefObject<boolean>
 }
 
 const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
@@ -67,13 +81,13 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   onDeleteFolder,
   onRenameConversation,
   onDeleteConversation,
-  onDragStart,
-  onDrop,
   contextMenu,
   onContextMenu,
   onCloseContextMenu,
+  onDragStart,
+  dragState,
+  dragActivatedRef,
 }) => {
-  const childFolders = allFolders.filter((f) => f.parentId === folder.id)
   const folderConversations = conversations.filter((c) => c.folderId === folder.id)
   const isExpanded = expandedFolders.has(folder.id)
   const [isEditing, setIsEditing] = useState(false)
@@ -89,6 +103,8 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   }, [isEditing])
 
   const handleToggle = (e: React.MouseEvent) => {
+    // Skip if drag was activated to prevent toggle after drag
+    if (dragActivatedRef.current) return
     e.stopPropagation()
     onToggleFolder(folder.id)
     // Also select this folder so new conversations go inside
@@ -114,31 +130,24 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
     }
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
-  const handleDropOnFolder = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onDrop(folder.id)
-  }
-
   return (
     <div className="folder-tree-node">
-      {/* Folder Header */}
+      {/* Folder Header — draggable via onMouseDown, identical to conversation items */}
       <div
         className={`folder-header ${isExpanded ? 'expanded' : ''}`}
         onClick={handleToggle}
         onContextMenu={(e) => onContextMenu(e, 'folder', folder.id)}
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.effectAllowed = 'move'
-          onDragStart({ type: 'folder', id: folder.id })
+        onMouseDown={(e) => {
+          // Only start drag if not clicking toggle arrow or input
+          if ((e.target as HTMLElement).closest('.folder-toggle') || (e.target as HTMLElement).closest('.folder-edit-input')) {
+            return
+          }
+          onDragStart(e, 'folder', folder.id)
         }}
-        onDragOver={handleDragOver}
-        onDrop={handleDropOnFolder}
+        style={{
+          pointerEvents: 'auto',
+          cursor: dragState ? 'grab' : 'default',
+        }}
       >
         <span className="folder-toggle" aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}>
           {isExpanded ? '▼' : '▶'}
@@ -168,50 +177,33 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
         <span className="folder-count">{folderConversations.length}</span>
       </div>
 
-      {/* Child Content */}
+      {/* Child Content — drop target area */}
       {isExpanded && (
-        <div className="folder-content">
-          {/* Child Folders First */}
-          {childFolders
-            .sort((a, b) => a.order - b.order)
-            .map((childFolder) => (
-              <FolderTreeNode
-                key={childFolder.id}
-                folder={childFolder}
-                allFolders={allFolders}
-                conversations={conversations}
-                activeConversationId={activeConversationId}
-                selectedFolderId={selectedFolderId}
-                expandedFolders={expandedFolders}
-                onToggleFolder={onToggleFolder}
-                onSelectFolder={onSelectFolder}
-                onSelectConversation={onSelectConversation}
-                onRenameFolder={onRenameFolder}
-                onDeleteFolder={onDeleteFolder}
-                onRenameConversation={onRenameConversation}
-                onDeleteConversation={onDeleteConversation}
-                onDragStart={onDragStart}
-                onDrop={onDrop}
-                contextMenu={contextMenu}
-                onContextMenu={onContextMenu}
-                onCloseContextMenu={onCloseContextMenu}
-              />
-            ))}
-
-          {/* Conversations in this Folder */}
-          {folderConversations
-            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-            .map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isActive={activeConversationId === conv.id}
-                onSelect={onSelectConversation}
-                onRename={onRenameConversation}
-                onDragStart={onDragStart}
-                onContextMenu={onContextMenu}
-              />
-            ))}
+        <div
+          className={`folder-content${dragState && dragState.type === 'folder' && dragState.id === folder.id ? ' drop-active' : ''}`}
+          data-drop-target={folder.id}
+        >
+          <UnifiedTreeNode
+            parentId={folder.id}
+            allFolders={allFolders}
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            selectedFolderId={selectedFolderId}
+            expandedFolders={expandedFolders}
+            onToggleFolder={onToggleFolder}
+            onSelectFolder={onSelectFolder}
+            onSelectConversation={onSelectConversation}
+            onRenameFolder={onRenameFolder}
+            onDeleteFolder={onDeleteFolder}
+            onRenameConversation={onRenameConversation}
+            onDeleteConversation={onDeleteConversation}
+            contextMenu={contextMenu}
+            onContextMenu={onContextMenu}
+            onCloseContextMenu={onCloseContextMenu}
+            onDragStart={onDragStart}
+            dragState={dragState}
+            dragActivatedRef={dragActivatedRef}
+          />
         </div>
       )}
     </div>
@@ -225,8 +217,11 @@ interface ConversationItemProps {
   isActive: boolean
   onSelect: (id: string) => void
   onRename: (convId: string, newTitle: string) => void
-  onDragStart: (item: DragState) => void
   onContextMenu: (e: React.MouseEvent, type: 'conversation', id: string) => void
+  /** Called when pointer down starts a potential drag */
+  onDragStart: (e: React.MouseEvent, type: 'conversation', id: string) => void
+  /** Ref to check if drag was activated (prevents click after drag) */
+  dragActivatedRef: React.MutableRefObject<boolean>
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = ({
@@ -234,8 +229,9 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   isActive,
   onSelect,
   onRename,
-  onDragStart,
   onContextMenu,
+  onDragStart,
+  dragActivatedRef,
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(conversation.title)
@@ -271,18 +267,26 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     }
   }
 
+  const handleClick = () => {
+    // Skip if drag was activated to prevent select after drag
+    if (dragActivatedRef.current) return
+    if (!isEditing) {
+      onSelect(conversation.id)
+    }
+  }
+
   return (
     <div
       className={`conversation-item ${isActive ? 'active' : ''}`}
-      onClick={() => {
-        if (!isEditing) onSelect(conversation.id)
-      }}
+      tabIndex={0}
+      onClick={handleClick}
       onContextMenu={(e) => onContextMenu(e, 'conversation', conversation.id)}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = 'move'
-        onDragStart({ type: 'conversation', id: conversation.id })
+      onMouseDown={(e) => {
+        // Don't start drag if clicking edit input
+        if ((e.target as HTMLElement).closest('.conversation-edit-input')) return
+        onDragStart(e, 'conversation', conversation.id)
       }}
+      style={{ pointerEvents: 'auto', cursor: 'grab' }}
     >
       {isEditing ? (
         <input
@@ -315,6 +319,10 @@ interface ContextMenuProps {
   y: number
   targetType: 'conversation' | 'folder' | null
   targetId: string | null
+  onCopy: () => void
+  onCut: () => void
+  onPaste: () => void
+  canPaste: boolean
   onRename: () => void
   onDelete: () => void
   onExport?: () => void
@@ -326,6 +334,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   x,
   y,
   targetType,
+  onCopy,
+  onCut,
+  onPaste,
+  canPaste,
   onRename,
   onDelete,
   onExport,
@@ -337,6 +349,20 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     <>
       <div className="context-menu-overlay" onClick={onClose} />
       <div className="context-menu" style={{ top: y, left: x }}>
+        <button onClick={onCopy} className="context-menu-item">
+          <span className="context-menu-icon">📋</span>
+          Copy
+        </button>
+        <button onClick={onCut} className="context-menu-item">
+          <span className="context-menu-icon">✂️</span>
+          Cut
+        </button>
+        {canPaste && (
+          <button onClick={onPaste} className="context-menu-item">
+            <span className="context-menu-icon">📌</span>
+            Paste
+          </button>
+        )}
         {onExport && (
           <button onClick={onExport} className="context-menu-item">
             <span className="context-menu-icon">📤</span>
@@ -399,6 +425,128 @@ const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
   )
 }
 
+// ─── Unified Tree Node ────────────────────────────────────────────────────────
+// Renders conversations and folders interleaved at each level of the tree
+
+interface UnifiedTreeNodeProps {
+  parentId: string | null  // null = root level
+  allFolders: ConversationFolder[]
+  conversations: Conversation[]
+  activeConversationId: string | null
+  selectedFolderId: string | null
+  expandedFolders: Set<string>
+  onToggleFolder: (folderId: string) => void
+  onSelectFolder: (folderId: string | null) => void
+  onSelectConversation: (id: string) => void
+  onRenameFolder: (folderId: string, newName: string) => void
+  onDeleteFolder: (folderId: string) => void
+  onRenameConversation: (convId: string, newTitle: string) => void
+  onDeleteConversation: (convId: string) => void
+  contextMenu: ContextMenuState
+  onContextMenu: (e: React.MouseEvent, type: 'conversation' | 'folder', id: string) => void
+  onCloseContextMenu: () => void
+  /** Drag start callback passed down */
+  onDragStart: (e: React.MouseEvent, type: 'conversation' | 'folder', id: string) => void
+  /** Current drag state for highlighting */
+  dragState: DraggingInfo | null
+  /** Ref to check if drag was activated (prevents click after drag) */
+  dragActivatedRef: React.MutableRefObject<boolean>
+}
+
+const UnifiedTreeNode: React.FC<UnifiedTreeNodeProps> = ({
+  parentId,
+  allFolders,
+  conversations,
+  activeConversationId,
+  selectedFolderId,
+  expandedFolders,
+  onToggleFolder,
+  onSelectFolder,
+  onSelectConversation,
+  onRenameFolder,
+  onDeleteFolder,
+  onRenameConversation,
+  onDeleteConversation,
+  contextMenu,
+  onContextMenu,
+  onCloseContextMenu,
+  onDragStart,
+  dragState,
+  dragActivatedRef,
+}) => {
+  // Get folders at this level
+  const foldersAtLevel = allFolders.filter((f) => f.parentId === parentId)
+  // Get conversations at this level
+  const convsAtLevel = conversations.filter((c) => c.folderId === parentId)
+
+  // Build a unified, interleaved list sorted by most recent activity
+  // Folders are treated as having "updatedAt" = their latest child conversation's updatedAt, or createdAt if empty
+  const getFolderEffectiveDate = (folder: ConversationFolder): number => {
+    const childConvs = conversations.filter((c) => c.folderId === folder.id)
+    if (childConvs.length === 0) {
+      return new Date(folder.createdAt).getTime()
+    }
+    return Math.max(...childConvs.map((c) => new Date(c.updatedAt).getTime()))
+  }
+
+  const unifiedItems = [
+    ...convsAtLevel.map((conv) => ({
+      type: 'conversation' as const,
+      conv,
+      date: new Date(conv.updatedAt).getTime(),
+    })),
+    ...foldersAtLevel.map((folder) => ({
+      type: 'folder' as const,
+      folder,
+      date: getFolderEffectiveDate(folder),
+    })),
+  ].sort((a, b) => b.date - a.date) // Most recent first
+
+  return (
+    <div className="unified-tree-node">
+      {unifiedItems.map((item) =>
+        item.type === 'conversation' ? (
+          <div key={item.conv.id} data-conv-id={item.conv.id}>
+            <ConversationItem
+              conversation={item.conv}
+              isActive={activeConversationId === item.conv.id}
+              onSelect={onSelectConversation}
+              onRename={onRenameConversation}
+              onContextMenu={onContextMenu}
+              onDragStart={onDragStart}
+              dragActivatedRef={dragActivatedRef}
+            />
+          </div>
+        ) : (
+          <div key={item.folder.id} data-folder-id={item.folder.id}>
+            <FolderTreeNode
+              folder={item.folder}
+              allFolders={allFolders}
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              selectedFolderId={selectedFolderId}
+              expandedFolders={expandedFolders}
+              onToggleFolder={onToggleFolder}
+              onSelectFolder={onSelectFolder}
+              onSelectConversation={onSelectConversation}
+              onRenameFolder={onRenameFolder}
+              onDeleteFolder={onDeleteFolder}
+              onRenameConversation={onRenameConversation}
+              onDeleteConversation={onDeleteConversation}
+              contextMenu={contextMenu}
+              onContextMenu={onContextMenu}
+              onCloseContextMenu={onCloseContextMenu}
+              onDragStart={onDragStart}
+              dragState={dragState}
+              dragActivatedRef={dragActivatedRef}
+            />
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
 // ─── Main Sidebar Component ───────────────────────────────────────────────────
 
 export const ConversationSidebar: React.FC = () => {
@@ -433,22 +581,16 @@ export const ConversationSidebar: React.FC = () => {
   // Track which folder is currently "active" - new conversations go here
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   // dragState moved to dragStateRef to avoid stale closure in handleDrop
-  const [clipboard, setClipboard] = useState<{ action: 'copy' | 'cut'; conversationId: string } | null>(null)
+  // Clipboard supports both conversations and folders
+  const [clipboard, setClipboard] = useState<{
+    action: 'copy' | 'cut'
+    type: 'conversation' | 'folder'
+    conversationId?: string
+    folderId?: string
+  } | null>(null)
   const [importResult, setImportResult] = useState<{ count: number; success: boolean } | null>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Root-level conversations (not in any folder)
-  const rootConversations = useMemo(
-    () => state.conversations.filter((c) => !c.folderId),
-    [state.conversations]
-  )
-
-  // Root-level folders
-  const rootFolders = useMemo(
-    () => state.folders.filter((f) => !f.parentId),
-    [state.folders]
-  )
 
   // Expand folder when conversation is selected inside
   useEffect(() => {
@@ -475,7 +617,11 @@ export const ConversationSidebar: React.FC = () => {
 
   const handleSelectFolder = useCallback((folderId: string | null) => {
     setSelectedFolderId(folderId)
-  }, [])
+    // Clear active conversation when selecting a folder
+    if (folderId !== null) {
+      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: null })
+    }
+  }, [dispatch])
 
   // Rename folder
   const handleRenameFolder = useCallback(
@@ -560,6 +706,69 @@ export const ConversationSidebar: React.FC = () => {
     handleCloseContextMenu()
   }, [contextMenu, state.conversations, state.folders, handleCloseContextMenu])
 
+  // Handle copy from context menu
+  const handleContextCopy = useCallback(() => {
+    if (contextMenu.targetType === 'conversation' && contextMenu.targetId) {
+      setClipboard({ action: 'copy', type: 'conversation', conversationId: contextMenu.targetId })
+    } else if (contextMenu.targetType === 'folder' && contextMenu.targetId) {
+      setClipboard({ action: 'copy', type: 'folder', folderId: contextMenu.targetId })
+    }
+    handleCloseContextMenu()
+  }, [contextMenu, handleCloseContextMenu])
+
+  // Handle cut from context menu
+  const handleContextCut = useCallback(() => {
+    if (contextMenu.targetType === 'conversation' && contextMenu.targetId) {
+      setClipboard({ action: 'cut', type: 'conversation', conversationId: contextMenu.targetId })
+    } else if (contextMenu.targetType === 'folder' && contextMenu.targetId) {
+      setClipboard({ action: 'cut', type: 'folder', folderId: contextMenu.targetId })
+    }
+    handleCloseContextMenu()
+  }, [contextMenu, handleCloseContextMenu])
+
+  // Handle paste from context menu
+  const handleContextPaste = useCallback(() => {
+    if (clipboard) {
+      if (clipboard.type === 'conversation' && clipboard.conversationId) {
+        const sourceConv = state.conversations.find((c) => c.id === clipboard.conversationId)
+        if (sourceConv) {
+          const now = new Date().toISOString()
+          const newConv: Conversation = {
+            ...sourceConv,
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            title: sourceConv.title + (clipboard.action === 'copy' ? ' (Copy)' : ''),
+            folderId: selectedFolderId,
+            updatedAt: now,
+          }
+          dispatch({ type: 'CREATE_CONVERSATION', payload: newConv })
+          // On cut, delete the original source
+          if (clipboard.action === 'cut') {
+            dispatch({ type: 'DELETE_CONVERSATION', payload: clipboard.conversationId })
+            setClipboard(null)
+          }
+        }
+      } else if (clipboard.type === 'folder' && clipboard.folderId) {
+        const sourceFolder = state.folders.find((f) => f.id === clipboard.folderId)
+        if (sourceFolder) {
+          const newFolder: ConversationFolder = {
+            ...sourceFolder,
+            id: `folder-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            name: sourceFolder.name + (clipboard.action === 'copy' ? ' (Copy)' : ''),
+            parentId: selectedFolderId,
+          }
+          dispatch({ type: 'CREATE_FOLDER', payload: newFolder })
+          // On cut, delete the original source
+          if (clipboard.action === 'cut') {
+            // Delete source folder (its children are moved to root by reducer)
+            dispatch({ type: 'DELETE_FOLDER', payload: clipboard.folderId })
+            setClipboard(null)
+          }
+        }
+      }
+    }
+    handleCloseContextMenu()
+  }, [clipboard, state.conversations, state.folders, selectedFolderId, dispatch, handleCloseContextMenu])
+
   // Confirm delete
   const handleConfirmDelete = useCallback(() => {
     if (deleteConfirm.type === 'conversation') {
@@ -570,29 +779,186 @@ export const ConversationSidebar: React.FC = () => {
     setDeleteConfirm((prev) => ({ ...prev, visible: false }))
   }, [deleteConfirm, deleteConversation, handleDeleteFolder])
 
-  // Drag and drop handlers -- use refs to avoid stale closures
-  const dragStateRef = useRef<DragState | null>(null)
+  // Custom mouse-based drag system (dnd-kit removed due to WebView2 incompatibility)
+  const dragInfoRef = useRef<DraggingInfo | null>(null)
+  const [dragState, setDragState] = useState<DraggingInfo | null>(null)
+  // Ref to track if drag was activated (prevents click handlers from firing after drag)
+  const dragActivatedRef = useRef(false)
 
-  const handleDragStart = useCallback((item: DragState) => {
-    dragStateRef.current = item
-  }, [])
+  const handleMouseDownDrag = useCallback(
+    (e: React.MouseEvent, type: 'conversation' | 'folder', id: string) => {
+      // Only left button
+      if (e.button !== 0) return
+      // Prevent default to avoid text selection during drag
+      e.preventDefault()
+      // Stop propagation so onClick on same element doesn't fire after drag
+      e.stopPropagation()
 
-  const handleDrop = useCallback(
-    (targetFolderId: string | null) => {
-      const currentDrag = dragStateRef.current
-      if (currentDrag) {
-        if (currentDrag.type === 'conversation') {
-          dispatch({
-            type: 'MOVE_CONVERSATION',
-            payload: { conversationId: currentDrag.id, folderId: targetFolderId },
-          })
-        }
-        // Note: Moving folders is more complex (need to move children too)
-        // For now, only conversation moves are supported
+      // Determine the source folder
+      let startFolderId: string | null = null
+      if (type === 'conversation') {
+        const conv = state.conversations.find((c) => c.id === id)
+        startFolderId = conv?.folderId ?? null
+      } else {
+        const folder = state.folders.find((f) => f.id === id)
+        startFolderId = folder?.parentId ?? null
       }
-      dragStateRef.current = null
+
+      const info: DraggingInfo = { type, id, startFolderId }
+      dragInfoRef.current = info
+      dragActivatedRef.current = false
+
+      const startX = e.clientX
+      const startY = e.clientY
+
+      // Drop indicator line element
+      let dropLine: HTMLDivElement | null = null
+
+      const showDropLine = (targetEl: HTMLElement, above: boolean) => {
+        if (!dropLine) {
+          dropLine = document.createElement('div')
+          dropLine.className = 'drag-drop-line'
+          document.body.appendChild(dropLine)
+        }
+        const rect = targetEl.getBoundingClientRect()
+        const scrollY = window.scrollY
+        dropLine.style.top = `${rect.top + scrollY + (above ? 0 : rect.height)}px`
+        dropLine.style.left = `${rect.left}px`
+        dropLine.style.width = `${rect.width}px`
+        dropLine.style.display = 'block'
+      }
+
+      const hideDropLine = () => {
+        if (dropLine) {
+          dropLine.style.display = 'none'
+        }
+      }
+
+      const handleMouseMove = (me: MouseEvent) => {
+        // Activate drag only after 5px movement to distinguish from click
+        if (!dragActivatedRef.current && (Math.abs(me.clientX - startX) > 5 || Math.abs(me.clientY - startY) > 5)) {
+          dragActivatedRef.current = true
+          setDragState({ ...dragInfoRef.current! })
+        }
+        if (dragActivatedRef.current) {
+          setDragState({ ...dragInfoRef.current! })
+          // Visual drop target highlighting
+          const elem = document.elementFromPoint(me.clientX, me.clientY)
+          // Clear previous highlights
+          document.querySelectorAll('.drag-drop-target').forEach(el => el.classList.remove('drag-drop-target'))
+          hideDropLine()
+          if (elem) {
+            const convEl = elem.closest('[data-conv-id]')
+            const folderEl = elem.closest('[data-folder-id]')
+            if (convEl) {
+              convEl.classList.add('drag-drop-target')
+              // Determine drop position: above or below based on Y position
+              const rect = convEl.getBoundingClientRect()
+              const midY = rect.top + rect.height / 2
+              showDropLine(convEl as HTMLElement, me.clientY < midY)
+            } else if (folderEl) {
+              folderEl.classList.add('drag-drop-target')
+              const rect = folderEl.getBoundingClientRect()
+              const midY = rect.top + rect.height / 2
+              showDropLine(folderEl as HTMLElement, me.clientY < midY)
+            } else {
+              // Dropped on empty area - show line at the current Y position
+              const sidebarEl = document.querySelector('.conversation-sidebar')
+              if (sidebarEl) {
+                const rect = sidebarEl.getBoundingClientRect()
+                const fakeTarget = document.createElement('div')
+                fakeTarget.style.top = `${rect.top}px`
+                fakeTarget.style.height = '0px'
+                showDropLine(fakeTarget as HTMLElement, true)
+                hideDropLine() // Don't show on empty area - just highlight the area
+              }
+            }
+          }
+        }
+      }
+
+      const handleMouseUp = (me: MouseEvent) => {
+        // Remove listeners first
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+
+        if (!dragInfoRef.current) return
+
+        // Find the element under the pointer
+        const elem = document.elementFromPoint(me.clientX, me.clientY)
+        if (!elem) {
+          dragInfoRef.current = null
+          setDragState(null)
+          hideDropLine()
+          setTimeout(() => { dragActivatedRef.current = false }, 0)
+          return
+        }
+
+        // Determine target folder by walking up DOM
+        let targetFolderId: string | null = null
+        const convEl = elem.closest('[data-conv-id]')
+        const folderEl = elem.closest('[data-folder-id]')
+        const rootEl = elem.closest('#sidebar-root-drop')
+
+        if (convEl) {
+          const convId = convEl.getAttribute('data-conv-id')
+          const targetConv = state.conversations.find((c) => c.id === convId)
+          targetFolderId = targetConv?.folderId ?? null
+        } else if (folderEl) {
+          targetFolderId = folderEl.getAttribute('data-folder-id') ?? null
+        } else if (rootEl) {
+          // Dropped on empty area of sidebar = root
+          targetFolderId = null
+        }
+
+        // Prevent dropping on self or into descendants
+        const { type: dragType, id: dragId, startFolderId } = dragInfoRef.current
+
+        if (dragType === 'folder' && targetFolderId) {
+          const isSelfOrDescendant = (candidateId: string, targetId: string): boolean => {
+            if (candidateId === targetId) return true
+            const childFolders = state.folders.filter((f) => f.parentId === candidateId)
+            return childFolders.some((f) => isSelfOrDescendant(f.id, targetId))
+          }
+          if (isSelfOrDescendant(dragId, targetFolderId)) {
+            dragInfoRef.current = null
+            setDragState(null)
+            hideDropLine()
+            setTimeout(() => { dragActivatedRef.current = false }, 0)
+            return
+          }
+        }
+
+        // Execute the move only if target differs from source AND drag was activated
+        if (dragActivatedRef.current) {
+          if (dragType === 'conversation' && targetFolderId !== startFolderId) {
+            dispatch({
+              type: 'MOVE_CONVERSATION',
+              payload: { conversationId: dragId, folderId: targetFolderId },
+            })
+          } else if (dragType === 'folder' && targetFolderId !== startFolderId) {
+            dispatch({
+              type: 'MOVE_FOLDER',
+              payload: { folderId: dragId, parentId: targetFolderId },
+            })
+          }
+        }
+
+        dragInfoRef.current = null
+        setDragState(null)
+        // Defer resetting dragActivatedRef so that the browser's subsequent click event
+        // (which fires after mouseup) can still see it as true and be suppressed.
+        setTimeout(() => {
+          dragActivatedRef.current = false
+          hideDropLine()
+        }, 0)
+      }
+
+      // Attach to document to capture events even when cursor leaves the element
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
     },
-    [dispatch]
+    [dispatch, state.conversations, state.folders]
   )
 
   // Keyboard shortcuts -- scoped to sidebar element only
@@ -604,56 +970,96 @@ export const ConversationSidebar: React.FC = () => {
       // Only handle shortcuts when sidebar has focus (not when typing in chat input)
       if (!sidebarEl.contains(document.activeElement)) return
 
-      // Ctrl+C / Cmd+C - Copy selected conversation
+      // Ctrl+C / Cmd+C - Copy selected conversation or folder
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !window.getSelection()?.toString()) {
         if (state.activeConversationId) {
-          setClipboard({ action: 'copy', conversationId: state.activeConversationId })
+          setClipboard({ action: 'copy', type: 'conversation', conversationId: state.activeConversationId })
+        } else if (selectedFolderId) {
+          setClipboard({ action: 'copy', type: 'folder', folderId: selectedFolderId })
         }
       }
-      // Ctrl+X / Cmd+X - Cut selected conversation
+      // Ctrl+X / Cmd+X - Cut selected conversation or folder
       if ((e.ctrlKey || e.metaKey) && e.key === 'x' && !window.getSelection()?.toString()) {
         if (state.activeConversationId) {
-          setClipboard({ action: 'cut', conversationId: state.activeConversationId })
+          setClipboard({ action: 'cut', type: 'conversation', conversationId: state.activeConversationId })
+        } else if (selectedFolderId) {
+          setClipboard({ action: 'cut', type: 'folder', folderId: selectedFolderId })
         }
       }
-      // Ctrl+V / Cmd+V - Paste (duplicate) conversation
+      // Ctrl+V / Cmd+V - Paste (duplicate) conversation or folder into selected folder
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
         e.preventDefault()
-        const sourceConv = state.conversations.find((c) => c.id === clipboard.conversationId)
-        if (sourceConv) {
-          const now = new Date().toISOString()
-          const newConv: Conversation = {
-            ...sourceConv,
-            id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            title: sourceConv.title + (clipboard.action === 'copy' ? ' (Copy)' : ''),
-            createdAt: now,
-            updatedAt: now,
+        if (clipboard.type === 'conversation' && clipboard.conversationId) {
+          const sourceConv = state.conversations.find((c) => c.id === clipboard.conversationId)
+          if (sourceConv) {
+            const now = new Date().toISOString()
+            const newConv: Conversation = {
+              ...sourceConv,
+              id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              title: sourceConv.title + (clipboard.action === 'copy' ? ' (Copy)' : ''),
+              folderId: selectedFolderId, // Paste into selected folder
+              createdAt: now,
+              updatedAt: now,
+            }
+            dispatch({ type: 'CREATE_CONVERSATION', payload: newConv })
+            if (clipboard.action === 'cut') {
+              dispatch({ type: 'DELETE_CONVERSATION', payload: clipboard.conversationId })
+            }
+            setClipboard(null)
           }
-          dispatch({ type: 'CREATE_CONVERSATION', payload: newConv })
-          if (clipboard.action === 'cut') {
-            // Delete original after paste
-            dispatch({ type: 'DELETE_CONVERSATION', payload: clipboard.conversationId })
+        } else if (clipboard.type === 'folder' && clipboard.folderId) {
+          const sourceFolder = state.folders.find((f) => f.id === clipboard.folderId)
+          if (sourceFolder) {
+            const newFolder: ConversationFolder = {
+              ...sourceFolder,
+              id: `folder-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              name: sourceFolder.name + (clipboard.action === 'copy' ? ' (Copy)' : ''),
+              parentId: selectedFolderId, // Nest into selected folder
+              createdAt: new Date().toISOString(),
+            }
+            dispatch({ type: 'CREATE_FOLDER', payload: newFolder })
+            if (clipboard.action === 'cut') {
+              dispatch({ type: 'DELETE_FOLDER', payload: clipboard.folderId })
+            }
+            setClipboard(null)
           }
-          setClipboard(null)
         }
       }
-      // Delete key - delete selected conversation
-      if (e.key === 'Delete' && state.activeConversationId) {
-        const conv = state.conversations.find((c) => c.id === state.activeConversationId)
-        setDeleteConfirm({
-          visible: true,
-          type: 'conversation',
-          id: state.activeConversationId,
-          name: conv?.title || 'Unknown',
-        })
+      // Delete key - delete selected conversation or folder
+      if (e.key === 'Delete') {
+        if (state.activeConversationId) {
+          const conv = state.conversations.find((c) => c.id === state.activeConversationId)
+          setDeleteConfirm({
+            visible: true,
+            type: 'conversation',
+            id: state.activeConversationId,
+            name: conv?.title || 'Unknown',
+          })
+        } else if (selectedFolderId) {
+          const folder = state.folders.find((f) => f.id === selectedFolderId)
+          setDeleteConfirm({
+            visible: true,
+            type: 'folder',
+            id: selectedFolderId,
+            name: folder?.name || 'Unknown',
+          })
+        }
       }
-      // F2 - rename selected conversation
-      if (e.key === 'F2' && state.activeConversationId) {
+      // F2 - rename selected conversation or folder
+      if (e.key === 'F2') {
         e.preventDefault()
-        const convItem = document.querySelector(`[data-conv-id="${state.activeConversationId}"]`)
-        if (convItem) {
-          const titleEl = convItem.querySelector('.conversation-title')
-          titleEl?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+        if (state.activeConversationId) {
+          const convItem = document.querySelector(`[data-conv-id="${state.activeConversationId}"]`)
+          if (convItem) {
+            const titleEl = convItem.querySelector('.conversation-title')
+            titleEl?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+          }
+        } else if (selectedFolderId) {
+          const folderItem = document.querySelector(`[data-folder-id="${selectedFolderId}"]`)
+          if (folderItem) {
+            const nameEl = folderItem.querySelector('.folder-name')
+            nameEl?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+          }
         }
       }
     }
@@ -662,7 +1068,7 @@ export const ConversationSidebar: React.FC = () => {
     return () => {
       sidebarEl.removeEventListener('keydown', handleKeyDown)
     }
-  }, [state.activeConversationId, state.conversations, clipboard, dispatch])
+  }, [state.activeConversationId, state.conversations, state.folders, selectedFolderId, clipboard, dispatch])
 
   // Close context menu on click outside
   useEffect(() => {
@@ -678,6 +1084,8 @@ export const ConversationSidebar: React.FC = () => {
   const handleNewConversation = () => {
     // Create conversation in selected folder (or root if none selected)
     createConversation(selectedFolderId)
+    // Clear selected folder after creating conversation
+    setSelectedFolderId(null)
   }
 
   const handleNewFolder = () => {
@@ -766,85 +1174,56 @@ export const ConversationSidebar: React.FC = () => {
         onChange={handleFileChange}
       />
 
-      {/* Sidebar Content */}
+      {/* Sidebar Content — Unified Tree with custom pointer-based drag */}
       <div className="sidebar-content">
-        {/* Root-level conversations */}
-        {rootConversations.length > 0 && (
-          <div className="sidebar-section">
-            {rootConversations
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-              .map((conv) => (
-                <div key={conv.id} data-conv-id={conv.id}>
-                  <ConversationItem
-                    conversation={conv}
-                    isActive={state.activeConversationId === conv.id}
-                    onSelect={(id) => dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id })}
-                    onRename={renameConversation}
-                    onDragStart={handleDragStart}
-                    onContextMenu={handleContextMenu}
-                  />
-                </div>
-              ))}
-          </div>
-        )}
-
-        {/* Folder Tree */}
-        {rootFolders.length > 0 && (
-          <div className="sidebar-section folder-section">
-            <div className="sidebar-section-header">Folders</div>
-            {rootFolders
-              .sort((a, b) => a.order - b.order)
-              .map((folder) => (
-                <div key={folder.id} data-folder-id={folder.id}>
-                  <FolderTreeNode
-                    folder={folder}
-                    allFolders={state.folders}
-                    conversations={state.conversations}
-                    activeConversationId={state.activeConversationId}
-                    selectedFolderId={selectedFolderId}
-                    expandedFolders={expandedFolders}
-                    onToggleFolder={handleToggleFolder}
-                    onSelectFolder={handleSelectFolder}
-                    onSelectConversation={(id) =>
-                      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id })
-                    }
-                    onRenameFolder={handleRenameFolder}
-                    onDeleteFolder={(folderId) =>
-                      setDeleteConfirm({
-                        visible: true,
-                        type: 'folder',
-                        id: folderId,
-                        name: state.folders.find((f) => f.id === folderId)?.name || 'Unknown',
-                      })
-                    }
-                    onRenameConversation={renameConversation}
-                    onDeleteConversation={(convId) =>
-                      setDeleteConfirm({
-                        visible: true,
-                        type: 'conversation',
-                        id: convId,
-                        name: state.conversations.find((c) => c.id === convId)?.title || 'Unknown',
-                      })
-                    }
-                    onDragStart={handleDragStart}
-                    onDrop={handleDrop}
-                    contextMenu={contextMenu}
-                    onContextMenu={handleContextMenu}
-                    onCloseContextMenu={handleCloseContextMenu}
-                  />
-                </div>
-              ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {state.conversations.length === 0 && state.folders.length === 0 && (
+        {state.conversations.length === 0 && state.folders.length === 0 ? (
           <div className="sidebar-empty-state">
             <span className="empty-state-icon">💬</span>
             <p>No conversations yet</p>
             <button className="btn btn-secondary" onClick={handleNewConversation}>
               Start a conversation
             </button>
+          </div>
+        ) : (
+          <div id="sidebar-root-drop">
+            <UnifiedTreeNode
+              parentId={null}
+              allFolders={state.folders}
+              conversations={state.conversations}
+              activeConversationId={state.activeConversationId}
+              selectedFolderId={selectedFolderId}
+              expandedFolders={expandedFolders}
+              onToggleFolder={handleToggleFolder}
+              onSelectFolder={handleSelectFolder}
+              onSelectConversation={(id) => {
+                dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id })
+                setSelectedFolderId(null) // Clear folder selection when selecting conversation
+              }}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={(folderId) =>
+                setDeleteConfirm({
+                  visible: true,
+                  type: 'folder',
+                  id: folderId,
+                  name: state.folders.find((f) => f.id === folderId)?.name || 'Unknown',
+                })
+              }
+              onRenameConversation={renameConversation}
+              onDeleteConversation={(convId) =>
+                setDeleteConfirm({
+                  visible: true,
+                  type: 'conversation',
+                  id: convId,
+                  name: state.conversations.find((c) => c.id === convId)?.title || 'Unknown',
+                })
+              }
+              contextMenu={contextMenu}
+              onContextMenu={handleContextMenu}
+              onCloseContextMenu={handleCloseContextMenu}
+              onDragStart={handleMouseDownDrag}
+              dragState={dragState}
+              dragActivatedRef={dragActivatedRef}
+            />
           </div>
         )}
       </div>
@@ -856,8 +1235,8 @@ export const ConversationSidebar: React.FC = () => {
           {state.folders.length > 0 && ` · ${state.folders.length} folder${state.folders.length !== 1 ? 's' : ''}`}
         </span>
         {clipboard && (
-          <span className="clipboard-indicator" title={`Ready to ${clipboard.action}`} onClick={() => setClipboard(null)}>
-            📋 {clipboard.action === 'copy' ? 'Copied' : 'Cut'}
+          <span className="clipboard-indicator" title={`Ready to ${clipboard.action} ${clipboard.type}`} onClick={() => setClipboard(null)}>
+            📋 {clipboard.action === 'copy' ? 'Copied' : 'Cut'} {clipboard.type === 'folder' ? '(folder)' : ''}
           </span>
         )}
       </div>
@@ -869,6 +1248,10 @@ export const ConversationSidebar: React.FC = () => {
         y={contextMenu.y}
         targetType={contextMenu.targetType}
         targetId={contextMenu.targetId}
+        onCopy={handleContextCopy}
+        onCut={handleContextCut}
+        onPaste={handleContextPaste}
+        canPaste={!!clipboard}
         onRename={handleContextRename}
         onDelete={handleContextDelete}
         onExport={handleExportConversation}
