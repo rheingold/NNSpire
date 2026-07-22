@@ -138,4 +138,97 @@ mod tests {
         let actual = chat_state_path(&storage_dir);
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn test_save_and_load_chat_state_roundtrip() {
+        // Use a temporary directory for testing
+        let test_dir = std::path::PathBuf::from("/tmp/nnagent_storage_test");
+        let _ = fs::remove_dir_all(&test_dir); // Clean up from previous runs
+        fs::create_dir_all(&test_dir).expect("Failed to create test directory");
+
+        // Mock chat state JSON (realistic ChatState structure)
+        let state_json = r#"{
+            "conversations": {
+                "conv-1": {
+                    "id": "conv-1",
+                    "name": "Test Conversation",
+                    "messages": [
+                        {
+                            "id": "msg-1",
+                            "role": "user",
+                            "content": [{"type": "text", "text": "Hello!"}],
+                            "timestamp": "2026-07-22T20:00:00Z"
+                        }
+                    ],
+                    "createdAt": "2026-07-22T20:00:00Z",
+                    "updatedAt": "2026-07-22T20:00:00Z"
+                }
+            },
+            "folders": {},
+            "activeConversationId": "conv-1"
+        }"#;
+
+        // We need to test with the actual storage dir, so let's temporarily
+        // write directly to verify the functions work
+        let storage_dir = ensure_storage_dir().expect("Failed to ensure storage dir");
+        let file_path = chat_state_path(&storage_dir);
+        
+        // Save state
+        save_chat_state(state_json).expect("Failed to save chat state");
+        
+        // Verify file exists
+        assert!(file_path.exists(), "chat_state.json should exist after save");
+        
+        // Load state
+        let loaded = load_chat_state().expect("Failed to load chat state");
+        assert!(loaded.is_some(), "Should have loaded state");
+        
+        // Verify content matches
+        let loaded_content = loaded.unwrap();
+        let original: serde_json::Value = serde_json::from_str(state_json)
+            .expect("Failed to parse original JSON");
+        let parsed_loaded: serde_json::Value = serde_json::from_str(&loaded_content)
+            .expect("Failed to parse loaded JSON");
+        
+        assert_eq!(original, parsed_loaded, "Loaded state should match saved state");
+        
+        // Clean up
+        let _ = fs::remove_file(&file_path);
+    }
+
+    #[test]
+    fn test_load_nonexistent_state_returns_none() {
+        // Clear any existing state
+        let storage_dir = ensure_storage_dir().expect("Failed to ensure storage dir");
+        let file_path = chat_state_path(&storage_dir);
+        let _ = fs::remove_file(&file_path);
+        
+        // Load should return None
+        let result = load_chat_state().expect("Failed to load chat state");
+        assert!(result.is_none(), "Should return None when no state file exists");
+    }
+
+    #[test]
+    fn test_migration_flag() {
+        let storage_dir = ensure_storage_dir().expect("Failed to ensure storage dir");
+        let migration_flag = storage_dir.join(".localStorage_migrated");
+        
+        // Clear migration flag
+        let _ = fs::remove_file(&migration_flag);
+        
+        // Should not be migrated
+        assert!(!is_migration_complete(), "Should not be migrated initially");
+        
+        // Mark as migrated
+        mark_migration_complete().expect("Failed to mark migration complete");
+        
+        // Should be migrated now
+        assert!(is_migration_complete(), "Should be migrated after marking");
+        
+        // Verify flag file exists
+        assert!(migration_flag.exists(), "Migration flag file should exist");
+        
+        // Clean up
+        let _ = fs::remove_file(&migration_flag);
+    }
 }
