@@ -45,7 +45,7 @@ $env:CARGO_TARGET_DIR = $TargetDir
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  NNSpire Agent — Desktop Build Script" -ForegroundColor Cyan
+Write-Host "  NNSpire Agent - Desktop Build Script" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -100,7 +100,7 @@ finally {
 Write-Host ""
 if (Test-Path $ExePath) {
     $size = [math]::Round((Get-Item $ExePath).Length / 1MB, 2)
-    Write-Host "[OK] nnagent.exe built — ${size} MB" -ForegroundColor Green
+    Write-Host "[OK] nnagent.exe built - ${size} MB" -ForegroundColor Green
     Write-Host "     Path: $ExePath" -ForegroundColor DarkGray
 }
 else {
