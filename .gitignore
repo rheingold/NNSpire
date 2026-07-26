@@ -38,8 +38,12 @@ ui_*.h
 # ─── Node.js / npm / pnpm ─────────────────────────────────────────────────────
 node_modules/
 nnagent/web/node_modules/
-nnagent/desktop/src-tauri/target/
 pnpm-lock.yaml
+
+# ─── Rust / Tauri / Cargo build artifacts ──────────────────────────────────────
+nnagent/desktop/src-tauri/target/
+nnagent/desktop/target/
+Cargo.lock
 
 # ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
