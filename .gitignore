@@ -42,8 +42,11 @@ pnpm-lock.yaml
 
 # ─── Rust / Tauri / Cargo build artifacts ──────────────────────────────────────
 nnagent/desktop/src-tauri/target/
-nnagent/desktop/target/
 Cargo.lock
+
+# Release binaries ARE committed (final distro)
+# Ignore debug build artifacts only
+nnagent/desktop/target/debug/
 
 # ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
