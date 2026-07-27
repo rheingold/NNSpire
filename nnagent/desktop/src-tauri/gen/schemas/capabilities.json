@@ -1,1 +1,0 @@
-{"default":{"identifier":"default","description":"Default capability for NNSpire Agent","local":true,"windows":["main"],"permissions":["core:default","log:default"]}}

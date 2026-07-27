@@ -67,6 +67,10 @@ export interface Conversation {
   updatedAt: string // ISO 8601
   model?: string // Default model for this conversation
   systemPrompt?: string
+  // PH2-2: Enhanced conversation management
+  pinned?: boolean // If true, conversation stays at top of list
+  archived?: boolean // If true, conversation is hidden from main list
+  tags?: string[] // Tags/labels for categorization
 }
 
 // ─── Folder ───────────────────────────────────────────────────────────────────
@@ -98,6 +102,10 @@ export interface ChatState {
   isLoading: boolean
   error: string | null
   theme: ChatTheme
+  // PH2-2: Search and filter
+  searchQuery: string
+  showArchived: boolean
+  activeTagFilter: string | null
 }
 
 // ─── Chat Actions ─────────────────────────────────────────────────────────────
@@ -117,9 +125,29 @@ export type ChatAction =
   | { type: 'UPDATE_FOLDER'; payload: ConversationFolder }
   | { type: 'DELETE_FOLDER'; payload: string }
   | { type: 'MOVE_CONVERSATION'; payload: { conversationId: string; folderId: string | null } }
+  | { type: 'MOVE_FOLDER'; payload: { folderId: string; parentId: string | null } }
   | { type: 'SET_MODEL'; payload: { conversationId: string; model: string } }
   | { type: 'SET_THEME'; payload: Partial<ChatTheme> }
   | { type: 'LOAD_STATE'; payload: ChatState }
+  // PH2-2: Pinning
+  | { type: 'TOGGLE_PIN'; payload: string }
+  | { type: 'SET_PINNED'; payload: { id: string; pinned: boolean } }
+  // PH2-2: Archiving
+  | { type: 'TOGGLE_ARCHIVE'; payload: string }
+  | { type: 'SET_ARCHIVED'; payload: { id: string; archived: boolean } }
+  // PH2-2: Tags
+  | { type: 'ADD_TAG'; payload: { id: string; tag: string } }
+  | { type: 'REMOVE_TAG'; payload: { id: string; tag: string } }
+  | { type: 'SET_TAGS'; payload: { id: string; tags: string[] } }
+  // PH2-2: Search/Filter
+  | { type: 'SET_SEARCH_QUERY'; payload: string }
+  | { type: 'TOGGLE_SHOW_ARCHIVED'; payload?: boolean }
+  | { type: 'SET_TAG_FILTER'; payload: string | null }
+  // PH2-2: Bulk operations
+  | { type: 'BULK_DELETE'; payload: string[] }
+  | { type: 'BULK_ARCHIVE'; payload: { ids: string[]; archived: boolean } }
+  | { type: 'BULK_PIN'; payload: { ids: string[]; pinned: boolean } }
+  | { type: 'BULK_ADD_TAG'; payload: { ids: string[]; tag: string } }
 
 // ─── Export/Import Formats ────────────────────────────────────────────────────
 

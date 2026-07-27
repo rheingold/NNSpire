@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ChatProvider } from './context/ChatContext'
 import { ChatWindow } from './components/chat/ChatWindow'
@@ -11,42 +11,98 @@ import './components/chat/ConversationSidebar.css'
 
 const ChatPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [chatMenuOpen, setChatMenuOpen] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(280)
+
+  const toggleChatMenu = useCallback(() => setChatMenuOpen((prev) => !prev), [])
+
+  // ─── Sidebar Resize Handler ─────────────────────────────────────────────
+  const handleResizeStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = startWidth + (moveEvent.clientX - startX)
+      if (newWidth >= 180 && newWidth <= 600) {
+        setSidebarWidth(newWidth)
+      }
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [sidebarWidth])
 
   return (
     <div className="chat-page">
-      {/* Sidebar */}
-      {sidebarOpen && (
-        <aside className="chat-sidebar">
-          <ConversationSidebar />
-        </aside>
-      )}
+      {/* Top-right 3-dot menu for current chat */}
+      <div className="chat-header">
+        <div className="chat-title-bar">
+          <span className="chat-title">NNSpire Chat</span>
+        </div>
+        <div className="chat-menu-container">
+          <button
+            className="chat-menu-btn"
+            onClick={toggleChatMenu}
+            aria-label="Chat options"
+            title="Chat options"
+          >
+            ⋮
+          </button>
+          {chatMenuOpen && (
+            <div className="chat-menu-dropdown">
+              <button className="chat-menu-item">Export Conversation</button>
+              <button className="chat-menu-item">Clear Messages</button>
+              <button className="chat-menu-item">Conversation Settings</button>
+            </div>
+          )}
+        </div>
+      </div>
 
-      {/* Toggle Sidebar Button */}
-      <button
-        className="sidebar-toggle"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-      >
-        {sidebarOpen ? '◀' : '▶'}
-      </button>
+      {/* Content area */}
+      <div className="chat-content">
+        {/* Sidebar */}
+        {sidebarOpen && (
+          <aside className="chat-sidebar" style={{ width: `${sidebarWidth}px` }}>
+            <ConversationSidebar />
+            {/* Resize Handle */}
+            <div
+              className="sidebar-resize-handle"
+              onMouseDown={handleResizeStart}
+            />
+          </aside>
+        )}
 
-      {/* Main Chat Area */}
-      <main className="chat-main">
-        <ChatWindow />
-      </main>
+        {/* Toggle Sidebar Button */}
+        <button
+          className="sidebar-toggle"
+          style={{ left: sidebarOpen ? `${sidebarWidth}px` : '0px' }}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+        >
+          {sidebarOpen ? '◀' : '▶'}
+        </button>
+
+        {/* Main Chat Area */}
+        <main className="chat-main">
+          <ChatWindow />
+        </main>
+      </div>
     </div>
   )
 }
 
 // ─── Placeholder Pages ────────────────────────────────────────────────────────
 
-const Home: React.FC = () => (
-  <div className="home-page">
-    <h1>NNSpire Agent</h1>
-    <p className="version">v0.2.0 — PH2 Chat Interface</p>
-    <p className="welcome">
-      Welcome to NNSpire Agent. Start a new conversation to begin chatting.
-    </p>
+const Profile: React.FC = () => (
+  <div className="profile-page">
+    <h2>Profile</h2>
+    <p>User profile management. Coming soon.</p>
   </div>
 )
 
@@ -68,25 +124,52 @@ const About: React.FC = () => (
 // ─── App Shell ────────────────────────────────────────────────────────────────
 
 const AppRoutes: React.FC = () => {
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  const toggleUserMenu = useCallback(() => setUserMenuOpen((prev) => !prev), [])
+
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <nav className="app-nav">
-          <a href="/">Home</a>
-          <a href="/chat">Chat</a>
-          <a href="/settings">Settings</a>
-          <a href="/about">About</a>
-        </nav>
-      </header>
+      {/* Main content — Chat is the default home/dashboard */}
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/" element={<ChatPage />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/about" element={<About />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* User submenu — bottom-left corner */}
+      <div className="app-user-area">
+        <button
+          className="user-menu-btn"
+          onClick={toggleUserMenu}
+          aria-label="User menu"
+          title="Navigation"
+        >
+          ☰
+        </button>
+        {userMenuOpen && (
+          <div className="user-menu-dropdown">
+            <a href="/" className="user-menu-item" onClick={() => setUserMenuOpen(false)}>
+              💬 Chat
+            </a>
+            <a href="/profile" className="user-menu-item" onClick={() => setUserMenuOpen(false)}>
+              👤 Profile
+            </a>
+            <a href="/settings" className="user-menu-item" onClick={() => setUserMenuOpen(false)}>
+              ⚙️ Settings
+            </a>
+            <a href="/about" className="user-menu-item" onClick={() => setUserMenuOpen(false)}>
+              ℹ️ About
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
       <footer className="app-footer">
         <span>NNSpire Agent © {new Date().getFullYear()}</span>
       </footer>

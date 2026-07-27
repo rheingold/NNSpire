@@ -1,7 +1,5 @@
 # ─── Private / local machine data ────────────────────────────────────────────
 ai_priv/
-# ─── nnagent — not published yet ──────────────────────────────────────────────
-nnagent/
 # ─── Local developer overrides (never commit) ─────────────────────────────────
 CMakeUserPresets.json
 NNSpire/CMakeUserPresets.json
@@ -42,11 +40,10 @@ pnpm-lock.yaml
 
 # ─── Rust / Tauri / Cargo build artifacts ──────────────────────────────────────
 nnagent/desktop/src-tauri/target/
+nnagent/desktop/target/
+nnagent/desktop/src-tauri/gen/
 Cargo.lock
-
-# Release binaries ARE committed (final distro)
-# Ignore debug build artifacts only
-nnagent/desktop/target/debug/
+*.d
 
 # ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/

@@ -542,6 +542,145 @@
   border-radius: var(--border-radius);
 }
 
+/* ─── PH2-2: Pin Indicator ─────────────────────────────────────────────────── */
+
+.pin-indicator {
+  margin-right: 4px;
+  font-size: 0.85em;
+}
+
+/* ─── PH2-2: Archive Badge ─────────────────────────────────────────────────── */
+
+.archive-badge {
+  margin-left: 6px;
+  font-size: 0.75em;
+  opacity: 0.7;
+}
+
+/* ─── PH2-2: Tag Chips ─────────────────────────────────────────────────────── */
+
+.conversation-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.tag-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 0.7em;
+  background-color: var(--color-primary, #4a90d9);
+  color: white;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ─── PH2-2: Bulk Selection ────────────────────────────────────────────────── */
+
+.bulk-select-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.bulk-selected {
+  background-color: rgba(74, 144, 217, 0.2) !important;
+  border-left: 3px solid var(--color-primary, #4a90d9);
+}
+
+.conversation-item:has(.bulk-select-checkbox) {
+  position: relative;
+  padding-left: 28px;
+}
+
+/* ─── PH2-2: Search Input ──────────────────────────────────────────────────── */
+
+.sidebar-search {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-search input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-surface-alt, #1e1e2e);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.sidebar-search input:focus {
+  border-color: var(--color-primary, #4a90d9);
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+}
+
+/* ─── PH2-2: Sidebar Filters ───────────────────────────────────────────────── */
+
+.sidebar-filters {
+  display: flex;
+  gap: 6px;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sidebar-filters button {
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sidebar-filters button:hover {
+  background-color: var(--color-primary, #4a90d9);
+  color: white;
+  border-color: var(--color-primary, #4a90d9);
+}
+
+.sidebar-filters button.active {
+  background-color: var(--color-primary, #4a90d9);
+  color: white;
+  border-color: var(--color-primary, #4a90d9);
+}
+
+/* ─── PH2-2: Bulk Action Bar ───────────────────────────────────────────────── */
+
+.bulk-action-bar {
+  display: flex;
+  gap: 6px;
+  padding: 0.5rem 1rem;
+  background-color: var(--color-primary, #4a90d9);
+  color: white;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bulk-action-bar button {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.bulk-action-bar button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {

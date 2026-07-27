@@ -4,6 +4,7 @@
 
 .chat-page {
   display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   position: relative;
@@ -14,12 +15,34 @@
 
 .chat-sidebar {
   width: 280px;
-  min-width: 280px;
+  min-width: 180px;
+  max-width: 600px;
   background-color: var(--color-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* ─── Sidebar Resize Handle ──────────────────────────────────────────────── */
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 50;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.active {
+  background-color: var(--color-primary, #4a90d9);
 }
 
 .sidebar-header {
@@ -153,4 +176,163 @@
   .chat-page:has(.chat-sidebar) .sidebar-toggle {
     left: 280px;
   }
+}
+
+/* ─── Chat Header (top bar with title + 3-dot menu) ────────────────────────── */
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  min-height: 40px;
+  position: relative;
+}
+
+.chat-title-bar {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.chat-menu-container {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  z-index: 200;
+}
+
+.chat-menu-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.chat-menu-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.chat-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background-color: var(--color-surface-alt, #2d2d3d);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 200px;
+  z-index: 201;
+  overflow: hidden;
+}
+
+.chat-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.15s;
+}
+
+.chat-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Chat Content (sidebar + main area) ───────────────────────────────────── */
+
+.chat-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── User Menu (bottom-left navigation) ───────────────────────────────────── */
+
+.app-user-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  padding: 4px;
+}
+
+.user-menu-btn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-left: none;
+  border-radius: 0 4px 0 0;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 4px 8px;
+  transition: background-color 0.2s;
+}
+
+.user-menu-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  background-color: var(--color-surface-alt, #2d2d3d);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  overflow: hidden;
+  z-index: 1001;
+}
+
+.user-menu-item {
+  display: block;
+  padding: 8px 12px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: background-color 0.15s;
+}
+
+.user-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── App Shell Layout Adjustments ─────────────────────────────────────────── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-footer {
+  padding: 0.25rem 0.5rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  background-color: var(--color-surface);
 }

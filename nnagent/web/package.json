@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -19,6 +21,7 @@
     "react-router-dom": "^6.21.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@types/react": "^18.2.43",

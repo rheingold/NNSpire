@@ -30,11 +30,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-$RepoRoot    = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$WebDir      = Join-Path $RepoRoot 'web'
-$TauriDir    = Join-Path $RepoRoot 'desktop\src-tauri'
+# $PSScriptRoot = nnagent/dev_helpers  ->  parent = nnagent/  (= $NnagentDir)
+$NnagentDir  = Split-Path -Parent $PSScriptRoot
+$WebDir      = Join-Path $NnagentDir 'web'
+$TauriDir    = Join-Path $NnagentDir 'desktop\src-tauri'
 $RustRoot    = 'D:\plachy\Dokumenty\Dev\_ToolRust'
-$TargetDir   = Join-Path $RepoRoot 'desktop\target'
+$TargetDir   = Join-Path $NnagentDir 'desktop\target'
 $ExePath     = Join-Path $TargetDir 'release\nnagent.exe'
 
 # ── Environment ────────────────────────────────────────────────────────────────

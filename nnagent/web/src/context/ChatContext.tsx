@@ -45,6 +45,10 @@ const initialState: ChatState = {
   isLoading: false,
   error: null,
   theme: defaultTheme,
+  // PH2-2: Search and filter defaults
+  searchQuery: '',
+  showArchived: false,
+  activeTagFilter: null,
 }
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -279,6 +283,178 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'LOAD_STATE':
       return { ...action.payload }
 
+    // PH2-2: Pinning
+    case 'TOGGLE_PIN': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] TOGGLE_PIN: Conversation ${action.payload} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      updatedConvs[convIdx] = {
+        ...updatedConvs[convIdx],
+        pinned: !updatedConvs[convIdx].pinned,
+        updatedAt: new Date().toISOString(),
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    case 'SET_PINNED': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload.id)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] SET_PINNED: Conversation ${action.payload.id} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      updatedConvs[convIdx] = {
+        ...updatedConvs[convIdx],
+        pinned: action.payload.pinned,
+        updatedAt: new Date().toISOString(),
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    // PH2-2: Archiving
+    case 'TOGGLE_ARCHIVE': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] TOGGLE_ARCHIVE: Conversation ${action.payload} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      updatedConvs[convIdx] = {
+        ...updatedConvs[convIdx],
+        archived: !updatedConvs[convIdx].archived,
+        updatedAt: new Date().toISOString(),
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    case 'SET_ARCHIVED': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload.id)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] SET_ARCHIVED: Conversation ${action.payload.id} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      updatedConvs[convIdx] = {
+        ...updatedConvs[convIdx],
+        archived: action.payload.archived,
+        updatedAt: new Date().toISOString(),
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    // PH2-2: Tags
+    case 'ADD_TAG': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload.id)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] ADD_TAG: Conversation ${action.payload.id} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      const currentTags = updatedConvs[convIdx].tags ?? []
+      if (!currentTags.includes(action.payload.tag)) {
+        updatedConvs[convIdx] = {
+          ...updatedConvs[convIdx],
+          tags: [...currentTags, action.payload.tag],
+          updatedAt: new Date().toISOString(),
+        }
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    case 'REMOVE_TAG': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload.id)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] REMOVE_TAG: Conversation ${action.payload.id} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      const currentTags = updatedConvs[convIdx].tags ?? []
+      updatedConvs[convIdx] = {
+        ...updatedConvs[convIdx],
+        tags: currentTags.filter((t) => t !== action.payload.tag),
+        updatedAt: new Date().toISOString(),
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    case 'SET_TAGS': {
+      const convIdx = state.conversations.findIndex((c) => c.id === action.payload.id)
+      if (convIdx === -1) {
+        console.warn(`[ChatContext] SET_TAGS: Conversation ${action.payload.id} not found`)
+        return state
+      }
+      const updatedConvs = [...state.conversations]
+      updatedConvs[convIdx] = {
+        ...updatedConvs[convIdx],
+        tags: [...action.payload.tags],
+        updatedAt: new Date().toISOString(),
+      }
+      return { ...state, conversations: updatedConvs }
+    }
+
+    // PH2-2: Search/Filter
+    case 'SET_SEARCH_QUERY':
+      return { ...state, searchQuery: action.payload }
+
+    case 'TOGGLE_SHOW_ARCHIVED':
+      return { ...state, showArchived: action.payload ?? !state.showArchived }
+
+    case 'SET_TAG_FILTER':
+      return { ...state, activeTagFilter: action.payload }
+
+    // PH2-2: Bulk operations
+    case 'BULK_DELETE': {
+      const idsSet = new Set(action.payload)
+      const filtered = state.conversations.filter((c) => !idsSet.has(c.id))
+      const newActive =
+        state.activeConversationId && idsSet.has(state.activeConversationId)
+          ? (filtered[0]?.id ?? null)
+          : state.activeConversationId
+      return {
+        ...state,
+        conversations: filtered,
+        activeConversationId: newActive,
+      }
+    }
+
+    case 'BULK_ARCHIVE': {
+      const idsSet = new Set(action.payload.ids)
+      const updatedConvs = state.conversations.map((c) =>
+        idsSet.has(c.id)
+          ? { ...c, archived: action.payload.archived, updatedAt: new Date().toISOString() }
+          : c
+      )
+      return { ...state, conversations: updatedConvs }
+    }
+
+    case 'BULK_PIN': {
+      const idsSet = new Set(action.payload.ids)
+      const updatedConvs = state.conversations.map((c) =>
+        idsSet.has(c.id)
+          ? { ...c, pinned: action.payload.pinned, updatedAt: new Date().toISOString() }
+          : c
+      )
+      return { ...state, conversations: updatedConvs }
+    }
+
+    case 'BULK_ADD_TAG': {
+      const idsSet = new Set(action.payload.ids)
+      const updatedConvs = state.conversations.map((c) => {
+        if (!idsSet.has(c.id)) return c
+        const currentTags = c.tags ?? []
+        if (currentTags.includes(action.payload.tag)) return c
+        return {
+          ...c,
+          tags: [...currentTags, action.payload.tag],
+          updatedAt: new Date().toISOString(),
+        }
+      })
+      return { ...state, conversations: updatedConvs }
+    }
+
     default:
       return state
   }
@@ -310,6 +486,27 @@ interface ChatContextType {
   // Import
   importConversation: (json: string) => Promise<Conversation | null>
   importFromFile: (file: File) => Promise<number>
+  // PH2-2: Pinning
+  togglePin: (id: string) => void
+  // PH2-2: Archiving
+  toggleArchive: (id: string) => void
+  // PH2-2: Tags
+  addTag: (id: string, tag: string) => void
+  removeTag: (id: string, tag: string) => void
+  setTags: (id: string, tags: string[]) => void
+  // PH2-2: Search/Filter
+  setSearchQuery: (query: string) => void
+  toggleShowArchived: (show?: boolean) => void
+  setTagFilter: (tag: string | null) => void
+  // PH2-2: Bulk operations
+  bulkDelete: (ids: string[]) => void
+  bulkArchive: (ids: string[], archived: boolean) => void
+  bulkPin: (ids: string[], pinned: boolean) => void
+  bulkAddTag: (ids: string[], tag: string) => void
+  // PH2-2: Get all unique tags across conversations
+  getAllTags: () => string[]
+  // PH2-2: Get filtered conversations based on search/tag/archive settings
+  getFilteredConversations: () => Conversation[]
 }
 
 const ChatContext = createContext<ChatContextType | null>(null)
@@ -517,6 +714,178 @@ export function ChatProvider({ children }: ChatProviderProps) {
       throw new Error(`Failed to load chat state: ${error instanceof Error ? error.message : String(error)}`)
     }
   }, [dispatch])
+
+  // ─── PH2-2: Pinning ─────────────────────────────────────────────────────
+
+  const togglePin = useCallback(
+    (id: string) => {
+      dispatch({ type: 'TOGGLE_PIN', payload: id })
+    },
+    [dispatch]
+  )
+
+  // ─── PH2-2: Archiving ───────────────────────────────────────────────────
+
+  const toggleArchive = useCallback(
+    (id: string) => {
+      dispatch({ type: 'TOGGLE_ARCHIVE', payload: id })
+    },
+    [dispatch]
+  )
+
+  // ─── PH2-2: Tags ────────────────────────────────────────────────────────
+
+  const addTag = useCallback(
+    (id: string, tag: string) => {
+      dispatch({ type: 'ADD_TAG', payload: { id, tag } })
+    },
+    [dispatch]
+  )
+
+  const removeTag = useCallback(
+    (id: string, tag: string) => {
+      dispatch({ type: 'REMOVE_TAG', payload: { id, tag } })
+    },
+    [dispatch]
+  )
+
+  const setTags = useCallback(
+    (id: string, tags: string[]) => {
+      dispatch({ type: 'SET_TAGS', payload: { id, tags } })
+    },
+    [dispatch]
+  )
+
+  // ─── PH2-2: Search/Filter ───────────────────────────────────────────────
+
+  const setSearchQuery = useCallback(
+    (query: string) => {
+      dispatch({ type: 'SET_SEARCH_QUERY', payload: query })
+    },
+    [dispatch]
+  )
+
+  const toggleShowArchived = useCallback(
+    (show?: boolean) => {
+      dispatch({ type: 'TOGGLE_SHOW_ARCHIVED', payload: show })
+    },
+    [dispatch]
+  )
+
+  const setTagFilter = useCallback(
+    (tag: string | null) => {
+      dispatch({ type: 'SET_TAG_FILTER', payload: tag })
+    },
+    [dispatch]
+  )
+
+  // ─── PH2-2: Bulk operations ─────────────────────────────────────────────
+
+  const bulkDelete = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) {
+        console.warn('[ChatContext] bulkDelete: No IDs provided')
+        return
+      }
+      dispatch({ type: 'BULK_DELETE', payload: ids })
+    },
+    [dispatch]
+  )
+
+  const bulkArchive = useCallback(
+    (ids: string[], archived: boolean) => {
+      if (ids.length === 0) {
+        console.warn('[ChatContext] bulkArchive: No IDs provided')
+        return
+      }
+      dispatch({ type: 'BULK_ARCHIVE', payload: { ids, archived } })
+    },
+    [dispatch]
+  )
+
+  const bulkPin = useCallback(
+    (ids: string[], pinned: boolean) => {
+      if (ids.length === 0) {
+        console.warn('[ChatContext] bulkPin: No IDs provided')
+        return
+      }
+      dispatch({ type: 'BULK_PIN', payload: { ids, pinned } })
+    },
+    [dispatch]
+  )
+
+  const bulkAddTag = useCallback(
+    (ids: string[], tag: string) => {
+      if (ids.length === 0) {
+        console.warn('[ChatContext] bulkAddTag: No IDs provided')
+        return
+      }
+      dispatch({ type: 'BULK_ADD_TAG', payload: { ids, tag } })
+    },
+    [dispatch]
+  )
+
+  // ─── PH2-2: Get all unique tags ─────────────────────────────────────────
+
+  const getAllTags = useCallback(
+    (): string[] => {
+      const tagSet = new Set<string>()
+      for (const conv of state.conversations) {
+        if (conv.tags) {
+          for (const tag of conv.tags) {
+            tagSet.add(tag)
+          }
+        }
+      }
+      return Array.from(tagSet).sort()
+    },
+    [state.conversations]
+  )
+
+  // ─── PH2-2: Get filtered conversations ──────────────────────────────────
+
+  const getFilteredConversations = useCallback(
+    (): Conversation[] => {
+      let result = state.conversations
+
+      // Filter out archived unless showArchived is true
+      if (!state.showArchived) {
+        result = result.filter((c) => !c.archived)
+      }
+
+      // Apply tag filter
+      if (state.activeTagFilter) {
+        result = result.filter((c) => c.tags?.includes(state.activeTagFilter!))
+      }
+
+      // Apply search query - search in title and message content
+      if (state.searchQuery.trim()) {
+        const query = state.searchQuery.trim().toLowerCase()
+        result = result.filter((c) => {
+          // Search in title
+          if (c.title.toLowerCase().includes(query)) return true
+          // Search in message content
+          return c.messages.some((m) =>
+            m.contents.some((content) =>
+              content.type === 'text' && content.content.toLowerCase().includes(query)
+            )
+          )
+        })
+      }
+
+      // Sort: pinned first, then by updatedAt descending
+      result.sort((a, b) => {
+        // Pinned conversations always at top
+        if (a.pinned && !b.pinned) return -1
+        if (!a.pinned && b.pinned) return 1
+        // Both pinned or both unpinned: sort by updatedAt
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      })
+
+      return result
+    },
+    [state.conversations, state.showArchived, state.activeTagFilter, state.searchQuery]
+  )
 
   // ─── Export ─────────────────────────────────────────────────────────────
 
@@ -851,6 +1220,26 @@ export function ChatProvider({ children }: ChatProviderProps) {
     exportAll,
     importConversation,
     importFromFile,
+    // PH2-2: Pinning
+    togglePin,
+    // PH2-2: Archiving
+    toggleArchive,
+    // PH2-2: Tags
+    addTag,
+    removeTag,
+    setTags,
+    // PH2-2: Search/Filter
+    setSearchQuery,
+    toggleShowArchived,
+    setTagFilter,
+    // PH2-2: Bulk operations
+    bulkDelete,
+    bulkArchive,
+    bulkPin,
+    bulkAddTag,
+    // PH2-2: Queries
+    getAllTags,
+    getFilteredConversations,
   }
 
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>

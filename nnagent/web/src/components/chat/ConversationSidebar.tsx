@@ -15,6 +15,13 @@ import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useChat } from '@/context/ChatContext'
 import { Conversation, ConversationFolder, formatTimestamp } from '@/types/chat'
 
+// ─── PH2-2: Bulk Selection State ──────────────────────────────────────────────
+
+interface BulkSelectionState {
+  active: boolean
+  selectedIds: Set<string>
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ContextMenuState {
@@ -65,6 +72,10 @@ interface FolderTreeNodeProps {
   dragState: DraggingInfo | null
   /** Ref to check if drag was activated (prevents click after drag) */
   dragActivatedRef: React.MutableRefObject<boolean>
+  // PH2-2: Bulk selection
+  bulkSelectionActive: boolean
+  bulkSelectedIds: Set<string>
+  onToggleBulkSelect: (id: string) => void
 }
 
 const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
@@ -87,6 +98,10 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   onDragStart,
   dragState,
   dragActivatedRef,
+  // PH2-2: Bulk selection
+  bulkSelectionActive,
+  bulkSelectedIds,
+  onToggleBulkSelect,
 }) => {
   const folderConversations = conversations.filter((c) => c.folderId === folder.id)
   const isExpanded = expandedFolders.has(folder.id)
@@ -203,6 +218,10 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
             onDragStart={onDragStart}
             dragState={dragState}
             dragActivatedRef={dragActivatedRef}
+            // PH2-2: Bulk selection pass-through
+            bulkSelectionActive={bulkSelectionActive}
+            bulkSelectedIds={bulkSelectedIds}
+            onToggleBulkSelect={onToggleBulkSelect}
           />
         </div>
       )}
@@ -222,6 +241,10 @@ interface ConversationItemProps {
   onDragStart: (e: React.MouseEvent, type: 'conversation', id: string) => void
   /** Ref to check if drag was activated (prevents click after drag) */
   dragActivatedRef: React.MutableRefObject<boolean>
+  // PH2-2: Bulk selection
+  bulkSelectionActive: boolean
+  isSelected: boolean
+  onToggleBulkSelect: (id: string) => void
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = ({
@@ -232,6 +255,9 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   onContextMenu,
   onDragStart,
   dragActivatedRef,
+  bulkSelectionActive,
+  isSelected,
+  onToggleBulkSelect,
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(conversation.title)
@@ -277,7 +303,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
   return (
     <div
-      className={`conversation-item ${isActive ? 'active' : ''}`}
+      className={`conversation-item ${isActive ? 'active' : ''} ${conversation.pinned ? 'pinned' : ''} ${conversation.archived ? 'archived' : ''} ${isSelected ? 'bulk-selected' : ''}`}
       tabIndex={0}
       onClick={handleClick}
       onContextMenu={(e) => onContextMenu(e, 'conversation', conversation.id)}
@@ -300,11 +326,35 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
         />
       ) : (
         <>
-          <span className="conversation-title">{conversation.title}</span>
-          <span className="conversation-meta">
-            <span className="conversation-date">{formatTimestamp(conversation.updatedAt)}</span>
-            <span className="conversation-message-count">{conversation.messages.length}</span>
-          </span>
+          {/* PH2-2: Bulk selection checkbox */}
+          {bulkSelectionActive && (
+            <input
+              type="checkbox"
+              className="bulk-select-checkbox"
+              checked={isSelected}
+              onChange={() => onToggleBulkSelect(conversation.id)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+          <div className="conversation-item-content">
+            {/* PH2-2: Pin indicator */}
+            {conversation.pinned && <span className="pin-indicator" title="Pinned">📌</span>}
+            <span className="conversation-title">{conversation.title}</span>
+            {/* PH2-2: Archived badge */}
+            {conversation.archived && <span className="archive-badge" title="Archived">📦</span>}
+            {/* PH2-2: Tags display */}
+            {conversation.tags && conversation.tags.length > 0 && (
+              <span className="conversation-tags">
+                {conversation.tags.map((tag) => (
+                  <span key={tag} className="tag-chip">{tag}</span>
+                ))}
+              </span>
+            )}
+            <span className="conversation-meta">
+              <span className="conversation-date">{formatTimestamp(conversation.updatedAt)}</span>
+              <span className="conversation-message-count">{conversation.messages.length}</span>
+            </span>
+          </div>
         </>
       )}
     </div>
@@ -327,6 +377,11 @@ interface ContextMenuProps {
   onDelete: () => void
   onExport?: () => void
   onClose: () => void
+  // PH2-2: Pin/Archive/Tag actions (conversation only)
+  onTogglePin?: () => void
+  onToggleArchive?: () => void
+  isPinned?: boolean
+  isArchived?: boolean
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -342,6 +397,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onDelete,
   onExport,
   onClose,
+  onTogglePin,
+  onToggleArchive,
+  isPinned,
+  isArchived,
 }) => {
   if (!visible || !targetType) return null
 
@@ -349,6 +408,19 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     <>
       <div className="context-menu-overlay" onClick={onClose} />
       <div className="context-menu" style={{ top: y, left: x }}>
+        {/* PH2-2: Pin/Archive actions for conversations */}
+        {targetType === 'conversation' && onTogglePin && (
+          <button onClick={onTogglePin} className="context-menu-item">
+            <span className="context-menu-icon">{isPinned ? '📌' : '📍'}</span>
+            {isPinned ? 'Unpin' : 'Pin'}
+          </button>
+        )}
+        {targetType === 'conversation' && onToggleArchive && (
+          <button onClick={onToggleArchive} className="context-menu-item">
+            <span className="context-menu-icon">{isArchived ? '📦' : '🗃️'}</span>
+            {isArchived ? 'Unarchive' : 'Archive'}
+          </button>
+        )}
         <button onClick={onCopy} className="context-menu-item">
           <span className="context-menu-icon">📋</span>
           Copy
@@ -451,6 +523,10 @@ interface UnifiedTreeNodeProps {
   dragState: DraggingInfo | null
   /** Ref to check if drag was activated (prevents click after drag) */
   dragActivatedRef: React.MutableRefObject<boolean>
+  // PH2-2: Bulk selection
+  bulkSelectionActive: boolean
+  bulkSelectedIds: Set<string>
+  onToggleBulkSelect: (id: string) => void
 }
 
 const UnifiedTreeNode: React.FC<UnifiedTreeNodeProps> = ({
@@ -473,6 +549,10 @@ const UnifiedTreeNode: React.FC<UnifiedTreeNodeProps> = ({
   onDragStart,
   dragState,
   dragActivatedRef,
+  // PH2-2: Bulk selection
+  bulkSelectionActive,
+  bulkSelectedIds,
+  onToggleBulkSelect,
 }) => {
   // Get folders at this level
   const foldersAtLevel = allFolders.filter((f) => f.parentId === parentId)
@@ -515,6 +595,10 @@ const UnifiedTreeNode: React.FC<UnifiedTreeNodeProps> = ({
               onContextMenu={onContextMenu}
               onDragStart={onDragStart}
               dragActivatedRef={dragActivatedRef}
+              // PH2-2: Bulk selection
+              bulkSelectionActive={bulkSelectionActive}
+              isSelected={bulkSelectedIds.has(item.conv.id)}
+              onToggleBulkSelect={onToggleBulkSelect}
             />
           </div>
         ) : (
@@ -539,6 +623,10 @@ const UnifiedTreeNode: React.FC<UnifiedTreeNodeProps> = ({
               onDragStart={onDragStart}
               dragState={dragState}
               dragActivatedRef={dragActivatedRef}
+              // PH2-2: Bulk selection
+              bulkSelectionActive={bulkSelectionActive}
+              bulkSelectedIds={bulkSelectedIds}
+              onToggleBulkSelect={onToggleBulkSelect}
             />
           </div>
         )
@@ -550,7 +638,15 @@ const UnifiedTreeNode: React.FC<UnifiedTreeNodeProps> = ({
 // ─── Main Sidebar Component ───────────────────────────────────────────────────
 
 export const ConversationSidebar: React.FC = () => {
-  const { state, dispatch, deleteConversation, renameConversation, createFolder, createConversation, exportConversation, exportFolder, importFromFile } = useChat()
+  // PH2-2: Destructure all new methods from ChatContext
+  const {
+    state, dispatch, deleteConversation, renameConversation, createFolder, createConversation,
+    exportConversation, exportFolder, importFromFile,
+    // PH2-2: Pin/Archive/Tag
+    togglePin, toggleArchive,
+    // PH2-2: Bulk operations (unused until bulk action bar is wired)
+  } = useChat()
+
   // Auto-expand all folders by default so conversations inside are visible
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
     // Initialize with all folder IDs so nothing appears empty
@@ -591,6 +687,25 @@ export const ConversationSidebar: React.FC = () => {
   const [importResult, setImportResult] = useState<{ count: number; success: boolean } | null>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // PH2-2: Bulk selection state
+  const [bulkSelection, setBulkSelection] = useState<BulkSelectionState>({
+    active: false,
+    selectedIds: new Set(),
+  })
+
+  // PH2-2: Toggle bulk selection for a conversation
+  const handleToggleBulkSelect = useCallback((id: string) => {
+    setBulkSelection((prev) => {
+      const next = new Set(prev.selectedIds)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return { ...prev, selectedIds: next }
+    })
+  }, [])
 
   // Expand folder when conversation is selected inside
   useEffect(() => {
@@ -664,6 +779,21 @@ export const ConversationSidebar: React.FC = () => {
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu((prev) => ({ ...prev, visible: false }))
   }, [])
+
+  // PH2-2: Context menu handlers for pin/archive (MUST be after handleCloseContextMenu)
+  const handleContextTogglePin = useCallback(() => {
+    if (contextMenu.targetType === 'conversation' && contextMenu.targetId) {
+      togglePin(contextMenu.targetId)
+    }
+    handleCloseContextMenu()
+  }, [contextMenu, togglePin, handleCloseContextMenu])
+
+  const handleContextToggleArchive = useCallback(() => {
+    if (contextMenu.targetType === 'conversation' && contextMenu.targetId) {
+      toggleArchive(contextMenu.targetId)
+    }
+    handleCloseContextMenu()
+  }, [contextMenu, toggleArchive, handleCloseContextMenu])
 
   // Handle rename from context menu
   const handleContextRename = useCallback(() => {
@@ -1223,6 +1353,10 @@ export const ConversationSidebar: React.FC = () => {
               onDragStart={handleMouseDownDrag}
               dragState={dragState}
               dragActivatedRef={dragActivatedRef}
+              // PH2-2: Bulk selection
+              bulkSelectionActive={bulkSelection.active}
+              bulkSelectedIds={bulkSelection.selectedIds}
+              onToggleBulkSelect={handleToggleBulkSelect}
             />
           </div>
         )}
@@ -1256,6 +1390,13 @@ export const ConversationSidebar: React.FC = () => {
         onDelete={handleContextDelete}
         onExport={handleExportConversation}
         onClose={handleCloseContextMenu}
+        // PH2-2: Pin/Archive
+        onTogglePin={handleContextTogglePin}
+        onToggleArchive={handleContextToggleArchive}
+        isPinned={contextMenu.targetType === 'conversation' ?
+          state.conversations.find((c) => c.id === contextMenu.targetId)?.pinned ?? false : false}
+        isArchived={contextMenu.targetType === 'conversation' ?
+          state.conversations.find((c) => c.id === contextMenu.targetId)?.archived ?? false : false}
       />
 
       {/* Import Result Toast */}
